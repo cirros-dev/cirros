@@ -1,0 +1,38 @@
+#!/bin/sh
+
+Usage() {
+   cat <<EOF
+${0##*/} buildroot-dir arch output [confd]
+
+  build the buildroot dir in buildroot-dir
+  put output in output. confd defaults to topdir/conf
+EOF
+}
+
+error() { echo "$@" 1>&2; }
+fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
+
+[ $# -eq 3 -o $# -eq 4 ] ||
+   { Usage 1>&2; exit 1; }
+[ "$1" = "-h" -o "$1" = "--help" ] && { Usage; exit 0; }
+
+
+bdir=${1}
+arch=${2}
+out=${3}
+shift 3
+confd=""
+[ $# -eq 0 ] && set -- make
+
+[ -n "$confd" ] || confd=$( cd "${0%/*}/../conf" && pwd) ||
+   fail "failed to find conf dir"
+
+mkdir -p "$out" || fail "failed to make outdir $out"
+out=$(cd "${out}" && pwd)
+cp "$confd/buildroot-$arch.config" "$confd/.config" ||
+    fail "failed to copy buildroot config"
+cp "$confd/busybox.config" "$out/busybox.config" ||
+    fail "failed to copy busybox config"
+
+cd "$bdir" 
+make "O=$BR_OUT" "BUSYBOX_CONFIG_FILE=$out/busybox.config" "$@"
