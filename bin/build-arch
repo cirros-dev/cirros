@@ -29,9 +29,11 @@ confd=""
 
 mkdir -p "$out" || fail "failed to make outdir $out"
 out=$(cd "${out}" && pwd)
-cp "$confd/buildroot-$arch.config" "$confd/.config" ||
+[ -e "$confd/.config" ] ||
+    cp "$confd/buildroot-$arch.config" "$confd/.config" ||
     fail "failed to copy buildroot config"
-cp "$confd/busybox.config" "$out/busybox.config" ||
+[ -e "$confd/busybox.config" ] ||
+    cp "$confd/busybox.config" "$out/busybox.config" ||
     fail "failed to copy busybox config"
 
 cd "$bdir" 
