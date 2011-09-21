@@ -1,0 +1,98 @@
+#!/bin/sh
+# vi: ts=4 noexpandtab
+
+BURL="http://169.254.169.254/2009-04-04"
+MDURL="${BURL}/meta-data"
+UDURL="${BURL}/user-data"
+STATE_D=/var/lib/cloud
+CLOUD_CONFIG=${STATE_D}/config.sh
+MD_DEBUG_COUNT=30
+MD_MAX_TRIES=30
+IS_NOCLOUD=0
+
+[ -d "${STATE_D}" ] || mkdir -p "${STATE_D}"
+
+[ -f "${CLOUD_CONFIG}" ] && . "${CLOUD_CONFIG}"
+# CLOUD_CONFIG may set
+# MD_TRIES
+# MD_DEBUG_COUNT
+
+TMPF=/tmp/${0##*/}.tmp
+trap "rm -f ${TMPF}" EXIT
+msg() { echo "${XN}: $1"; }
+mdget() {
+	if [ "${2}" = "-" ]; then
+		wget -q -O - "${MDURL}/${1}"
+	else
+		local out=${2:-${TMPF}}
+		wget -q -O - "${MDURL}/${1}" > "${out}" &&
+			{ read _RET < "${TMPF}" ; :; }
+	fi
+}
+marked() {
+	local name=${2:-${XN}} iid=${1}
+	[ -f "${STATE_D}/${name}.${iid}" ]
+}
+mark() {
+	local name=${2:-${XN}} iid=${1}
+	{ [ -d "${STATE_D}" ] || mkdir "${STATE_D}"; } ||
+		msg "failed to make ${STATE_D}"
+	date > "${STATE_D}/${name}.${iid}"
+}
+
+mddebug() {
+	local dbf="${STATE_D}/mddebug"
+	if [ -f "${dbf}" ]; then
+		chmod 755 "${dbf}"
+		msg "running ${dbf} (${MD_DEBUG_COUNT} tries reached)"
+		echo "############ debug start ##############"
+		"${STATE_D}/debug"
+		echo "############ debug end   ##############"
+		return
+	fi
+	msg "running debug (${MD_DEBUG_COUNT} tries reached)"
+	echo "############ debug start ##############"
+	echo "### /etc/rc.d/init.d/sshd start"
+	/etc/rc.d/init.d/sshd start
+	local gw=""
+	gw=$(route -n | awk '$1 == "0.0.0.0" && $2 != "0.0.0.0" { print $2 }')
+	echo "### ifconfig -a"
+	ifconfig -a
+	echo "### route -n"
+	route -n
+	echo "### cat /etc/resolv.conf"
+	cat /etc/resolv.conf
+	if [ -n "${gw}" ]; then
+		echo "### ping -c 5 ${gw}"
+		ping -c 5 ${gw}
+	else
+		echo "### gateway not found"
+	fi
+	local t1 t2 t3 nslist="" ns=""
+	while read t1 t2 t3; do
+		case "$t1" in
+			nameserver) nslist="${nslist} ${t2}";;
+		esac
+	done < /etc/resolv.conf
+	echo "### pinging nameservers"
+	for ns in ${nslist}; do
+		echo "#### ping -c 5 ${ns}"
+		ping -c 5 ${ns}
+	done
+	echo "### uname -a"
+	uname -a
+	lxc-is-container || { echo "### lsmod"; lsmod; }
+	echo "### dmesg | tail"
+	dmesg | tail
+	echo "### tail -n 25 /var/log/messages"
+	tail -n 25 /var/log/messages
+	echo "############ debug end   ##############"
+}
+
+is_nocloud() {
+	[ "${IS_NOCLOUD:-0}" != "0" ] && return 0
+	lxc-is-container ||
+		{ grep -q "ds=nocloud" /proc/cmdline && return 0; }
+	[ -f /root/nocloud ] && return 0
+	return 1
+}

@@ -1,0 +1,77 @@
+#!/bin/sh
+# vi: ts=4 noexpandtab
+
+XN=cloud-setup
+. /etc/rc.d/init.d/cloud-functions
+
+start() {
+	local i=0 max=${MD_MAX_TRIES} iid="" uptime="" toks="" n="" cmdline=""
+	is_nocloud &&
+		{ msg "nocloud specified, not using metadata"; return 0; }
+	read cmdline < /proc/cmdline
+	[ -f "${STATE_D}/cloud_tries" ] && read max < "${STATE_D}/cloud_tries"
+	if ! lxc-is-container; then
+		for n in ${cmdline}; do
+			case "${n}" in
+				cloud_tries=*) max=${n#cloud_tries=}; break;;
+				ds=nocloud*)
+					msg "kernel option nocloud specified. not using md"; return 0;;
+			esac
+		done
+	fi
+	[ ${max} -lt 0 ] && max=$((60*60*24*3)) ; # 3 days, is plenty
+	
+	msg "checking ${MDURL}/instance-id"
+	i=0
+	while [ $i -lt ${max} ] && i=$(($i+1)); do
+		read uptime cputime < /proc/uptime
+		iid=""
+		if mdget instance-id; then
+			iid=${_RET}
+			[ "${iid#i-}" != "${iid}" ] && break
+			msg "failed $i/${max}: up ${uptime}. iid had ${iid}"
+		else
+			msg "failed $i/${max}: up ${uptime}. request failed"
+		fi
+		sleep 1
+		if [ $i -eq "${MD_DEBUG_COUNT}" ]; then
+			msg "after ${MD_DEBUG_COUNT} fails, debugging"
+			mddebug
+		fi
+	done
+
+	if [ -n "${iid}" ]; then
+		msg "successful after ${i}/${max} tries: up ${uptime}. iid=${iid}"
+	else
+		msg "failed to read iid from metadata. tried ${max}"; return 1;
+	fi
+
+	marked ${iid} &&
+		{ msg "previously ran for ${iid}"; return 0; }
+	mark ${iid}
+
+	mkdir -p /root/.ssh
+	chmod 700 /root/.ssh
+
+	mdget public-keys/ "${TMPF}"
+	echo >> "${TMPF}" # while loop will fail if no trailing newline
+	keys=""
+	while read line; do
+		keys="${keys} ${line}"
+	done < "${TMPF}"
+	keys=${keys# }
+	# keys is list of [0-9]=name
+	if [ -n "${keys}" ]; then
+		msg "cloudinit: getting ssh keys: [${keys}]"
+		for toks in ${keys}; do
+			n=${toks%%=*}
+			mdget public-keys/${n}/openssh-key - >> /root/.ssh/authorized_keys
+		done
+	fi
+	return 0
+}
+
+case "$1" in
+	start) start;;
+	*) msg "unknown argument ${1}";;
+esac

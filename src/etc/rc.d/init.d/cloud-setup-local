@@ -1,0 +1,30 @@
+#!/bin/sh
+# vi: ts=4 noexpandtab
+#
+# The intent of this file is to run before netowk is up and configure
+# things that would need to be configured as a result of file injection
+# ie, to bring up a static network
+
+XN=cloud-setup-local
+. /etc/rc.d/init.d/cloud-functions
+
+start() {
+	local iface="" eni=/etc/network/interfaces tmpf="/tmp/setup.tmp"
+	[ -f "$eni" ] || return 0
+	local ifaces
+	ifaces=$(awk '$1 == "iface" && $2 != "lo" { print $2 }' "$eni")
+	msg "configuring ${ifaces} per ${eni}"
+	for iface in ${ifaces}; do
+		fsysfg="/etc/sysconfig/network-scripts/ifcfg-$iface"
+		parse-interfaces "$iface" "$eni" > "$tmpf" &&
+			mkdir -p "${fsysfg%/*}" &&
+			mv "$tmpf" "$fsysfg" ||
+			{ msg "failed to configure interface $iface"; rm -f "$tmpf"; }
+	done
+	return 0
+}
+
+case "$1" in
+	start) start;;
+	*) msg "unknown argument ${1}";;
+esac

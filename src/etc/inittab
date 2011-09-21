@@ -1,0 +1,32 @@
+::sysinit:/etc/rc.d/rc.sysinit
+
+# arm serial port logins
+#
+#ttyAMA0::respawn:/sbin/getty -L -f /etc/issue.tty 115200 ttyAMA0 vt100
+#ttyAMA1::respawn:/sbin/getty -L -f /etc/issue.tty 115200 ttyAMA1 vt100
+#ttyAMA2::respawn:/sbin/getty -L -f /etc/issue.tty 115200 ttyAMA2 vt100
+#ttyAMA3::respawn:/sbin/getty -L -f /etc/issue.tty 115200 ttyAMA3 vt100
+
+# arm omap serial port logins
+#
+#ttyO0::respawn:/sbin/getty -L -f /etc/issue.tty 115200 ttyO0 vt100
+#ttyO1::respawn:/sbin/getty -L -f /etc/issue.tty 115200 ttyO1 vt100
+#ttyO2::respawn:/sbin/getty -L -f /etc/issue.tty 115200 ttyO2 vt100
+#ttyO3::respawn:/sbin/getty -L -f /etc/issue.tty 115200 ttyO3 vt100
+
+# pc, ppc serial port login
+#
+#ttyS0::respawn:/sbin/getty -L -f /etc/issue.tty 9600 ttyS0 vt100
+#ttyS1::respawn:/sbin/getty -L -f /etc/issue.tty 9600 ttyS1 vt100
+#ttyS2::respawn:/sbin/getty -L -f /etc/issue.tty 9600 ttyS2 vt100
+#ttyS3::respawn:/sbin/getty -L -f /etc/issue.tty 9600 ttyS3 vt100
+
+tty1::respawn:/sbin/getty 115200 tty1
+#tty2::respawn:/sbin/getty 115200 tty2
+#tty3::respawn:/sbin/getty 115200 tty3
+#tty4::respawn:/sbin/getty 115200 tty4
+#tty5::respawn:/sbin/getty 115200 tty5
+#tty6::respawn:/sbin/getty 115200 tty6
+
+::ctrlaltdel:/sbin/reboot
+::shutdown:/etc/rc.d/rc.sysdone

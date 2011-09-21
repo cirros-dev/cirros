@@ -1,0 +1,1112 @@
+#!/bin/bash
+
+
+# /etc/rc.d/rc.sysinit
+# (2011) Douglas Jerome <douglas@ttylinux.org>
+
+
+# The losetup program used by this script is expected to be the util-linux
+# program; the busybox versions of the program will not work as it is used in
+# this script with options that are not supported by busybox.
+
+
+# *****************************************************************************
+# NOTE  Don't yet use anything in /usr/{bin,sbin} because it cannot be expected
+#       that /usr is yet mounted.
+# *****************************************************************************
+
+## Functions for use below
+mount_nt() {
+	local fs=$1 dev=$2 mp=$3 out=""
+	[ -e /proc/self/mounts ] &&
+		out=$(awk '$2 == mp { print $0; exit(0); }' mp="$mp" /proc/self/mounts) &&
+		[ -n "${out}" ] && return 0
+	mount -n -t "$fs" "$dev" "$mp"
+}
+
+is_lxc() {
+	# lxc tools export 'container', 
+	# libvirt exports LIBVIRT_LXC_NAME and LIBVIRT_LXC_UUID
+	[ -n "$container" -o -n "$LIBVIRT_LXC_UUID" -o -n "$LIBVIRT_LXC_NAME" ]
+}
+is_not_lxc() { ! is_lxc; }
+
+lxc_netdown() {
+	local header dev_colon bytes packets other dev
+	{
+		read header; read header;
+		while read dev_colon bytes packets other; do
+			dev=${dev_colon%:}
+			[ "${dev#lo}" = "${dev}" ] || continue # skip 'lo' host interfaces
+			echo "==== taking down interface ${dev} ===="
+			ifconfig ${dev} down
+			sleep 1
+		done
+	} < /proc/net/dev
+}
+
+write_lxc_is_container() {
+	cat <<"EOF"
+#!/bin/sh
+# This program is written by /etc/rc.d/rc.sysinit.
+# It simply reports whether or not this system is in an lxc container
+
+EOF
+	if is_lxc; then
+		echo "# This is an LXC container"
+		echo "exit 0"
+	else
+		echo "# This is NOT an LXC container"
+		echo "exit 1"
+	fi
+}
+
+use_udev() {
+	# currently, do not run udev for lxc
+	is_not_lxc;
+}
+
+enable_ttys() {
+	local sed_check="" sed_change="" dev="" out=""
+	for dev in "$@"; do
+		[ -e /dev/${dev} ] || continue
+		sed_check="${sed_check}; s/^#\($dev\):.*/\1/p"
+		sed_change="${sed_change}; s/^#$dev:/$dev:/;"
+	done
+	sed_check=${sed_check#; }
+	sed_change=${sed_change#; }
+	if [ -n "${sed_check#;}" ] &&
+		out=$(sed -n -e "$sed_check" /etc/inittab) && [ -n "$out" ]; then
+			sed -i -e "$sed_change" /etc/inittab && kill -HUP 1
+			# echo "enabled consoles for " ${out}
+	fi
+	return 0
+}
+## End Functions
+
+# *****************************************************************************
+# Setup Environment
+# *****************************************************************************
+
+# Avoid keyboard interruptions.  Do not abort on command failure nor unset
+# variables.
+#
+trap ":" SIGINT SIGQUIT SIGTERM SIGTSTP
+set +e # Do not exit immediately if a command exits with a non-zero status.
+set +u # Do not treat unset variables as an error when substituting.
+
+# This is the correct startup script environment.
+#
+source /etc/rc.d/rc.functions
+PATH=/sbin:/bin; export PATH
+
+# This is for /var/log/dmesg.
+#
+[[ -x /bin/dmesg ]] && /bin/dmesg -n1 # Set console loglevel to 1 (man dmesg).
+
+exec 0<> /dev/console 1>&0 2>&0 # Set the I/O of this script to the console.
+stty onlcr # Avoid staircase text, I think.
+
+
+# *****************************************************************************
+# Mount Pseudo-file Systems => /proc, /sys, /proc/bus/usb
+# *****************************************************************************
+
+# Mount /proc
+#
+mount_nt proc proc /proc || {
+	failure $"no proc file system; cannot mount it at /proc -- BYE BYE";
+	/etc/rc.d/rc.sysdone;
+}
+
+# Mount /sys
+#
+mount_nt sysfs sysfs /sys || {
+	failure $"no sysfs; cannot mount it at /sys -- BYE BYE";
+	/etc/rc.d/rc.sysdone;
+}
+
+# Mount /proc/bus/usb
+#
+if [[ ! -d /proc/bus/usb && -x /sbin/modprobe ]]; then
+	/sbin/modprobe usbcore >/dev/null 2>&1
+fi
+[[ -d /proc/bus/usb ]] && mount -n -o devmode=0666 -t usbfs usbfs /proc/bus/usb
+
+
+# *****************************************************************************
+# Remount Root File System as Read-write
+# *****************************************************************************
+
+# Remount the root file system as read-write in the case the kernel has mounted
+# it as read-only.
+#
+mount -n -o remount,rw /
+
+
+# *****************************************************************************
+# Setup the /etc/mtab file.
+# *****************************************************************************
+
+# /etc/mtab might not be a symlink to /proc/mounts, this stops "umount -a" from
+# unmounting things it shouldn't.
+
+# RANT: why can't /etc/mtab a symlink to /var/log/mounts anyway?
+
+# If /etc/mtab is not a symlink (to /proc/mounts) then the mount program is
+# assumed to NOT be busybox, so clear /etc/mtab and enter / into the mtab file.
+#
+if [[ ! -L /etc/mtab ]]; then
+	rm -f /etc/mtab*
+	>/etc/mtab
+	mount -f /  # Enter / into mtab.
+fi
+
+# These should never be unmounted; that is a reason to not put these into
+# /etc/mtab, but un-comment any of the following for debug, analysis, etc.
+# These will not work with busybox mount.
+#
+# mount -f /dev			# Enter /dev          into mtab.
+# mount -f /proc		# Enter /proc         into mtab.
+# mount -f /proc/bus/usb	# Enter /proc/bus/usb into mtab.
+# mount -f /sys			# Enter /sys          into mtab.
+
+
+# *****************************************************************************
+# Look for kernel command line parameters for ttylinux.
+# *****************************************************************************
+
+# Variable     Linux Kernel Parameter
+# ------------ -----------------------
+k_console=""   # console=<device>
+k_root=""      # root=<device>
+
+## BEGIN LXC_NO_CMDLINE_1
+## This section setting variables based on /proc/cmdline is
+## not valid for lxc (host kernel's cmdline is not relevant)
+if is_not_lxc; then
+if LANG=C grep -q "\<console=" /proc/cmdline; then
+	k_console=$(sed 's/.*console=\([^ ,]*\).*/\1/' /proc/cmdline)
+fi
+
+if LANG=C grep -q "\<root=" /proc/cmdline; then
+	k_root=$(sed 's/.*root=\([^ ]*\).*/\1/' /proc/cmdline)
+fi
+fi
+## END LXC_NO_CMDLINE_1
+
+# Variable     ttylinux Parameter
+# ------------ -----------------------
+k_enet=0       # enet
+k_nofirewall=0 # nofirewall
+k_nofsck=0     # nofsck
+k_nosshd=0     # nosshd
+k_fqdn=""      # host=<name>
+k_hwclock=""   # hwclock=local|utc
+k_login=""     # login=<device,...>
+k_modules=""   # modules=<module,...>
+k_nologin=""   # nologin=<device,...>
+k_tz=""        # tz=<timezone>
+k_uuid=""      # ttylinux-flash=<uuid>
+
+## BEGIN LXC_NO_CMDLINE_2
+if is_not_lxc; then
+
+LANG=C grep -q "\<enet\>"       /proc/cmdline && k_enet=1
+LANG=C grep -q "\<nofirewall\>" /proc/cmdline && k_nofirewall=1
+LANG=C grep -q "\<nofsck\>"     /proc/cmdline && k_nofsck=1
+LANG=C grep -q "\<nosshd\>"     /proc/cmdline && k_nosshd=1
+
+if LANG=C grep -q "\<host=" /proc/cmdline; then
+	k_fqdn=$(sed 's/.*host=\([^ ]*\).*/\1/' /proc/cmdline)
+fi
+
+if LANG=C grep -q "\<hwclock=" /proc/cmdline; then
+	k_hwclock=$(sed 's/.*hwclock=\([^ ]*\).*/\1/' /proc/cmdline)
+fi
+
+if LANG=C grep -q "\<login=" /proc/cmdline; then
+	k_login=$(sed 's/.*login=\([^ ]*\).*/\1/' /proc/cmdline)
+fi
+
+if LANG=C grep -q "\<modules=" /proc/cmdline; then
+	k_modules=$(sed 's/.*modules=\([^ ]*\).*/\1/' /proc/cmdline)
+fi
+
+if LANG=C grep -q "\<nologin=" /proc/cmdline; then
+	k_nologin=$(sed 's/.*nologin=\([^ ]*\).*/\1/' /proc/cmdline)
+fi
+
+if LANG=C grep -q "\<tz=" /proc/cmdline; then
+	k_tz=$(sed 's/.*tz=\([^ ]*\).*/\1/' /proc/cmdline)
+fi
+
+if LANG=C grep -q "\<ttylinux-flash=" /proc/cmdline; then
+	k_uuid=$(sed 's/.*ttylinux-flash=\([^ ]*\).*/\1/' /proc/cmdline)
+fi
+fi
+## END LXC_NO_CMDLINE_2
+
+
+# *****************************************************************************
+# Do some hostname mucking from the kernel command line.
+# *****************************************************************************
+
+# Ugly check for the hostname in the kernel command line.  If it is there, then
+# it should be the Fully Qualified Domain Name, like "jed.palookaville.net", so
+# the domain (the "palookaville.net" part) is checked and used if found.  If
+# just the hostname is found (the "jed" part) then that is used.
+#
+# The /etc/HOSTNAME and /etc/hosts files are updated if the hostname is found
+# in the kernel command line.  The rest of the system startup should work right
+# if these two files are properly setup.
+#
+# Notice, the ttylinux /etc/hosts file has a special HOSTNAME comment tag on
+# the hostname line; I don't like it.  Fix this ugly fish.
+#
+if [[ -n "${k_fqdn}" ]]; then
+	hostName="${k_fqdn%%.*}"
+	domain=${k_fqdn%.*}
+	[[ "${k_fqdn}" = "${hostName}" ]] && hostName=""
+	ip=$(LANG=C grep "# HOSTNAME$" /etc/hosts | LANG=C awk '{ print $1 }')
+	hostline="${ip}     ${k_fqdn} ${hostName} # HOSTNAME"
+	if [[ -f /etc/hosts ]]; then
+		sed -e "s/^.* # HOSTNAME$/${hostline}/" -i /etc/hosts
+	else
+		echo "${hostline}" >/etc/hosts
+	fi
+	rm -f /etc/HOSTNAME
+	echo "${k_fqdn}" >/etc/HOSTNAME
+	unset hostName
+	unset domain
+	unset ip
+	unset hostline
+fi
+
+
+# *****************************************************************************
+# Look for a hostname to announce.
+# *****************************************************************************
+
+[[ -r /etc/HOSTNAME ]] && HOSTNAME=$(</etc/HOSTNAME) || HOSTNAME=localhost
+HOSTNAME=${HOSTNAME%%.*}
+
+
+# *****************************************************************************
+# Show the startup banner.
+# *****************************************************************************
+
+banner=$(
+LANG=C fgrep "ttylinux" /etc/issue | LANG=C awk '{ print $3 }'
+)
+echo    $""
+echo -e $"${T_RED}ttylinux ${banner}${T_NORM}"
+echo -e $"${T_BLUE} > ${T_CYAN}http://ttylinux.org/${T_NORM}"
+echo -e $"${T_BLUE} > ${T_BOLD}hostname: ${HOSTNAME}${T_NORM}"
+echo    $""
+unset banner
+
+
+# *****************************************************************************
+# Set the hostname.
+# *****************************************************************************
+
+if [[ -x /bin/hostname ]]; then
+	/bin/hostname ${HOSTNAME}
+else
+	action $"cannot set hostname: /bin/hostname not found" false
+	if ! LANG=C grep -q "${HOSTNAME}" /etc/hosts; then
+		attn $"hostname ${HOSTNAME} NOT found in /etc/hosts file"
+	fi
+fi
+
+
+# *****************************************************************************
+# Configure Kernel Parameters
+# *****************************************************************************
+
+if [[ -x /sbin/sysctl && -r /etc/sysctl.conf ]]; then
+	echo $"configuring kernel parameters..."
+	/sbin/sysctl -p /etc/sysctl.conf
+	echo $"...kernel parameters done."
+fi
+
+
+# *****************************************************************************
+# Set the kernel log level.
+# *****************************************************************************
+
+# These values influence printk() behavior when printing or logging error
+# messages. See syslog(2).  The four values in this file are:
+#
+# 1. Console Log Level - messages with a higher priority than this value will
+#                        be printed to the console
+#
+# 2. Default Message Log Level - messages without a priority will be printed
+#                                with this priority
+#
+# 3. Minimum Console Log Level - minimum (highest priority) value that the
+#                                Console Log Level can be set to
+#
+# 4. Default Console Log Level - default value for Console Log Level
+#
+[[ -w /proc/sys/kernel/printk ]] && echo "6 4 1 7" >/proc/sys/kernel/printk
+
+
+# *****************************************************************************
+# Load the system boot-time kernel modules.
+# *****************************************************************************
+
+# Udev loads modules that have bus specific aliases and whose bus drivers
+# properly export the necessary aliases to sysfs.  With Linux-2.6.16.27, Udev
+# is known to load properly written drivers for INPUT, IDE, PCI, USB, SCSI,
+# SERIO and FireWire devices.
+#
+# Udev is not intended to load wrapper drivers, such as snd-pcm-oss, nor
+# non-hardware drivers, such as loop.  If a module is not a wrapper and is
+# useful by itself, load the module at system boot (here).
+
+if [[ -r /etc/modtab ]] && is_not_lxc; then
+	if [[ -e /proc/ksyms || -e /proc/modules ]]; then
+		while read module arguments; do
+			[[ -z "${module}" || x"${module}" = x"#" ]] && continue
+			modprobe ${module} ${arguments} >/dev/null 2>&1
+			if [[ $? -eq 0 ]]; then
+				success $"load Kernel Module: ${module}"
+			else
+				failure $"load kernel module: ${module}"
+			fi
+		done </etc/modtab
+	fi
+fi
+
+# Check for modules=<module,module...>
+_kmodules=${k_modules//,/ }
+if [[ -n "${_kmodules}" ]]; then
+	for module in ${_kmodules}; do
+		modprobe ${module} >/dev/null 2>&1
+		if [[ $? -eq 0 ]]; then
+			success $"load Kernel Module: ${module}"
+		else
+			failure $"load kernel module: ${module}"
+		fi
+	done; unset module
+fi
+unset _kmodules
+
+
+# *****************************************************************************
+# Setup /dev tmpfs -- Startup UDEV -- Make /dev/root
+# *****************************************************************************
+
+tocp=""
+for f in /lib/udev/devices/*; do
+	[ -e "$f" -a ! -e "/dev/${f#/lib/udev/devices/}" ] || continue
+	tocp="${tocp} $f"
+done
+[ -z "${tocp# }" ] || cp -a ${tocp} /dev/
+
+if use_udev && [[ -x /sbin/udevd ]]; then
+
+	# # NOTE -- Explicitly mounting a tmpfs on /dev is not needed as the
+	# #         kernel is configured to do this.
+	# #
+	# # Mount a temporary file system over /dev, so that any devices made or
+	# # removed during this boot do not affect the next boot.  Do not allow
+	# # this mount process to write to mtab because /dev should not ever be
+	# # unavailable, such as by "umount -a" which refers to mtab.
+	# #
+	# # action $"mounting /dev tmpfs"
+	# # mount -n -t tmpfs tmpfs /dev -o mode=755,size=1024k
+
+	# Copy static device nodes to /dev.  The command used here will copy
+	# special files, not do something else weird like try to read special
+	# files' contents.
+	#
+	# action $"setting up static device nodes"
+	# cp -a /lib/udev/devices/* /dev/
+
+	# Udev handles uevents itself; do not let the kernel call any program
+	# in response to them.
+	#
+	[[ -f /proc/sys/kernel/hotplug ]] && echo "" >>/proc/sys/kernel/hotplug
+
+	# Start the udev daemon to handle uevents.
+	#
+	# action $"starting udevd"
+	/sbin/udevd --daemon
+
+	# Traverse /sys in order to "coldplug" devices already discovered, and
+	# wait for udevd to process the triggered uevents.
+	#
+	# waiting $"waiting for uevents"
+	# /sbin/udevadm trigger --type=subsystems
+	# /sbin/udevadm trigger --type=devices
+	/sbin/udevadm trigger --action=add
+	/sbin/udevadm settle
+	# [[ $? -eq 0 ]] && done_success || done_failure
+fi
+
+
+# *****************************************************************************
+# Setup /dev/root
+# *****************************************************************************
+
+# Create /dev/root if a udev rule hasn't created it.  This probably does
+# nothing for NFS booting.
+#
+if [[ ! -e /dev/root ]]; then
+	if [[ x"${k_root:0:5}" = x"/dev/" && -b "${k_root}" ]]; then
+		ln -s ${k_root} /dev/root
+	elif [[ ${k_root} -gt 0 ]] 2>/dev/null; then
+		major=$((${k_root} / 100))
+		minor=$((${k_root} % 100))
+		mknod -m 660 /dev/root b $major $minor
+		chown root.disk /dev/root
+	fi
+fi
+
+
+# *****************************************************************************
+# Startup swapping, with encryption if possible.
+# *****************************************************************************
+
+# Set ${sd} to the block devices for each of the swaps in /etc/fstab.
+#
+_swaps=""
+for sd in $(
+	LANG=C egrep -v "^[[:space:]]*(#|$)" /etc/fstab | \
+	LANG=C awk '{ if ($3 == "swap") print $1 }'
+	); do
+	if [[ x"${sd%[0-7]}" = x"/dev/loop" ]]; then
+		# It seems that ${sd} is intended to be an encrypting loop
+		# device for a swap partition; set it up with a random
+		# 15-character password.
+		bd=$(LANG=C grep ${sd} /etc/swaptab | LANG=C awk '{ print $2 }')
+		cr=$(LANG=C grep ${sd} /etc/swaptab | LANG=C awk '{ print $3 }')
+		action $"setup ${cr} encryption via ${sd} for swap ${bd}" \
+			dd if=/dev/urandom bs=1 count=15 2>/dev/null | \
+			losetup -p 0 -e ${cr} ${sd} ${bd}
+#		[[ ! -b "${sd}" ]] && failure $"${sd} is not a block device"
+#		[[ ! -b "${bd}" ]] && failure $"${bd} is not a block device"
+		unset bd
+		unset cr
+	fi
+	_swaps="${_swaps} ${sd}"
+	mkswap ${sd} >/dev/null 2>&1 || failure $"mkswap failure: ${sd}"
+	swapon ${sd} >/dev/null 2>&1 || failure $"swapon failure: ${sd}"
+done; unset sd
+unset _swaps
+
+
+# *****************************************************************************
+# Configure the kernel clock configuration file.
+# *****************************************************************************
+
+cfgFile=/etc/sysconfig/clock
+
+[[ ! -f "${cfgFile}" ]] && >"${cfgFile}"
+
+# If tz=<timezone> is in the command line, then make sure the specification is
+# used and also put into the configuration file.
+#
+if [[ -n "${k_tz}" ]]; then
+	TZ=${k_tz}
+	if LANG=C grep -q "^TZ=" ${cfgFile}; then
+		sed -e "s/\<TZ=.*/TZ=${TZ}/" -i "${cfgFile}"
+		sed -e "s/\<TZ=.*/TZ=${TZ}/" -i "/etc/profile"
+	else
+		echo "TZ=${TZ}" >>${cfgFile}
+	fi
+fi
+
+# If hwclock=utc|local is in the command line, then make sure the specification
+# is put into the configuration file.
+#
+if [[ -n "${k_hwclock}" ]]; then
+	[[ "${k_hwclock}" = "utc" ]] && UTC=yes || UTC=no
+	if LANG=C grep -q "^UTC=" ${cfgFile}; then
+		sed -e "s/\<UTC=.*/UTC=${UTC}/" -i "${cfgFile}"
+	else
+		echo "UTC=${UTC}" >>${cfgFile}
+	fi
+fi
+
+unset cfgFile
+
+
+# *****************************************************************************
+# Configure the kernel clock.
+# *****************************************************************************
+
+# This doesn't always work. The time and date are reported here and they are
+# correct; but /usr is not mounted and there is no /usr/share/zoneinfo and if
+# your system uses that, then the kernel clock will be wrong.  For this reason,
+# the kernel clock is configured again after the file systems are mounted.
+
+# Setting and exporting TZ is important.  /sbin/hwclock will not do what you
+# want it to do without having a valid TZ and UTC.
+
+UTC=yes
+TZ=UTC
+[[ -f /etc/sysconfig/clock ]] && source /etc/sysconfig/clock
+[[ -n "${TZ}" ]] && {
+	export TZ
+	sed -e "s/\<TZ=.*/TZ=${TZ}/" -i "/etc/profile"
+}
+
+HWCLOCKARGS="-s"
+case "${UTC}" in
+	yes|true|1) HWCLOCKARGS="${HWCLOCKARGS} -u"; tz="utc"   ;; # UCT
+	no|false|0) HWCLOCKARGS="${HWCLOCKARGS} -l"; tz="local" ;; # local time
+esac
+
+if ! grep wrtu54g_tm /etc/ttylinux-target >/dev/null; then
+	# action $"setting up system clock [${tz}] $(date)"
+	hwclock ${HWCLOCKARGS}
+fi
+
+unset tz
+
+
+# *****************************************************************************
+# Check the root file system.
+# *****************************************************************************
+
+# Ugly hack to honor the "nofsck" boot parameter for the root file system.
+#
+rootFSCK="yes"
+[[ -f /etc/.norootfsck ]] && rootFSCK="no"
+[[ ${k_nofsck} -eq 1   ]] && rootFSCK="no"
+
+if [[ "${rootFSCK}" = "yes" ]]; then
+
+	# Remount the root file system as read-only in the case it is mounted
+	# as read-write, because fsck should not be run on a read-write file
+	# system.
+	#
+	mount -n -o remount,ro /
+
+	fsck -T -C -p /
+	rcStat=$?
+	[[ "${rcStat}" = "0" ]] && success $"root file system checked"
+	[[ "${rcStat}" = "1" ]] && passed  $"root file system checked"
+	if [[ ${rcStat} -gt 1 ]]; then
+		failure $"checking root filesystem"
+		echo $""
+		echo $"fsck returned ${rcStat}"
+		echo $""
+		echo $"***** An error occurred during the file system check."
+		echo $"***** Login as root.  The system might reboot when you"
+		echo $"***** return from the the sulogin shell."
+		echo $""
+		PS1=$"(Repair file system) \# # "; export PS1
+		mount -n -o remount,rw /
+		sulogin /dev/console
+		echo -n $"sulogin returned $?  Type 'r' to reboot system: "
+		a=""; read a
+		if [[ x"${a}" = x"r" ]]; then
+			echo $"unmounting file systems."
+			umount -a -v
+			mount -n -o remount,ro /
+			echo $"reboot in progress."
+			reboot -f
+		fi
+		unset a
+	fi
+	unset rcStat
+
+	# Remount the root file system as read-write.
+	#
+	mount -n -o remount,rw /
+
+fi
+
+unset rootFSCK
+
+
+# *****************************************************************************
+# Setup /tmp, with a file system if possible.
+# *****************************************************************************
+
+dev=$(LANG=C egrep -v "^[[:space:]]*(#|$)" /etc/fstab | \
+	LANG=C awk '{ if ($2 == "/tmp") print $1 }')
+
+if [[ -b "${dev}" ]]; then
+#	waiting $"setting up new file system on /tmp"
+	mke2fs ${dev} >/dev/null 2>&1
+#	[[ $? -eq 0 ]] && done_success || done_failure
+fi
+
+if [[ -z "${dev}" ]]; then
+#	waiting $"clearing /tmp"
+	rm -rf /tmp && mkdir -m 1777 /tmp
+#	[[ $? -eq 0 ]] && done_success || done_failure
+fi
+
+unset dev
+
+
+# *****************************************************************************
+# Check and the mount file systems.
+# *****************************************************************************
+
+if [[ ${k_nofsck} -eq 0 ]]; then
+
+	# Check non-root file systems found in /etc/fstab.
+	#
+	fsck -A -C -R -T -p -t nonfs,nosmbfs
+	rcStat=$?
+	[[ "${rcStat}" = "0" ]] && success $"file systems checked"
+	[[ "${rcStat}" = "1" ]] && passed  $"file systems checked"
+	if [[ ${rcStat} -gt 1 ]]; then
+		failure $"checking root filesystem"
+		echo $""
+		echo $"fsck returned ${rcStat}"
+		echo $""
+		echo $"***** An error occurred during the file system check."
+		echo $"***** Login as root.  The system might reboot when you"
+		echo $"***** return from the the sulogin shell."
+		echo $""
+		PS1=$"(Repair file system) \# # "; export PS1
+		mount -n -o remount,rw /
+		sulogin /dev/console
+		echo -n $"sulogin returned $?  Type 'r' to reboot system: "
+		a=""; read a
+		if [[ x"${a}" = x"r" ]]; then
+			echo $"unmounting file systems."
+			umount -a -v
+			mount -n -o remount,ro /
+			echo $"reboot in progress."
+			reboot -f
+		fi
+		unset a
+	fi
+	unset rcStat
+
+fi
+
+mkdir -p /dev/pts /dev/shm
+
+# Do not mount nfs file systems because there is no networking yet.
+#
+# action $"mounting local file systems"
+mount -a -t nonfs
+
+# The /tmp file system may have been created on this boot; make sure its
+# permission bits are correct.
+#
+chmod 1777 /tmp
+
+
+# *****************************************************************************
+# NOTE  Now we can assume to have /usr mounted.  Add /usr/{bin,sbin} to PATH.
+# *****************************************************************************
+
+PATH=/sbin:/usr/sbin:/bin:/usr/bin; export PATH
+
+
+# *****************************************************************************
+# Re-trigger failed uevents.
+# *****************************************************************************
+
+if use_udev && [[ -x /sbin/udevadm ]]; then
+	# Re-trigger the failed uevents in the hope they will succeed, and wait
+	# for udevd to process the uevents we triggered.
+	waiting $"waiting for previous uevents"
+	# Credit Debian: copy the rules generated before / was mounted rw.
+	for f in /dev/.udev/tmp-rules--*; do
+		_dest=${f##*tmp-rules--}
+		[[ "${_dest}" = '*' ]] && break
+		cat ${f} >> /etc/udev/rules.d/${_dest}
+		rm -f ${f}
+		unset _dest
+	done; unset f
+	/sbin/udevadm trigger --type=failed --action=add
+	/sbin/udevadm settle
+	[[ $? -eq 0 ]] && done_success || done_failure
+fi
+
+
+# *****************************************************************************
+# Configure the kernel clock.
+# *****************************************************************************
+
+# Setting and exporting TZ is important.  /sbin/hwclock will not do what you
+# want it to do without having a valid TZ and UTC.
+
+[[ -f /etc/sysconfig/clock ]] && source /etc/sysconfig/clock
+[[ -n "${TZ}" ]] && {
+	export TZ
+	sed -e "s/\<TZ=.*/TZ=${TZ}/" -i "/etc/profile"
+}
+
+HWCLOCKARGS="-s"
+case "${UTC}" in
+	yes|true|1) HWCLOCKARGS="${HWCLOCKARGS} -u"; tz="utc"   ;; # UCT
+	no|false|0) HWCLOCKARGS="${HWCLOCKARGS} -l"; tz="local" ;; # local time
+esac
+
+if ! grep wrtu54g_tm /etc/ttylinux-target >/dev/null; then
+	action $"setting up system clock [${tz}] $(date)" hwclock ${HWCLOCKARGS}
+fi
+
+unset tz
+
+
+# *****************************************************************************
+# Configure console fonts and console keyboard translation.
+# *****************************************************************************
+
+# The light-weight way.
+#
+_font="/etc/i18n/font"
+_kmap="/etc/i18n/kmap-$(uname -m)"
+#
+if [[ -x /usr/sbin/loadfont && -r ${_font} ]]; then
+	if [[ x"${k_console:0:9}" != x"/dev/ttyS" && \
+              x"${k_console:0:5}" != x"/ttyS"     && \
+              x"${k_console:0:4}" != x"ttyS" ]]; then
+#		action $"loading font file ${_font}"
+			/usr/sbin/loadfont <${_font}
+	fi
+fi
+if [[ -x /sbin/loadkmap && -r ${_kmap} ]]; then
+#	action $"loading keymap file ${_kmap}"
+	/sbin/loadkmap <${_kmap}
+fi
+#
+unset _font
+unset _kmap
+
+# Big boy version.
+#
+SYSFONT=""
+SYSKMAP=""
+[[ -f /etc/sysconfig/console ]] && source /etc/sysconfig/console
+if [[ -n "${SYSFONT}" && -x /bin/setfont ]]; then
+	action $"setting console font (${SYSFONT})" /bin/setfont ${SYSFONT}
+fi
+if [[ -n "${SYSKMAP}" && -x /bin/loadkeys ]]; then
+	action $"loading console keymap (${SYSKMAP})" /bin/loadkeys ${SYSKMAP}
+fi
+
+
+# *****************************************************************************
+# Load ide-scsi
+# *****************************************************************************
+
+#if LANG=C grep "ide-scsi" /proc/cmdline ; then
+#	msg=$"Load ide-cd Module"
+#	/sbin/modprobe ide-cd >/dev/null 2>&1
+#	[ $? -eq 0 ] && success "${msg}" || failure "${msg}"
+#	if [ -n "$(/sbin/modprobe -l | LANG=C grep ide-probe-mod)" ]; then
+#		msg=$"Load ide-probe-mod Module"
+#		/sbin/modprobe ide-probe-mod >/dev/null 2>&1
+#		[ $? -eq 0 ] && success "${msg}" || failure "${msg}"
+#	fi
+#	msg=$"Load ide-scsi Module"
+#	/sbin/modprobe ide-scsi >/dev/null 2>&1
+#	[ $? -eq 0 ] && success "${msg}" || failure "${msg}"
+#	unset msg
+#fi
+
+
+# *****************************************************************************
+# Setup, cleanup and dump dmesg.
+# *****************************************************************************
+
+# waiting $"cleaning tmp files, lock and pid files, etc"
+
+# /var/tmp
+#
+rm -rf /var/tmp
+mkdir -m 1777 /var/tmp
+
+# /var/lock/subsys /var/run
+#
+for file in /var/lock/subsys/* /var/run/*; do
+	[[ -e "${file}" ]] && rm -rf ${file}
+done; unset file
+
+# /var/run/utmp /var/run/wtmp
+#
+>/var/run/utmp
+touch /var/log/wtmp
+chgrp utmp /var/run/utmp /var/log/wtmp
+chmod 0444 /var/run/utmp
+chmod 0664 /var/log/wtmp
+if [[ -f /var/run/utmpx || -f /var/log/wtmpx ]]; then
+	>/var/run/utmpx
+	touch /var/log/wtmpx
+	chgrp utmp /var/run/utmpx /var/log/wtmpx
+	chmod 0444 /var/run/utmpx
+	chmod 0664 /var/log/wtmpx
+fi
+
+# Dump /var/log/dmesg
+#
+if [[ -x /bin/dmesg ]]; then
+	/bin/dmesg >/var/log/dmesg 2>&1
+fi
+
+# done_success
+
+
+# *****************************************************************************
+# Update module dependencies.
+# *****************************************************************************
+
+is_not_lxc &&
+	[[ -f /proc/modules && -x /sbin/depmod ]] && \
+	action $"updating module dependencies" /sbin/depmod -A
+
+
+# *****************************************************************************
+# Don't Hury
+# *****************************************************************************
+
+wait
+
+
+# *****************************************************************************
+# Honor any still-unchecked command line options.
+# *****************************************************************************
+
+# Check for:  console=<tty*>  login=<tty*,tty*...>  nologin=<tty*,tty*...>
+_login=${k_console}
+[[ x"${k_console:0:5}" = x"/dev/" ]] && _login=${k_console:5}
+_login="${_login} "${k_login//,/ }
+_nologin=${k_nologin//,/ }
+_kick=0
+if [[ -n "${_login}" ]]; then
+	for p in ${_login}; do
+		if LANG=C grep -q "^#${p}" /etc/inittab; then
+			sed -e "s/^#${p}/${p}/" -i "/etc/inittab"
+			_kick=1
+		fi
+		if LANG=C grep -q "^#${p}" /etc/securetty; then
+			sed -e "s/^#${p}/${p}/" -i "/etc/securetty"
+		fi
+	done; unset p
+fi
+if [[ -n "${_nologin}" ]]; then
+	for p in ${_nologin}; do
+		if LANG=C grep -q "^${p}" /etc/inittab; then
+			sed -e "s/^${p}/#${p}/" -i "/etc/inittab"
+			_kick=1
+		fi
+		if LANG=C grep -q "^${p}" /etc/securetty; then
+			sed -e "s/^${p}/#${p}/" -i "/etc/securetty"
+		fi
+	done; unset p
+fi
+[[ ${_kick} -eq 1 ]] && kill -HUP 1 # Signal init to reread /etc/inittab.
+unset _kick
+unset _login
+unset _nologin
+
+if [[ ${k_enet} -eq 1 ]]; then
+	if [[ -L "/sys/class/net/eth0" ]]; then
+		/sbin/sysconfig --netconfig ifcfg-eth0.enable=yes
+		/sbin/sysconfig --netconfig ifcfg-eth0.dhcp=yes
+	fi
+	if [[ -L "/sys/class/net/eth1" ]]; then
+		/sbin/sysconfig --netconfig ifcfg-eth1.enable=yes
+		/sbin/sysconfig --netconfig ifcfg-eth1.dhcp=yes
+	fi
+	if [[ -L "/sys/class/net/eth2" ]]; then
+		/sbin/sysconfig --netconfig ifcfg-eth2.enable=yes
+		/sbin/sysconfig --netconfig ifcfg-eth2.dhcp=yes
+	fi
+	if [[ -L "/sys/class/net/eth3" ]]; then
+		/sbin/sysconfig --netconfig ifcfg-eth3.enable=yes
+		/sbin/sysconfig --netconfig ifcfg-eth3.dhcp=yes
+	fi
+	if [[ -L "/sys/class/net/usb0" ]]; then
+		/sbin/sysconfig --netconfig ifcfg-usb0.enable=yes
+		/sbin/sysconfig --netconfig ifcfg-usb0.dhcp=yes
+	fi
+	if [[ -L "/sys/class/net/usb1" ]]; then
+		/sbin/sysconfig --netconfig ifcfg-usb1.enable=yes
+		/sbin/sysconfig --netconfig ifcfg-usb1.dhcp=yes
+	fi
+fi
+
+if [[ ${k_nofirewall} -eq 1 ]]; then
+	cfgFile=/etc/sysconfig/firewall
+	[[ ! -f ${cfgFile} ]] && >${cfgFile}
+	if LANG=C grep -q "^FIREWALL=" ${cfgFile}; then
+		sed -e "s/\<FIREWALL=.*/FIREWALL=off/" -i "${cfgFile}"
+	else
+		echo "FIREWALL=off" >>${cfgFile}
+	fi
+	unset cfgFile
+fi
+
+if [[ ${k_nosshd} -eq 1 ]]; then
+	cfgFile=/etc/sysconfig/ssh
+	[[ ! -f ${cfgFile} ]] && >${cfgFile}
+	if LANG=C grep -q "^SSHD=" ${cfgFile}; then
+		sed -e "s/\<SSHD=.*/SSHD=no/" -i "${cfgFile}"
+	else
+		echo "SSHD=no" >>${cfgFile}
+	fi
+	unset cfgFile
+fi
+
+# This is a quick hack to prevent ssh keys from being generated if the CPU is
+# too slow.
+#
+mhz=$(LANG=C grep "^cpu MHz" /proc/cpuinfo | LANG=C awk '{ print $4 }')
+if [[ "$(uname -m)" = "ppc" ]]; then
+	mhz=$(LANG=C grep "^clock" /proc/cpuinfo | LANG=C awk '{ print $3 }')
+fi
+if [[ "${mhz%%.*}" -le 1000 ]]; then
+	attn $"slow system - telling ssh not to make keys automatically"
+	rm -f /etc/.nosshkeygen
+	>/etc/.nosshkeygen
+fi
+unset mhz
+
+## if lxc, interfaces might already be up.  if so, take them down.
+## this knowingly breaks nfs root for lxc
+if is_lxc; then
+	lxc_netdown
+fi
+
+## provide the 'lxc-is-container' program in /bin
+write_lxc_is_container > /usr/bin/lxc-is-container &&
+	chmod 755 /usr/bin/lxc-is-container
+
+# pts/0 is the console that lxc gets.  I'm fine to generically call it secure
+grep -q "^pts/0" /etc/securetty || echo "pts/0" >> /etc/securetty
+
+enable_ttys ttyO0 ttyO1 ttyS0 ttyS1 tty2 tty3 tty4 tty5
+
+# *****************************************************************************
+# Run the /etc/rc.d/rc.local script.
+# *****************************************************************************
+
+[[ -x /etc/rc.d/rc.local ]] && /etc/rc.d/rc.local start
+
+
+# *****************************************************************************
+# Start the services.
+# *****************************************************************************
+
+for p in /etc/rc.d/rc.startup/*; do
+	[[ -x ${p} ]] && ${p} start
+done; unset p
+
+
+# *****************************************************************************
+# Do some post service-startup processing => NFS mount entries in /etc/fstab
+# *****************************************************************************
+
+# Do not do any sanity checks.  If there are any NFS entries in fstab, then
+# the system should be configured to bring up at least one network interface in
+# the Startup Services above; if this is not the case then the misconfiguration
+# needs to be exposed.  So, do the fstab NFS mounts and let any errors happen.
+
+_nfs="no"
+while read _dev _dir _type _text; do
+	[[ x"${_type}" = x"nfs" ]] && _nfs="yes"
+done </etc/fstab
+if [[ "${_nfs}" = "yes" ]]; then
+	waiting $"mounting NFS"
+	sleep 1 # Give dhcp some time to complete.
+	mount -a -t nfs
+	[[ $? -eq 0 ]] && done_success || done_failure
+fi
+unset _nfs
+unset _dev
+unset _dir
+unset _type
+unset _text
+
+
+# *****************************************************************************
+# Do any first-boot processing.
+# *****************************************************************************
+
+if [[ ! -f /etc/.first_boot_done ]]; then
+	echo -e $"${T_BLUE}=> ${T_BOLD}First-Boot Sequence:${T_NORM}"
+	action $"setting shared object cache [running ldconfig]" ldconfig
+	if [[ -d /proc/asound && -x /usr/sbin/alsactl ]]; then
+        	touch /etc/asound.state
+        	action $"initializing alsa sound state" \
+		/usr/sbin/alsactl init >/dev/null 2>&1
+	fi
+	date >/etc/.first_boot_done
+fi
+
+
+# *****************************************************************************
+# Run the flash device user-setup.
+# *****************************************************************************
+
+if [[ -n "${k_uuid}" ]]; then
+	[[ -z "${k_uuid}" ]] && echo $"Cannot find user setup UUID." && exit 0
+	COUNT=5
+	BDEV=$(findfs UUID=${k_uuid} 2>/dev/null)
+	while [[ -z "${BDEV}" && ${COUNT} -gt 0 ]]; do
+		sleep 1
+		BDEV=$(findfs UUID=${k_uuid} 2>/dev/null)
+		COUNT=$((${COUNT} - 1))
+	done
+	unset COUNT
+	[[ -z "${BDEV}" ]] && echo $"Cannot find user setup BDEV." && exit 0
+	mount ${BDEV} /mnt/flash
+	[[ $? -ne 0 ]] && echo $"Cannot mount user setup [${BDEV}]." && exit 0
+	if [[ ! -x /mnt/flash/config/ttylinux ]]; then
+		umount ${BDEV}
+	else
+		/mnt/flash/config/ttylinux ${BDEV}
+		[[ $? -ne 2 ]] && umount ${BDEV}
+	fi
+	unset BDEV
+fi
+
+
+# *****************************************************************************
+# Make a bootup sound, if possible.
+# *****************************************************************************
+
+_mixer=/usr/bin/amixer
+_playr=/etc/sysconfig/sound-scripts/play
+
+if [[ -x ${_mixer} ]]; then
+	${_mixer} -c 0 sset Line,0   66%,66% unmute >/dev/null 2>&1
+	${_mixer} -c 0 sset PCM,0    66%,66% unmute >/dev/null 2>&1
+	${_mixer} -c 0 sset Master,0 66%,66% unmute >/dev/null 2>&1
+fi
+
+[[ -x ${_playr} ]] && ${_playr} boot
+
+unset _mixer
+unset _playr
+
+
+# *****************************************************************************
+# Cleanup
+# *****************************************************************************
+
+# ttylinux Parameters
+#
+unset k_enet
+unset k_nofirewall
+unset k_nofsck
+unset k_nosshd
+unset k_fqdn
+unset k_hwclock
+unset k_login
+unset k_modules
+unset k_nologin
+unset k_tz
+unset k_uuid
+
+# Linux Kernel Parameters
+#
+unset k_console
+unset k_root

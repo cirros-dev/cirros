@@ -1,0 +1,80 @@
+#!/bin/sh
+
+ENABLE=yes
+NAME=Ethernet
+IPADDRESS=192.168.1.20
+CIDRLEN=
+NETWORK=192.168.1.0
+NETMASK=255.255.255.0
+GATEWAY=192.168.1.1
+BROADCAST=
+DHCP=no
+CIDRLEN=24
+NETWORK=192.168.1.0
+
+netinfo() {
+   local ipaddr=$1 netmask=$2 oifs=${IFS} mask=255
+   local ipb1 ipb2 ipb3 ipb4 nmb1 nmb2 nmb3 nmb4
+   IFS=.
+   set -- ${ipaddr}; ipb1=${1}; ipb2=${2}; ipb3=${3}; ipb4=${4}
+   set -- ${netmask}; nmb1=${1}; nmb2=${2}; nmb3=${3}; nmb4=${4}
+   IFS=$SaveIFS
+
+   local network bcast
+   network=$(($ipb1 & $nmb1)).$(($ipb2 & $nmb2)).$(($ipb3 & $nmb3)).$(($ipb4 & $nmb4))
+   bcast=$(($ipb1 | ($mask ^ $nmb1))).$(($ipb2 | ($mask ^ $nmb2))).$(($ipb3 | ($mask ^ $nmb3))).$(($ipb4 | ($mask ^ $nmb4)))
+
+   _RET_NETWORK=${network}
+   _RET_BCAST=${bcast}
+}
+
+iface="${1:-eth0}"
+file=${2:-/etc/network/interfaces}
+[ "$file" = "-" ] || exec <"$file"
+
+hash="#"
+cur_iface=""
+found=0
+while read line; do
+	line=${line%%${hash}*}
+	[ -n "$line" ] || continue
+	set -- ${line}
+	case $1 in
+		auto) [ "$2" = "$iface" ] && ENABLE=yes;;
+		iface)
+			[ "$2" = "$iface" ] || continue;
+			# if its not static, let the default path handle
+			[ "$4" = "static" ] || { DHCP=yes; continue; }
+			cur_iface=$2
+			found=1
+			;;
+		*)
+			[ "$cur_iface" = "$iface" ] || continue;
+			case $1 in
+				address) IPADDRESS=${2};;
+				netmask) NETMASK=${2};;
+				gateway) GATEWAY=${2};;
+				address) IPADDRESS=${2};;
+			esac
+			;;
+	esac
+done 
+
+[ -n "$IPADDRESS" -a -n "$NETMASK" ] && netinfo "$IPADDRESS" "$NETMASK" &&
+	BROADCAST=${_RET_BCAST}
+
+cat <<EOF
+# this file was written by: $0 $iface $file
+# some short experimentation shows that you must define
+# ENABLE NAME CIDRLEN NETWORK and DHCP to get working DHCP
+ENABLE=$ENABLE
+NAME=Ethernet
+IPADDRESS=$IPADDRESS
+NETMASK=$NETMASK
+GATEWAY=$GATEWAY
+BROADCAST=$BROADCAST
+DHCP=$DHCP
+# the following are not set right, but not believed to matter
+CIDRLEN=$CIDRLEN;
+NETWORK=$NETWORK
+EOF

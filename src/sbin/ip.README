@@ -1,0 +1,71 @@
+/sbin/ip is actually compiled from the program below.
+
+/*
+ * ip-rename-hack.c
+ * This exists only to be a accept libvirt's call to 'ip' inside the guest
+ * (LP: 828211). It calls: ip link set veth1 name eth0
+ *
+ * build with: 
+ *   gcc -o ip-rename-hack ip-rename-hack.c -static
+ *   strip -s ip-rename-hack
+ *   cp ip-rename-hack rootd/sbin/ip
+ *   
+ */
+#include <stdio.h>
+#include <net/if.h>
+#include <linux/sockios.h>
+#include <errno.h>
+
+#include <string.h>
+
+int badUsage(void) {
+   fprintf(stderr,
+"Bad Usage: This program only serves to take input of the form\n\
+  ip link set $ORIG name $NEW\n\
+ie:\n\
+  ip link set veth1 name eth0\n\
+Any thing else is bogus.\n");
+   return(1);
+}
+
+int get_socket(void) {
+    int fd;
+    fd = socket(PF_INET, SOCK_DGRAM, 0);
+    if (fd >= 0)
+        return fd;
+    fd = socket(PF_PACKET, SOCK_DGRAM, 0);
+    if (fd >= 0)
+        return fd;
+    return(0);
+}
+
+int main(int argc, char* argv[]) {
+   struct ifreq ifr;
+   int fd, ret;
+   int namelen = 16;
+   char *dev, *newdev;
+   if(argc != 6) {
+      return(badUsage());
+   }
+   if(strcmp(argv[2], "set") || strcmp(argv[4],"name")) {
+      return(badUsage());
+   }
+   dev = argv[3];
+   newdev = argv[5];
+   if ((fd = get_socket()) == 0) {
+      fprintf(stderr,"failed to get fd\n");
+      return(1);
+   }
+   strncpy(ifr.ifr_name, dev, namelen);
+   strncpy(ifr.ifr_newname, newdev, namelen);
+   printf("rename %s to %s\n", dev, newdev);
+   ret = ioctl(fd, SIOCSIFNAME, &ifr);
+   if (ret < 0) {
+      perror("failed");
+      fprintf(stderr, "failed\n");
+      return(2);
+   }
+   close(fd);
+   printf("renamed %s to %s\n", dev, newdev);
+   return(0);
+}
