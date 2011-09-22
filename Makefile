@@ -54,6 +54,13 @@ $(SKEL_D)/.dir:
 	# copy BR_D/fs/skeleton, then sync src/ over the
 	# top of that.
 	# depends on $(BR_D)/fs/skeleton (somehow)
+	[ -d $(SKEL_D) ] || mkdir -p $(SKEL_D)
+	rsync -a $(BR_D)/fs/skeleton/ $(SKEL_D)/ --delete
+	rsync -a $(TOP_D)/src/ $(SKEL_D)/
+	touch $(SKEL_D)/.dir
+
+br-%:
+	$(BR_MAKE) $*
 
 %/.dir:
 	mkdir -p $* && touch $@
