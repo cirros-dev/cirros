@@ -13,8 +13,7 @@ TAR_IMG = $(OUT_D)/rootfs.tar
 BR_TAR_IMG = $(BR_OUT_D)/images/rootfs.tar
 
 BR_MAKE = cd $(BR_D) && make O=$(BR_OUT_D) BR2_DL_DIR=$(DL_D) \
-   BUSYBOX_CONFIG_FILE=$(BR_OUT_D)/busybox.config \
-   BR2_ROOTFS_SKELETON_CUSTOM_PATH=$(SKEL_D)
+   BUSYBOX_CONFIG_FILE=$(BR_OUT_D)/busybox.config
 
 BR_DEPS = $(BR_D) $(BR_OUT_D)/busybox.config $(BR_OUT_D)/.config $(SKEL_D)/.dir
 
