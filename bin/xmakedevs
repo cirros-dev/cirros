@@ -1,10 +1,66 @@
 #!/bin/sh
+# vi: ts=4 noexpandtab
+#
 # this mimics function of buildroot's makedev
 # read a file like:
 #  <name>    <type>      <mode>  <uid>   <gid>   <major> <minor> <start> <inc>   <count>
 # and make files
 Usage() {
    cat <<EOF
+Usage: ${0##*/} file root
+  read file, and make devs apropriately under 'root'.
+
+file looks like:
+  <name>    <type>      <mode>  <uid>   <gid>   <major> <minor> <start> <inc>   <count>
+  where name is the file name,  type can be one of:
+   f       A regular file
+   d       Directory
+   c       Character special device file
+   b       Block special device file
+   p       Fifo (named pipe)
 EOF
 }
 
+[ "$1" = "-h" -o "$1" = "--help" ] && { Usage; exit 0; }
+[ $# -eq 2 ] || { Usage 1>&2; exit 1; }
+
+root="$2"
+
+if [ "$1" != "-" ]; then
+	exec < "$1" || fail "failed to redirect input from $1"
+fi
+
+chmodchown() {
+	local path=$1 mode=$2 uid=$3 gid=$4
+	[ "$mode" = "-" ] || chmod "$mode" "$path" || return
+	[ "$uid" = "-" ] || chown "$uid" "$path" || return
+	[ "$gid" = "-" ] || chgrp "$gid" "$path" || return
+}
+while read name type mode uid gid major minor start inc count; do
+	fname="$root%/}/${name}"
+	case "$type" in
+		f) 
+			[ -f "$fname" ] || : > "$fname"
+			chmodchown "$fname" "$mode" "$uid" "$gid"
+			;;
+		d)
+			mkdir -p "$fname"
+			chmodchown "$fname" "$mode" "$uid" "$gid"
+			;;
+		c|b)
+			if [ $count == "-" ]; then
+				mknod $fname $type $major $minor
+			else
+				[ "$count" = "-" ] && count=1;
+				i=0
+				while [ $i -lt $count ]; do
+					fname=${root%/}${name}
+					mknod "$fname" "$type" "$major" "$(($minor+($i*$inc)))"
+					chmodchown "$fname" "$mode" "$uid" "$gid"
+					i=$(($i+1))
+				done
+			fi
+			;;
+	esac
+	[ "$mode" = "-" ] || chmod $mode "$fname"
+done
