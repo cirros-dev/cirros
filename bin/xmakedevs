@@ -1,0 +1,10 @@
+#!/bin/sh
+# this mimics function of buildroot's makedev
+# read a file like:
+#  <name>    <type>      <mode>  <uid>   <gid>   <major> <minor> <start> <inc>   <count>
+# and make files
+Usage() {
+   cat <<EOF
+EOF
+}
+
