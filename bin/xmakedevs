@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh -e
 # vi: ts=4 noexpandtab
 #
 # this mimics function of buildroot's makedev
@@ -21,6 +21,9 @@ file looks like:
 EOF
 }
 
+error() { echo "$@" 1>&2; exit 1; }
+fail() { [ $# -eq 0 ] || error "$@" ; exit 1; }
+
 [ "$1" = "-h" -o "$1" = "--help" ] && { Usage; exit 0; }
 [ $# -eq 2 ] || { Usage 1>&2; exit 1; }
 
@@ -31,30 +34,47 @@ if [ "$1" != "-" ]; then
 fi
 
 chmodchown() {
-	local path=$1 mode=$2 uid=$3 gid=$4
-	[ "$mode" = "-" ] || chmod "$mode" "$path" || return
-	[ "$uid" = "-" ] || chown "$uid" "$path" || return
-	[ "$gid" = "-" ] || chgrp "$gid" "$path" || return
+	local mode=$1 uid=$2 gid=$3
+	shift 3;
+	[ "$mode" = "-" ] || chmod "$mode" "$@" || return
+	[ "$uid" = "-" ] || chown "$uid" "$@" || return
+	[ "$gid" = "-" ] || chgrp "$gid" "$@" || return
 }
+iswild() {
+	local star="\\*"
+	case "$1" in
+		*$star*) return 0;;
+	esac
+	return 1
+}
+
+cd "$root" || fail "failed cd $root"
+
 while read name type mode uid gid major minor start inc count; do
-	fname="$root%/}/${name}"
+	files="./$name"
+	if iswild "$name"; then
+		files=$(for x in $(echo $name); do echo ./$x; done)
+		iswild "$files" && fail "wildcards in wildcards"
+	fi
 	case "$type" in
 		f) 
-			[ -f "$fname" ] || : > "$fname"
-			chmodchown "$fname" "$mode" "$uid" "$gid"
+			touch $files &&
+			chmodchown "$mode" "$uid" "$gid" $files ||
+			fail "failed create file $files"
 			;;
 		d)
-			mkdir -p "$fname"
-			chmodchown "$fname" "$mode" "$uid" "$gid"
+			mkdir -p $files &&
+			chmodchown "$mode" "$uid" "$gid" $files ||
+			fail "failed create dir $files"
 			;;
 		c|b)
 			if [ $count == "-" ]; then
-				mknod $fname $type $major $minor
+				mknod $files $type $major $minor
 			else
 				[ "$count" = "-" ] && count=1;
 				i=0
 				while [ $i -lt $count ]; do
-					fname=${root%/}${name}
+					fname=./${name}
 					mknod "$fname" "$type" "$major" "$(($minor+($i*$inc)))"
 					chmodchown "$fname" "$mode" "$uid" "$gid"
 					i=$(($i+1))
@@ -62,5 +82,4 @@ while read name type mode uid gid major minor start inc count; do
 			fi
 			;;
 	esac
-	[ "$mode" = "-" ] || chmod $mode "$fname"
 done
