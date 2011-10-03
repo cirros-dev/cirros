@@ -1,0 +1,368 @@
+#!/bin/bash
+# vi: ts=4 noexpandtab
+#
+
+TEMP_D=""
+UMOUNT=""
+DEF_SIZE=24M
+MODULES="acpiphp e1000 ne2k-pci 8139cp pcnet32 mii ip_tables"
+DEBUG=0
+
+error() { echo "$@" 1>&2; }
+debug() {
+	[ "${DEBUG}" -ge "${1}" ] || return 0;
+	shift;
+	error "$@"
+}
+fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
+Usage() {
+	cat <<EOF
+Usage: ${0##*/} ttylinux-input.iso[.gz] kpkg.deb output.img
+   [re]Bundle an a ttylinux into something like a small uec image
+
+   input is a compressed or uncompressed iso from 
+   http://minimalinux.org/ttylinux/downloadX86.html. 
+      ie: ttylinux-x86_64-11.2.iso.gz
+
+   options:
+     -s | --size S            resize image to size (default: ${DEF_SIZE})
+          --initrd-busybox F  use busybox binary 'F' for initrd
+                              can also be a .deb file
+
+   Example:
+    ${0##*/} ttylinux-x86_64-11.2.iso \\
+        linux-image-2.6.35-15-virtual_2.6.35-15.21_amd64.deb \\
+        out.img
+EOF
+}
+bad_Usage() { Usage 1>&2; fail "$@"; }
+cleanup() {
+	[ -z "${UMOUNT}" ] || umount "${UMOUNT}"
+	[ -z "${TEMP_D}" -o ! -d "${TEMP_D}" ] || rm -Rf "${TEMP_D}"
+}
+xrsync() {
+	rsync --archive --xattrs --hard-links --acls --sparse "$@"
+}
+
+write_grub_menu_lst() {
+	local initrd="$1"
+	cat <<EOF
+default         0
+timeout         0
+hiddenmenu
+
+title     Linux Kernel
+root      (hd0)
+kernel    /vmlinuz /dev/sda1 ro
+$([ -n "${initrd}" ] && echo "initrd /initrd.img")
+EOF
+}
+
+write_initramfs_init() {
+	cat <<"EOF"
+#!/bin/sh
+mkdir -p /proc /newroot /dev
+mount -t devtmpfs /dev /dev
+mount -t proc /proc /proc
+found=0
+debug=0
+while read maj min blk name other; do
+	[ -n "${maj}" -a "${maj}" != "major" ] || continue
+	umount=0
+	mount -o ro "/dev/${name}" "/newroot" >/dev/null 2>&1 &&
+		umount=1 &&
+		[ -x /newroot/sbin/init ] && found=1 && break
+	[ ${umount} -eq 0 ] || umount /newroot
+done < /proc/partitions
+read cmdline < /proc/cmdline
+for arg in $cmdline; do
+	case "$arg" in
+		debug-initrd) debug=1;;
+	esac
+done
+
+if [ $debug -eq 1 ]; then
+	echo "dropping into initramfs debug shell"
+	/bin/sh
+fi
+
+if [ $found -eq 1 ]; then
+	echo "Used ${name} for root filesystem"
+	umount /dev
+	umount /proc
+	cd /newroot
+	# FIXME: pivot_root doesn't work anymore. probably want switch_root
+	# but busybox-static (oneiric, 1:1.18.4-2ubuntu1) does not have
+	# switch_root built in
+	exec chroot . /sbin/init "$@" <./dev/console >./dev/console 2>&1
+fi
+echo "badness occurred in ramdisk"
+exec /bin/sh
+EOF
+}
+
+short_opts="hs:v"
+long_opts="initrd-busybox:,help,size:,verbose"
+getopt_out=$(getopt --name "${0##*/}" \
+	--options "${short_opts}" --long "${long_opts}" -- "$@") &&
+	eval set -- "${getopt_out}" ||
+	bad_Usage
+
+topdir=$(cd "${0%/*}" && pwd)
+size=${DEF_SIZE}
+fs_label="uec-rootfs"
+fs_type="ext2"
+kernel_name=""
+initramfs_name=""
+loader_name=""
+floppy_name=""
+busybox_bin=""
+
+while [ $# -ne 0 ]; do
+	cur=${1}; next=${2};
+	case "$cur" in
+		   --initrd-busybox) busybox_bin=${next}; shift;;
+		-h|--help) Usage; exit 0;;
+		-s|--size) size=${next}; shift;;
+		-v|--verbose) DEBUG=$((${DEBUG}+1));;
+		--) shift; break;;
+	esac
+	shift;
+done
+
+[ $# -eq 3 ] || bad_Usage "must ttylinux, kernel pkg, output"
+ttylinux_in=${1}
+kpkg_in=${2}
+output_in=${3}
+[ -z "${kernel_name}" ] && kernel_name="${output_in%.img}-vmlinuz"
+[ -z "${loader_name}" ] && loader_name="${output_in%.img}-loader"
+[ -z "${floppy_name}" ] && floppy_name="${output_in%.img}-floppy"
+
+if [ -n "${busybox_bin}" ]; then
+	[ -z "${initramfs_name}" ] && initramfs_name="${output_in%.img}-initrd"
+fi
+
+src_dir="${topdir}/src"
+src_symlinks="${topdir}/symlinks.list"
+src_perms="${topdir}/perms.list"
+fixup_fs="${topdir}/fixup-fs"
+
+[ "$(id -u)" = "0" ] || fail "sorry... must be root"
+
+[ -d "${src_dir}" ] || fail "no source dir ${src_d}"
+
+TEMP_D=$(mktemp -d "${TMPDIR:-/tmp}/.${0##*/}.XXXXXX") ||
+	fail "failed to make tempd"
+trap cleanup EXIT
+
+if [ "${busybox_bin%.deb}" != "${busybox_bin}" ]; then
+	exdir="${TEMP_D}/busybox-extract"
+	cp "${busybox_bin}" "${TEMP_D}/bbox.deb" && mkdir "${exdir}" &&
+	( cd "${exdir}" && dpkg -x ../bbox.deb . &&
+	  cp bin/busybox* "${TEMP_D}/busybox" ) &&
+	busybox_bin="${TEMP_D}/busybox" ||
+	fail "failed to extract busybox binary from deb in ${busybox_bin}"
+fi
+
+[ -z "${busybox_bin}" -o -f "${busybox_bin}" ] ||
+	fail "${busybox_bin}: not a file"
+
+srciso="${TEMP_D}/ttylinux.iso"
+fs_img="${TEMP_D}/filesys"
+mp="${TEMP_D}/mnt"
+ttysrc_dir="${TEMP_D}/pristine"
+kern_dir="${TEMP_D}/kernel"
+kern_list_full="${TEMP_D}/kernel.files.full"
+kern_files="${TEMP_D}/kernel.files"
+kern_modules="${TEMP_D}/kernel.files.modules"
+kern_files_tar="${TEMP_D}/kernel.files.tar"
+overlay_dir="${TEMP_D}/overlay"
+initramfs_dir="${TEMP_D}/initramfs"
+initramfs="${TEMP_D}/initramfs.img"
+
+mkdir -p "${mp}" "${ttysrc_dir}" "${kern_dir}" "${overlay_dir}" \
+	"${initramfs_dir}" ||
+	fail "failed to make temp dirs"
+
+if [ "${ttylinux_in%.gz}" != "${ttylinux_in}" ]; then
+	zcat "${ttylinux_in}" > "${srciso}"
+else
+	cp "${ttylinux_in}" "${srciso}"
+fi
+[ $? -eq 0 ] || fail "failed to copy tty linux input to tmpdir"
+
+debug 1 "preparing kernel overlay"
+# creating kernel tarball
+dpkg -x "${kpkg_in}" "${kern_dir}" &&
+	( cd "${kern_dir}" && find * -type f ) > "${kern_list_full}" ||
+	fail "failed to extract kernel to ${kern_dir}"
+
+kver=$( cd "${kern_dir}/lib/modules" && for x in 2*; do v="${x}"; done ;
+	[ -d "${v}" ] || exit 1; echo "${v}" ) ||
+	fail "failed to find kernel version. no lib/modules/* ?"
+
+depmod -a --basedir "${kern_dir}" "${kver}" ||
+	fail "failed to run depmod"
+
+mdep="${kern_dir}/lib/modules/${kver}/modules.dep"
+for x in ${MODULES}; do
+	grep -q "/${x}.ko" "${mdep}" ||
+		{ error "WARNING: no ${x} in kernel package!"; continue; }
+	awk -F: '$1 ~ mat {
+		sub(":","",$1)
+		printf("%s/%s\n",p,$1)
+		leng=split($0,deps," ")
+		x=2 # strange, but 0 contains nothing, 1 contains first field (with :)
+		while ( x<=leng ) {
+			printf("%s/%s\n", p, deps[x]);
+			x++
+		}
+	}' mat="/${x}.ko$" p="lib/modules/${kver}" "${mdep}"
+done > "${kern_modules}"
+sort -u "${kern_modules}" > "${kern_files}"
+vmlinuz=$( cd "${kern_dir}" && [ -f boot/vmlinuz-* ] &&
+	echo boot/vmlinuz-* ) && echo "${vmlinuz}" >> "${kern_files}" ||
+	fail "no kernel (boot/vmlinuz-*) found in ${kpkg_in}"
+
+if [ -n "${initramfs_name}" ]; then
+	debug 1 "creating initramfs"
+	mkdir "${initramfs_dir}/bin" &&
+		cp "${busybox_bin}" "${initramfs_dir}/bin/busybox" ||
+		fail "failed to copy busybox to initramfs_dir"
+	for p in sh mount mkdir pivot_root umount; do
+		ln -s busybox "${initramfs_dir}/bin/${p}" ||
+			fail "failed to link to busybox"
+	done
+	write_initramfs_init > "${initramfs_dir}/init" &&
+		chmod 755 "${initramfs_dir}/init" || fail "failed chmod initramfs/init"
+	( cd "${initramfs_dir}" && find . | cpio --quiet --dereference -o -H newc | gzip ) > "${initramfs}"
+	cp "${initramfs}" "${kern_dir}/boot/initrd.img-${kver}" &&
+		ln -s "boot/initrd.img-${kver}" "${kern_dir}/initrd.img" &&
+		echo "initrd.img" >> "${kern_files}" &&
+		echo "boot/initrd.img-${kver}" >> "${kern_files}" ||
+		fail "failed to copy initramfs to kernel dir"
+fi
+
+tar -C "${kern_dir}" -cpf - \
+	--files-from "${kern_files}" > "${kern_files_tar}" ||
+	fail "failed to collect kernel files"
+
+debug 1 "preparing source overlay from ${src_dir}"
+xrsync "${src_dir}/" "${overlay_dir}" ||
+	fail "failed to copy source dir"
+
+chown -R 0:0 "${overlay_dir}" || fail "failed to chown files in overlay"
+	
+if [ -f "${src_symlinks}" ]; then
+	( cd "${overlay_dir}" &&
+		while read src target; do
+			{ [ -d "${target%/*}" ] || mkdir -p "${target%/*}"; } ||
+				{ error "could not create ${target%/*}"; exit 1; }
+			ln -sf "${src}" "${target}" || exit 1
+		done < "${src_symlinks}"
+	) || fail "failed to create symlinks"
+fi
+
+debug 1 "extracting filesystem.gz from ${ttylinux_in}"
+
+mount -o loop,ro "${srciso}" "${mp}" && UMOUNT="${mp}" ||
+	fail "failed to mount source iso"
+
+zcat "${mp}/boot/filesys.gz" > "${fs_img}" ||
+	fail "failed to extract /boot/filesys.gz from source iso"
+
+umount "${mp}" && UMOUNT="" ||
+	fail "failed to unmount source iso"
+
+debug 1 "extracting filesystem from boot/filesys.gz"
+mount -o loop "${fs_img}" "${mp}" && UMOUNT=${mp} ||
+	fail "failed to mount filesys.gz from iso"
+
+xrsync "${mp}/" "${ttysrc_dir}" ||
+	fail "failed copy data from filesys.gz's filesystem to directory"
+
+umount "${mp}" && UMOUNT="" ||
+	fail "failed to unmount ${fs_img}"
+
+debug 1 "creating filesystem in ${output_in}"
+truncate "--size=${size}" "${output_in}" ||
+	fail "failed to create ${output_in} of size ${output_in}"
+
+out=$("mkfs.${fs_type}" -F "${output_in}" -L "${fs_label}" 2>&1) ||
+	fail "failed to make filesystem of type ${fs_type}: ${out}" 
+
+debug 1 "syncing files to ${output_in}"
+mount -o loop "${output_in}" "${mp}" && UMOUNT=${mp} ||
+	fail "failed to mount ${output_in} loopback"
+
+xrsync "${ttysrc_dir}/" "${mp}" ||
+	fail "failed to copy reference filesytem to ${output}"
+
+tar -C "${mp}" -xpf - < "${kern_files_tar}" ||
+	fail "failed to copy kernel files to new filesystem"
+
+( cd "${mp}" && ln -s boot/vmlinuz-* vmlinuz ) ||
+	fail "failed to create /vmlinuz symlink"
+
+depmod -a --basedir "${mp}" "${kver}" ||
+	fail "failed to run depmod for kver ${kver} in output"
+
+if [ -x "${fixup_fs}" ]; then
+	"${fixup_fs}" "${mp}" ||
+		fail "failed to fixup filesystem"
+fi
+
+xrsync "${overlay_dir}/" "${mp}"
+
+if [ -f "${src_perms}" ]; then
+	pound="#"
+	( cd "${mp}" &&
+		while read chown_arg chmod_arg list; do
+			[ "${chown_arg#${pound}}" = "${chown_arg}" ] || continue
+			{ [ "${chown_arg}" = "x" ] || chown "${chown_arg}" ${list}; } &&
+			{ [ "${chmod_arg}" = "x" ] || chmod "${chmod_arg}" ${list}; } ||
+			exit 1
+		done < "${src_perms}"
+	) ||
+		fail "failed to set permissions on overlay"
+fi
+
+mkdir -p "${mp}/boot/grub" &&
+	write_grub_menu_lst "${initramfs_name}" > "${mp}/boot/grub/menu.lst" ||
+	fail "failed to write menu.lst"
+
+for x in ${MODULES}; do
+	echo "${x}" >> "${mp}/etc/modtab"
+done
+
+umount "${mp}" && UMOUNT="" ||
+	fail "failed to unmount ${output_in}"
+
+cp "${kern_dir}/${vmlinuz}" "${kernel_name}" ||
+	fail "failed to copy kernel to ${kernel_name}"
+
+{ [ -z "${initramfs_name}" ] || cp "${initramfs}" "${initramfs_name}"; }  ||
+	fail "failed to copy initramfs to ${initramfs_name}"
+
+out=$(${0%/*}/create-loader "${loader_name}" 2>&1) ||
+	fail "failed to write loader: ${out}"
+
+out=$(${0%/*}/mk-mb-loader "${floppy_name}" 2>&1) ||
+	fail "failed to write floppy: ${out}"
+
+if [ -n "${SUDO_USER}" ]; then
+	u=${SUDO_USER}
+	g=$(id -g "${u}") || g=${u}
+	chown "${u}:${g}" "${output_in}" "${kernel_name}" "${loader_name}" \
+		${initramfs_name:+"${initramfs_name}"} "${floppy_name}" ||
+		fail "failed to grant ownership of ${u}:${g} to ${u}:${g}"
+fi
+
+echo "wrote ${output_in}"
+echo "wrote ${kernel_name}"
+[ -n "${initramfs_name}" ] && echo "wrote ${initramfs_name}"
+echo "wrote ${loader_name}"
+echo "wrote ${floppy_name}"
+
+
+exit 0
