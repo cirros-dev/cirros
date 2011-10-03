@@ -5,6 +5,7 @@
 # read a file like:
 #  <name>    <type>      <mode>  <uid>   <gid>   <major> <minor> <start> <inc>   <count>
 # and make files
+DEBUG=${XMAKEDEV_DEBUG}
 Usage() {
    cat <<EOF
 Usage: ${0##*/} file root
@@ -50,33 +51,38 @@ iswild() {
 
 cd "$root" || fail "failed cd $root"
 
-while read name type mode uid gid major minor start inc count; do
+while read line; do
+	line=${line%#*}
+	[ -n "$line" ] || continue
+	set -- $line
+	name=$1; type=$2; mode=$3; uid=$4; gid=$5; major=$6; minor=$7; start=$8; inc=$9; count="${10}"
+	
 	files="./$name"
 	if iswild "$name"; then
-		files=$(for x in $(echo $name); do echo ./$x; done)
-		iswild "$files" && fail "wildcards in wildcards"
+		files=$(echo ./$name)
+		iswild "$files" && fail "wildcards in wildcards: $files"
 	fi
 	case "$type" in
 		f) 
-			touch $files &&
-			chmodchown "$mode" "$uid" "$gid" $files ||
+			$DEBUG touch $files &&
+			$DEBUG chmodchown "$mode" "$uid" "$gid" $files ||
 			fail "failed create file $files"
 			;;
 		d)
-			mkdir -p $files &&
-			chmodchown "$mode" "$uid" "$gid" $files ||
+			$DEBUG mkdir -p $files &&
+			$DEBUG chmodchown "$mode" "$uid" "$gid" $files ||
 			fail "failed create dir $files"
 			;;
 		c|b)
 			if [ $count == "-" ]; then
-				mknod $files $type $major $minor
+				$DEBUG mknod $files $type $major $minor
 			else
 				[ "$count" = "-" ] && count=1;
 				i=0
 				while [ $i -lt $count ]; do
-					fname=./${name}
-					mknod "$fname" "$type" "$major" "$(($minor+($i*$inc)))"
-					chmodchown "$fname" "$mode" "$uid" "$gid"
+					fname="./$name"
+					$DEBUG mknod "$fname" "$type" "$major" "$(($minor+($i*$inc)))"
+					$DEBUG chmodchown "$fname" "$mode" "$uid" "$gid"
 					i=$(($i+1))
 				done
 			fi
