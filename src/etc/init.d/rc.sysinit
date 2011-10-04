@@ -1,0 +1,70 @@
+#!/bin/sh
+# vi: ts=4 noexpandtab
+
+# functions to use
+mount_nt() {
+	local fs=$1 dev=$2 mp=$3 out=""
+	[ -e /proc/self/mounts ] &&
+		out=$(awk '$2 == mp { print $0; exit(0); }' mp="$mp" /proc/self/mounts) &&
+		[ -n "${out}" ] && return 0
+	mount -n -t "$fs" "$dev" "$mp"
+}
+
+is_lxc() {
+	# lxc tools export 'container', 
+	# libvirt exports LIBVIRT_LXC_NAME and LIBVIRT_LXC_UUID
+	[ -n "$container" -o -n "$LIBVIRT_LXC_UUID" -o -n "$LIBVIRT_LXC_NAME" ]
+}
+is_not_lxc() { ! is_lxc; }
+
+lxc_netdown() {
+	local header dev_colon bytes packets other dev
+	{
+		read header; read header;
+		while read dev_colon bytes packets other; do
+			dev=${dev_colon%:}
+			[ "${dev#lo}" = "${dev}" ] || continue # skip 'lo' host interfaces
+			echo "==== taking down interface ${dev} ===="
+			ifconfig ${dev} down
+			sleep 1
+		done
+	} < /proc/net/dev
+}
+
+write_lxc_is_container() {
+	cat <<"EOF"
+#!/bin/sh
+# This program is written by /etc/rc.d/rc.sysinit.
+# It simply reports whether or not this system is in an lxc container
+
+EOF
+	if is_lxc; then
+		echo "# This is an LXC container"
+		echo "exit 0"
+	else
+		echo "# This is NOT an LXC container"
+		echo "exit 1"
+	fi
+}
+
+fail() { echo "FAIL:" "$@"; }
+warn() { echo "WARN:" "$@"; }
+
+### begin init ###
+
+mount_nt proc proc /proc || fail "failed mount /proc!"
+mount_nt sysfs sysfs /sys || fail "failed mount /sys!"
+
+mount -o remount,rw / || fail "failed mount / rw"
+mount -t devtmpfs /dev /dev || fail "failed mount /dev"
+
+mount -a
+hostname -F /etc/hostname
+
+write_lxc_is_container
+
+## pretend you're runlevel 3
+for s in /etc/init.d/rc3.d/S*; do
+	[ -x "$s" ] || continue
+	"$s" "start" || warn "$s failed"
+done
