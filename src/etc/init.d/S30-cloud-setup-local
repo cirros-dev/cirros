@@ -6,7 +6,7 @@
 # ie, to bring up a static network
 
 XN=cloud-setup-local
-. /etc/rc.d/init.d/cloud-functions
+. /usr/share/cloud/functions
 
 start() {
 	local iface="" eni=/etc/network/interfaces tmpf="/tmp/setup.tmp"

@@ -2,7 +2,7 @@
 # vi: ts=4 noexpandtab
 
 XN=cloud-userdata
-. /etc/rc.d/init.d/cloud-functions
+. /usr/share/cloud/functions
 
 start() {
 	local iid="" shebang="" a="" udf="${STATE_D}/userdata"

@@ -2,7 +2,7 @@
 # vi: ts=4 noexpandtab
 
 XN=cloud-setup
-. /etc/rc.d/init.d/cloud-functions
+. /usr/share/cloud/functions
 
 start() {
 	local i=0 max=${MD_MAX_TRIES} iid="" uptime="" toks="" n="" cmdline=""
