@@ -5,8 +5,8 @@
 TEMP_D=""
 UMOUNT=""
 DEF_SIZE=24M
-MODULES="acpiphp e1000 ne2k-pci 8139cp pcnet32 mii ip_tables"
 DEBUG=0
+DEF_MODULES="acpiphp e1000 ne2k-pci 8139cp pcnet32 mii ip_tables"
 
 error() { echo "$@" 1>&2; }
 debug() {
@@ -155,6 +155,14 @@ overlay_d="${TEMP_D}/overlay"
 initramfs_d="${TEMP_D}/initramfs"
 initramfs="${TEMP_D}/initramfs.img"
 
+modfile="$src_dir/etc/modules"
+if [ -f "$modfile" ]; then
+	MODULES=$(sed 's,#.*,,' "$src_dir/etc/modules") ||
+		fail "failed to read modules"
+else
+	MODULES=${DEF_MODULES}
+fi
+
 mkdir -p "${mp}" "${kernel_d}" "${overlay_d}" \
 	"${initramfs_d}" ||
 	fail "failed to make temp dirs"
@@ -268,10 +276,6 @@ xrsync "${overlay_d}/" "${mp}"
 mkdir -p "${mp}/boot/grub" &&
 	write_grub_menu_lst "${out_initramfs}" > "${mp}/boot/grub/menu.lst" ||
 	fail "failed to write menu.lst"
-
-for x in ${MODULES}; do
-	echo "${x}" >> "${mp}/etc/modtab"
-done
 
 umount "${mp}" && UMOUNT="" ||
 	fail "failed to unmount ${out_partimg}"

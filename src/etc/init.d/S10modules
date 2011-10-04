@@ -1,0 +1,21 @@
+#!/bin/sh
+# vi: ts=4 noexpandtab
+# load modules
+
+case "$1" in
+	start)
+		# TODO: do not load modules on lxc
+		if [ -f /etc/modules ]; then
+			while read line; do
+				line="${line%%#*}"
+				[ -n "$line" ] || continue
+				modprobe $line
+			done < /etc/modules
+		fi
+	stop|restart|reload) : ;;
+  *)
+	echo $"Usage: $0 {start}"
+	exit 1
+esac
+
+exit $?

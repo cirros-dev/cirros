@@ -1,0 +1,8 @@
+# modules here are loaded one per line
+acpiphp
+e1000
+ne2k-pci
+8139cp
+pcnet32
+mii
+ip_tables
