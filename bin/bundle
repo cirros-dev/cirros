@@ -86,7 +86,7 @@ if [ $found -eq 1 ]; then
 	# FIXME: pivot_root doesn't work anymore. probably want switch_root
 	# but busybox-static (oneiric, 1:1.18.4-2ubuntu1) does not have
 	# switch_root built in
-	exec chroot . /sbin/init "$@" <./dev/console >./dev/console 2>&1
+	exec switch_root -c /dev/console /newroot /sbin/init "$@"
 fi
 echo "badness occurred in ramdisk"
 exec /bin/sh
@@ -120,11 +120,11 @@ done
 rootfs_in=${1}
 kpkg_in=${2}
 out_d_in=${3}
-out_d=$(cd "${out_d_in}" && pwd)
 
+PATH="$topdir/bin:$PATH"
 src_dir="${topdir}/src"
 src_symlinks="${topdir}/symlinks.list"
-src_perms="${topdir}/perms.list"
+makedevs_list="${topdir}/makedevs.list"
 fixup_fs="${topdir}/fixup-fs"
 
 [ "$(id -u)" = "0" ] || fail "sorry... must be root"
@@ -213,7 +213,7 @@ mkdir "${initramfs_d}/bin" "$initramfs_d/lib" &&
 	tar -C "$mp" -cpf - $initramfs_bins > "$TEMP_D/tmp.tar" &&
     tar -C "$initramfs_d" -xf - < "$TEMP_D/tmp.tar" ||
 	fail "failed to copy busybox to initramfs_d"
-for p in sh mount mkdir pivot_root umount; do
+for p in sh mount mkdir pivot_root umount switch_root; do
 	ln -s busybox "${initramfs_d}/bin/${p}" ||
 		fail "failed to link to busybox"
 done
@@ -258,20 +258,12 @@ if [ -x "${fixup_fs}" ]; then
 		fail "failed to fixup filesystem"
 fi
 
-xrsync "${overlay_d}/" "${mp}"
-
-if [ -f "${src_perms}" ]; then
-	pound="#"
-	( cd "${mp}" &&
-		while read chown_arg chmod_arg list; do
-			[ "${chown_arg#${pound}}" = "${chown_arg}" ] || continue
-			{ [ "${chown_arg}" = "x" ] || chown "${chown_arg}" ${list}; } &&
-			{ [ "${chmod_arg}" = "x" ] || chmod "${chmod_arg}" ${list}; } ||
-			exit 1
-		done < "${src_perms}"
-	) ||
-		fail "failed to set permissions on overlay"
+if [ -f "${makedevs_list}" ]; then
+	xmakedevs "$makedevs_list" "$overlay_d" ||
+		fail "failed to makedevs on overlay"
 fi
+
+xrsync "${overlay_d}/" "${mp}"
 
 mkdir -p "${mp}/boot/grub" &&
 	write_grub_menu_lst "${out_initramfs}" > "${mp}/boot/grub/menu.lst" ||
