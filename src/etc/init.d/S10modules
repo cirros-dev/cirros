@@ -12,6 +12,7 @@ case "$1" in
 				modprobe $line
 			done < /etc/modules
 		fi
+		;;
 	stop|restart|reload) : ;;
   *)
 	echo $"Usage: $0 {start}"
