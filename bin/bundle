@@ -50,49 +50,6 @@ $([ -n "${initrd}" ] && echo "initrd /initrd.img")
 EOF
 }
 
-write_initramfs_init() {
-	cat <<"EOF"
-#!/bin/sh
-mkdir -p /proc /newroot /dev
-mount -t devtmpfs /dev /dev
-mount -t proc /proc /proc
-found=0
-debug=0
-while read maj min blk name other; do
-	[ -n "${maj}" -a "${maj}" != "major" ] || continue
-	umount=0
-	mount -o ro "/dev/${name}" "/newroot" >/dev/null 2>&1 &&
-		umount=1 &&
-		[ -x /newroot/sbin/init ] && found=1 && break
-	[ ${umount} -eq 0 ] || umount /newroot
-done < /proc/partitions
-read cmdline < /proc/cmdline
-for arg in $cmdline; do
-	case "$arg" in
-		debug-initrd) debug=1;;
-	esac
-done
-
-if [ $debug -eq 1 ]; then
-	echo "dropping into initramfs debug shell"
-	/bin/sh
-fi
-
-if [ $found -eq 1 ]; then
-	echo "Used ${name} for root filesystem"
-	umount /dev
-	umount /proc
-	cd /newroot
-	# FIXME: pivot_root doesn't work anymore. probably want switch_root
-	# but busybox-static (oneiric, 1:1.18.4-2ubuntu1) does not have
-	# switch_root built in
-	exec switch_root -c /dev/console /newroot /sbin/init "$@"
-fi
-echo "badness occurred in ramdisk"
-exec /bin/sh
-EOF
-}
-
 short_opts="hs:v"
 long_opts="initrd-busybox:,help,size:,verbose"
 getopt_out=$(getopt --name "${0##*/}" \
@@ -103,7 +60,7 @@ getopt_out=$(getopt --name "${0##*/}" \
 topdir=$(cd "${0%/*}/.." && pwd)
 size=${DEF_SIZE}
 fs_label="mc-rootfs"
-fs_type="ext2"
+fs_type="ext3"
 
 while [ $# -ne 0 ]; do
 	cur=${1}; next=${2};
@@ -216,19 +173,9 @@ vmlinuz=$( cd "${kernel_d}" && [ -f boot/vmlinuz-* ] &&
 
 debug 1 "creating initramfs"
 # FIXME: should do some dynamic query to support busybox being static
-initramfs_bins="bin/busybox lib/libc.so.0 lib/ld-uClibc.so.0 lib/libuClibc-0.9.32.so lib/ld-uClibc-0.9.32.so"
-mkdir "${initramfs_d}/bin" "$initramfs_d/lib" &&
-	tar -C "$mp" -cpf - $initramfs_bins > "$TEMP_D/tmp.tar" &&
-    tar -C "$initramfs_d" -xf - < "$TEMP_D/tmp.tar" ||
-	fail "failed to copy busybox to initramfs_d"
-for p in sh mount mkdir pivot_root umount switch_root; do
-	ln -s busybox "${initramfs_d}/bin/${p}" ||
-		fail "failed to link to busybox"
-done
+build-initramfs "$topdir/initramfs" "$mp" > "$initramfs" ||
+	fail "failed to create initramfs"
 
-write_initramfs_init > "${initramfs_d}/init" &&
-	chmod 755 "${initramfs_d}/init" || fail "failed chmod initramfs/init"
-( cd "${initramfs_d}" && find . | cpio --quiet --dereference -o -H newc | gzip ) > "${initramfs}"
 cp "${initramfs}" "${kernel_d}/boot/initrd.img-${kver}" &&
 	ln -s "boot/initrd.img-${kver}" "${kernel_d}/initrd.img" &&
 	echo "initrd.img" >> "${kern_files}" &&

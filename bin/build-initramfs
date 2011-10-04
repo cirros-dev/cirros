@@ -1,0 +1,83 @@
+#!/bin/bash
+# vi: ts=4 noexpandtab
+
+TEMP_D=""
+
+error() { echo "$@" 1>&2; }
+debug() {
+	[ "${DEBUG}" -ge "${1}" ] || return 0;
+	shift;
+	error "$@"
+}
+fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
+Usage() {
+	cat <<EOF
+Usage: ${0##*/} initramfs_dir root_dir
+   create an initramfs from initramfs_dir, copying files from root_dir
+
+   Example:
+    ${0##*/} initramfs/ rootfs/ > my.initramfs.img
+EOF
+}
+bad_Usage() { Usage 1>&2; fail "$@"; }
+cleanup() {
+	[ -z "${TEMP_D}" -o ! -d "${TEMP_D}" ] || rm -Rf "${TEMP_D}"
+}
+
+short_opts="hv"
+long_opts="help,verbose"
+getopt_out=$(getopt --name "${0##*/}" \
+	--options "${short_opts}" --long "${long_opts}" -- "$@") &&
+	eval set -- "${getopt_out}" ||
+	bad_Usage
+
+while [ $# -ne 0 ]; do
+	cur=${1}; next=${2};
+	case "$cur" in
+		-h|--help) Usage; exit 0;;
+		-v|--verbose) DEBUG=$((${DEBUG}+1));;
+		--) shift; break;;
+	esac
+	shift;
+done
+
+[ $# -eq 2 ] || bad_Usage "must give initramfs_dir and root_dir"
+initramfs_d=${1}
+root_d=${2}
+
+[ -d "$initramfs_d" ] || fail "$initramfs_d is not a dir"
+[ -d "$root_d" ] || fail "$root_d is not a dir"
+
+TEMP_D=$(mktemp -d "${TMPDIR:-/tmp}/.${0##*/}.XXXXXX") ||
+	fail "failed to make tempd"
+trap cleanup EXIT
+
+work_d="${TEMP_D}/workd"
+src_d="$initramfs_d/src"
+needs="$initramfs_d/needs"
+
+[ -f "$needs" ] || fail "$needs is not a file"
+[ -d "$src_d" ] || fail "$src_d is not a dir"
+
+mkdir -p "${work_d}/"{bin,sbin,usr/bin,usr/sbin}
+
+while read need; do
+	need=${need%%#*}; need=${need% };
+	[ -n "$need" ] || continue
+	[ "${need#*..}" = "${need}" ] || fail "paths cannot have ..: $need"
+	if [ -e "$root_d/$need" ]; then
+		mkdir -p "$work_d/${need%/*}" &&
+		cp -a "$root_d/$need" "$work_d/$need" ||
+		fail "failed to copy $need to working dir"
+	else
+		fail "$need not found in $root_d"
+	fi
+done < $needs
+
+rsync -a "$src_d/" "$work_d" ||
+	fail "failed to sync $src_d to working dir"
+
+rsync -a "$work_d/" /tmp/my.d
+( cd "${work_d}" && find . | cpio --quiet --dereference -o -H newc | gzip -9 )
+
+exit 0
