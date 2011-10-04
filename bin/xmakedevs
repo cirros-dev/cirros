@@ -64,6 +64,9 @@ while read line; do
 	fi
 	case "$type" in
 		f) 
+			for f in $files; do
+				mkdir -p "${f%/*}" || fail "failed to make ${f%/*}";
+			done
 			$DEBUG touch $files &&
 			$DEBUG chmodchown "$mode" "$uid" "$gid" $files ||
 			fail "failed create file $files"
@@ -74,6 +77,9 @@ while read line; do
 			fail "failed create dir $files"
 			;;
 		c|b)
+			for f in $files; do
+				mkdir -p "${f%/*}" || fail "failed to make ${f%/*}";
+			done
 			if [ $count == "-" ]; then
 				$DEBUG mknod $files $type $major $minor
 			else
