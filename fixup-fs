@@ -9,15 +9,15 @@ sp="[:space:]"
 sed -i "s,^\([^[${sp}#]\+\)\([${sp}]\+\)/\([${sp}]\+\),${lstr}\2/\3," \
    "${rootd}/etc/fstab"
 
-# insert a 'mkdir -p /dev/pts /dev/shm' before the "mount -a"
-matchline="mounting local file systems"
-mkdirs="mkdir -p /dev/pts /dev/shm"
-rc_sysinit="${rootd}/etc/rc.d/rc.sysinit"
-if grep -q "${matchline}" "${rc_sysinit}"; then
-   sed -i "s|\(.*${matchline}.*\)|${mkdirs}\n\1|" "${rc_sysinit}"
-else
-   echo "WARNING: did not find 'mounting all filesystems' in rc.sysinit" 1>&2
-fi
+## insert a 'mkdir -p /dev/pts /dev/shm' before the "mount -a"
+#matchline="mounting local file systems"
+#mkdirs="mkdir -p /dev/pts /dev/shm"
+#rc_sysinit="${rootd}/etc/rc.d/rc.sysinit"
+#if grep -q "${matchline}" "${rc_sysinit}"; then
+#   sed -i "s|\(.*${matchline}.*\)|${mkdirs}\n\1|" "${rc_sysinit}"
+#else
+#   echo "WARNING: did not find 'mounting all filesystems' in rc.sysinit" 1>&2
+#fi
 
 # add the ubuntu user
 for f in /etc/passwd /etc/shadow; do
