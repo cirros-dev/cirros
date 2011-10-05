@@ -1,0 +1,52 @@
+#!/bin/bash
+# vi: ts=4 noexpandtab
+
+# these urls are for lucid release version of grub
+i386_url="https://launchpad.net/ubuntu/+archive/primary/+files/grub_0.97-29ubuntu60_i386.deb"
+x86_64_url="https://launchpad.net/ubuntu/+archive/primary/+files/grub_0.97-29ubuntu60_amd64.deb"
+TEMP_D=""
+
+Usage() {
+	cat <<EOF
+Usage: ${0##*/} out_d
+	prepare out_d for grub
+	creates 'bootgrub.tar' and 'grub' binary
+EOF
+}
+cleanup() {
+	[ -z "${TEMP_D}" -o ! -d "${TEMP_D}" ] || rm -Rf "${TEMP_D}"
+}
+error() { echo "$@" 1>&2; }
+fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
+
+[ "$1" = "-h" -o "$1" = "--help" ] && { Usage; exit 0; }
+[ $# -eq 1 ] || { Usage 1>&2; error "must give out_d"; exit 1; }
+out_d_in=$1
+
+mkdir -p "$out_d_in" || fail "failed to make $out_d"
+out_d=$(cd "$out_d_in" && pwd)
+mkdir -p "$out_d/dl"
+
+case "$(uname -m)" in
+	x86_64) url="${x86_64_url}";;
+	i?86) url="${i386_url}";;
+esac
+
+TEMP_D=$(mktemp -d "${TMPDIR:-/tmp}/.${0##*/}.XXXXXX") ||
+	fail "failed to make tempd"
+trap cleanup EXIT
+
+deb="${out_d}/dl/${url##*/}"
+if [ ! -e "${deb}" ]; then
+	wget "${url}" -O "${TEMP_D}/deb" &&
+		mv "${TEMP_D}/deb" "$deb" || fail "failed download of ${url}"
+fi
+
+cd "${TEMP_D}"
+dpkg -x "$deb" . &&
+	cp usr/sbin/grub "$out_d/grub" &&
+	mkdir -p boot/grub &&
+	cp usr/lib/grub/*/{stage1,stage2,e2fs_stage1_5} boot/grub &&
+	tar cf "${out_d}/bootgrub.tar" boot/ ||
+	fail "failed to create $out_d"
+exit 0
