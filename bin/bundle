@@ -83,6 +83,7 @@ src_dir="${topdir}/src"
 src_symlinks="${topdir}/symlinks.list"
 makedevs_list="${topdir}/makedevs.list"
 fixup_fs="${topdir}/fixup-fs"
+xgrubd="$topdir/grubd"
 
 [ "$(id -u)" = "0" ] || fail "sorry... must be root"
 
@@ -98,6 +99,7 @@ mkdir -p "${out_d_in}" && out_d=$(readlink -f "${out_d_in}") &&
 	fail "failed to get full path for input"
 
 out_partimg="${out_d}/part.img"
+out_diskimg="${out_d}/disk.img"
 out_kernel="${out_d}/kernel"
 out_initramfs="${out_d}/initramfs"
 out_diskimg="${out_d}/disk.img"
@@ -124,6 +126,9 @@ if [ -f "$modfile" ]; then
 else
 	MODULES=${DEF_MODULES}
 fi
+
+prepare-grub "$xgrubd" ||
+	fail "failed to get grub binary"
 
 mkdir -p "${mp}" "${kernel_d}" "${overlay_d}" \
 	"${initramfs_d}" "$inter_d" "$stage_d" ||
@@ -205,6 +210,8 @@ tar -C "$stage_d" -xpf - < "$overlay_tar" ||
 	fail "failed to extract overlay_tar"
 tar -C "$stage_d" -xpf - < "$kernel_tar" ||
 	fail "failed to extract kernel_tar"
+tar -C "$stage_d" -xpf - < "$xgrubd/bootgrub.tar" ||
+	fail "failed to extract bootgrub"
 
 mkdir -p "${stage_d}/boot/grub" &&
 	write_grub_menu_lst "${out_initramfs}" > "${stage_d}/boot/grub/menu.lst" ||
@@ -252,14 +259,22 @@ cp "${kernel_d}/${vmlinuz}" "${out_kernel}" ||
 { [ -z "${out_initramfs}" ] || cp "${initramfs}" "${out_initramfs}"; }  ||
 	fail "failed to copy initramfs to ${out_initramfs}"
 
+debug 1 "creating disk image"
+out=$(PATH=$xgrubd:$PATH part2disk --grub1 "$out_partimg" "$out_diskimg.raw" 2>&1) ||
+	fail "failed to create disk image: $out"
+qemu-img convert -O qcow2 -c "$out_diskimg.raw" "$out_diskimg" ||
+	fail "failed to convert disk image"
+rm -f "$out_diskimg.raw"
+
 if [ -n "${SUDO_USER}" ]; then
 	u=${SUDO_USER}
 	g=$(id -g "${u}") || g=${u}
-	chown "${u}:${g}" "${out_partimg}" "${out_kernel}" "${out_initramfs}" ||
+	chown "${u}:${g}" -R "$out_d" ||
 		fail "failed to grant ownership of ${u}:${g} to ${u}:${g}"
 fi
 
 echo "wrote ${out_partimg}"
+echo "wrote ${out_diskimg}"
 echo "wrote ${out_kernel}"
 echo "wrote ${out_initramfs}"
 
