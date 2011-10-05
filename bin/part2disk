@@ -1,0 +1,181 @@
+#!/bin/sh
+#    part2disk - wrap a partition image in a disk image
+#
+#    Copyright (C) 2010 Canonical Ltd.
+#
+#    Authors: Scott Moser <smoser@canonical.com>
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, version 3 of the License.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+DEF_CYLINDER_SIZE=16065
+DEF_SECTOR_SIZE=512
+DEBUG=0
+base_d=$(dirname $(readlink -f "${0}"))
+PATH="${PATH}:${base_d}"
+error() { echo "$@" 1>&2; }
+debug() {
+	[ "${DEBUG}" -ge "${1:-0}" ] && shift || return 0;
+	error "$@";
+}
+fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
+Usage() {
+	cat <<EOF
+Usage: ${0##*/} [options] partition-image disk-image
+
+   create disk image 'disk-image' with 'partition-image' in a partition
+   inside it.
+
+   options:
+      -b | --bootcode F write "bootcode" from file 'F' to the at the beginning
+                        of the disk
+      -c | --cylinder-size C
+                        size of cylinders for the disk in 512 byte units
+                        default is ${DEF_CYLINDER_SIZE}
+      -G | --grub       install grub to disk image mbr
+      -s | --size  S    create the disk image of size 'S'.
+                        default is large enough to fit partition-image
+      -v | --verbose    increase verbosity
+EOF
+}
+bad_Usage() { Usage 1>&2; fail "$@"; }
+human2bytes() {
+   # converts size suitable for input to resize2fs to bytes
+   # s:512 byte sectors, K:kilobytes, M:megabytes, G:gigabytes
+   # none: block size of the image
+   local input=${1} defunit=${2:-1024}
+   local unit count;
+   case "$input" in
+      *s) count=${input%s}; unit=512;;
+      *K) count=${input%K}; unit=1024;;
+      *M) count=${input%M}; unit=$((1024*1024));;
+      *G) count=${input%G}; unit=$((1024*1024*1024));;
+      *)  count=${input}  ; unit=${2:-1024};;
+   esac
+   _RET=$((${count}*${unit}))
+}
+
+short_opts="b:c:Ghs:v"
+long_opts="bootcode:,grub,help,cylinder-size:,size:,verbose"
+getopt_out=$(getopt --name "${0##*/}" \
+	--options "${short_opts}" --long "${long_opts}" -- "$@") &&
+	eval set -- "${getopt_out}" ||
+	bad_Usage
+
+csize=${DEF_CYLINDER_SIZE}
+ssize=${DEF_SECTOR_SIZE}
+size_in=""
+bootcode=""
+grub_ptnum=1
+grub=0
+while [ $# -ne 0 ]; do
+	cur=${1}; next=${2};
+	case "$cur" in
+		-b|--boot-code) bootcode="$2"; shift;;
+		-c|--cylinder-size) csize=$2; shift;;
+		-G|--grub) grub=1;;
+		-h|--help) Usage; exit 0;;
+		-s|--size) size_in=$2; shift;;
+		-v|--verbose) DEBUG=$((${DEBUG}+1));;
+		--) shift; break;;
+	esac
+	shift;
+done
+
+[ $# -eq 2 ] || bad_Usage "must supply partition image and output file"
+
+pimg=${1}
+dimg=${2}
+
+{ [ ${grub} -eq 0 ] || phelper=$(command -v part2disk-grubhelper); } ||
+	fail "no part2disk-grubhelper in PATH"
+
+[ -f "${pimg}" -o -b "${pimg}" ] || fail "${pimg}: not a file or block device"
+
+if [ -b "${pimg}" ]; then
+	kname=$(readlink -f "${pimg}") &&
+		pimg_s=$(awk '$4 == kn { print $3 * 1024 }' \
+		             "kn=${kname##*/}" /proc/partitions) &&
+		[ -n "${pimg_s}" ] ||
+		fail "failed to read size of ${pimg} from /proc/partitions"
+else
+	pimg_s=$(stat --format "%s" "${pimg}") ||
+		fail "failed to get size of ${pimg}"
+fi
+
+if [ -n "${size_in}" ]; then
+	human2bytes "${size_in}" 1 || fail "failed to convert ${size_in} to bytes"
+	size=${_RET}
+	cylinders=$((${size}/(${csize}*${ssize})))
+else
+	# no size specified, get enough cylinders to fit part_img
+	# get 1 full cylinder + any remainder
+	cylinders=$((${pimg_s}/(${csize}*${ssize}) + 1))
+	[ "${pimg_s}" = "$((${csize}*${ssize}))" ] || cylinders=$((${cylinders}+1))
+	size=$((${cylinders}*${ssize}*${csize}))
+fi
+
+debug 1 "using ${cylinders} cylinders of ${csize} * ${ssize} = $((${cylinders}*${ssize}*${csize})) bytes"
+
+if [ -n "${bootcode}" ]; then
+	[ -f "${bootcode}" ] || fail "${bootcode}: not a file"
+	debug 1 "writing bootcode from ${bootcode}"
+	zcat --force "${bootcode}" | dd of="${dimg}" 2>/dev/null ||
+		fail "failed to write from ${bootcode}"
+fi
+
+if [ ! -b "${dimg}" ]; then
+	# truncate 1 cylinder of zeros
+	debug 2 "truncating ${dimg} to 1 cylinder"
+	dd if=/dev/zero of="${dimg}" \
+		seek="$((${csize}))" bs="${ssize}" count=0 2>/dev/null ||
+	fail "failed to write to ${dimg}"
+fi
+
+# copy partition image
+debug 1 "copying ${pimg} to partition in ${dimg}"
+dd if="${pimg}" conv=notrunc oflag=append of="${dimg}" 2>/dev/null ||
+	fail "failed to write ${pimg} into ${dimg}"
+
+# pad the output to round cylinder size.
+# we do this as a separate step from the copy so that the copy
+# can use whatever ibs or obs that dd thinks is appropriate
+if [ ! -b "${dimg}" ]; then
+	debug 2 "padding size of ${pimg} to round cylinders"
+	dd if="${pimg}" seek="$((${cylinders}*${csize}))" bs="${ssize}" \
+		count=0 of="${dimg}" 2>/dev/null ||
+		fail "failed to size ${dimg} to even cylinders"
+	if [ $size -ne $((${cylinders}*${ssize}*${csize})) ]; then
+		truncate --size "${size}" "${dimg}" ||
+			fail "failed to truncate ${dimg} to ${size}"
+	fi
+fi
+
+debug 1 "writing partition table to ${dimg}"
+sfdisk_out=$(sfdisk -C "${cylinders}" "${dimg}" 2>&1 <<EOF
+1,,L,*
+EOF
+)
+
+[ $? -eq 0 ] || {
+	error "${sfdisk_out}";
+	fail "failed to create partition table";
+}
+
+if [ ${grub} -ne 0 ]; then
+	debug 1 "invoking part2disk-grubhelper ${dimg}"
+	sudo "${phelper}" "${dimg}" ||
+		fail "part2disk-grubhelper ${dimg} failed"
+fi
+
+error "wrote to ${dimg}"
+# vi: ts=4 noexpandtab
