@@ -39,7 +39,6 @@ $(OUT_D)/.source.$(ARCH):
 
 $(BR_OUT_D)/busybox.config: $(CONF_D)/busybox.config $(BR_OUT_D)/.dir
 	cp $(CONF_D)/busybox.config $@
-	rm $(BR_OUT_D)/
 	for s in configured built target_installed; do rm -f $(BR_OUT_D)/build/busybox-1.18.5/.stamp_$$s; done
 
 $(BR_OUT_D)/.config: $(CONF_D)/buildroot-$(ARCH).config $(BR_OUT_D)/.dir
