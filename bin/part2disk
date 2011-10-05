@@ -42,6 +42,7 @@ Usage: ${0##*/} [options] partition-image disk-image
                         size of cylinders for the disk in 512 byte units
                         default is ${DEF_CYLINDER_SIZE}
       -G | --grub       install grub to disk image mbr
+         | --grub1      install grub1 to disk image mbr
       -s | --size  S    create the disk image of size 'S'.
                         default is large enough to fit partition-image
       -v | --verbose    increase verbosity
@@ -65,7 +66,7 @@ human2bytes() {
 }
 
 short_opts="b:c:Ghs:v"
-long_opts="bootcode:,grub,help,cylinder-size:,size:,verbose"
+long_opts="bootcode:,grub1,grub,help,cylinder-size:,size:,verbose"
 getopt_out=$(getopt --name "${0##*/}" \
 	--options "${short_opts}" --long "${long_opts}" -- "$@") &&
 	eval set -- "${getopt_out}" ||
@@ -77,12 +78,14 @@ size_in=""
 bootcode=""
 grub_ptnum=1
 grub=0
+grub1=0
 while [ $# -ne 0 ]; do
 	cur=${1}; next=${2};
 	case "$cur" in
 		-b|--boot-code) bootcode="$2"; shift;;
 		-c|--cylinder-size) csize=$2; shift;;
 		-G|--grub) grub=1;;
+		-G|--grub1) grub1=1;;
 		-h|--help) Usage; exit 0;;
 		-s|--size) size_in=$2; shift;;
 		-v|--verbose) DEBUG=$((${DEBUG}+1));;
@@ -98,6 +101,7 @@ dimg=${2}
 
 { [ ${grub} -eq 0 ] || phelper=$(command -v part2disk-grubhelper); } ||
 	fail "no part2disk-grubhelper in PATH"
+[ $grub1 -eq 0 ] || command -v grub >/dev/null || fail "no 'grub' in path";
 
 [ -f "${pimg}" -o -b "${pimg}" ] || fail "${pimg}: not a file or block device"
 
@@ -175,6 +179,17 @@ if [ ${grub} -ne 0 ]; then
 	debug 1 "invoking part2disk-grubhelper ${dimg}"
 	sudo "${phelper}" "${dimg}" ||
 		fail "part2disk-grubhelper ${dimg} failed"
+fi
+
+if [ $grub1 -ne 0 ]; then
+	debug 1 "installing grub"
+	grub --no-floppy --batch <<EOF
+device (hd0) $dimg
+geometry (hd0) $cylinders 255 63
+root (hd0,0)
+setup (hd0)
+quit
+EOF
 fi
 
 error "wrote to ${dimg}"
