@@ -10,3 +10,4 @@ bin/mount
 bin/mkdir
 bin/umount
 sbin/switch_root
+bin/growpart
