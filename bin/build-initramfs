@@ -77,7 +77,6 @@ done < $needs
 rsync -a "$src_d/" "$work_d" ||
 	fail "failed to sync $src_d to working dir"
 
-rsync -a "$work_d/" /tmp/my.d
 ( cd "${work_d}" && find . | cpio --quiet --dereference -o -H newc | gzip -9 )
 
 exit 0
