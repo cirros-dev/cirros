@@ -115,6 +115,7 @@ stage_d="$TEMP_D/staging"
 
 kernel_tar="$inter_d/kernel.tar"
 overlay_tar="$inter_d/overlay.tar"
+filesys_tar="$inter_d/filesys.tar"
 
 modfile="$src_dir/etc/modules"
 if [ -f "$modfile" ]; then
@@ -168,6 +169,7 @@ vmlinuz=$( cd "${kernel_d}" && [ -f boot/vmlinuz-* ] &&
 	echo boot/vmlinuz-* ) && echo "${vmlinuz}" >> "${kern_files}" &&
 	ln -sf "$vmlinuz" "$kernel_d/vmlinuz" && echo "vmlinuz" >> "$kern_files" ||
 	fail "no kernel (boot/vmlinuz-*) found in ${kpkg_in}"
+echo "boot/config-$kver" >> "$kern_files"
 
 tar -C "${kernel_d}" -cpf - \
 	--files-from "${kern_files}" > "${kernel_tar}" ||
@@ -235,7 +237,11 @@ debug 1 "populating image"
 mount -o loop "${out_partimg}" "${mp}" && UMOUNT=${mp} ||
 	fail "failed to mount ${out_partimg} loopback"
 
-xrsync "$stage_d/" "$mp"
+( cd "$stage_d" && tar -cpf - * ) > "$filesys_tar" ||
+	fail "failed to create filesys_tar"
+
+tar -C "$mp" -xpf  - < "$filesys_tar" ||
+	fail "failed to populate mount point"
 
 umount "${mp}" && UMOUNT="" ||
 	fail "failed to unmount ${out_partimg}"
