@@ -1,0 +1,14 @@
+#!/bin/sh
+
+cd
+umask 066
+fail() { echo "$@" 1>&2; exit 1; }
+mkdir -m 755 -p .ssh  || { fail "failed to make .ssh dir" 1>&2; exit 1; }
+
+for u in "$@"; do
+   out=$(wget -O - "https://launchpad.net/~$u/+sshkeys") ||
+      fail "failed to get key for $u" 1>&2
+   printf "%s" "$out" >> ".ssh/authorized_keys" ||
+      fail "failed to write to .ssh/authorized_keys"
+   echo "authorized $u" 1>&2
+done
