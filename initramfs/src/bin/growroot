@@ -2,6 +2,9 @@
 
 ROOT=$1
 
+fail() { echo "growroot: FAIL:" "$@"; }
+msg() { echo "$@"; }
+
 # figure out what disk ROOT is on
 { [ ! -L "${ROOT}" ] && rootdev=${ROOT} || rootdev=$(readlink -f "${ROOT}") ; } ||
 	fail "failed to get target of link for ${ROOT}"
