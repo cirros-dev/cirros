@@ -1,0 +1,20 @@
+#!/bin/sh
+# vi: ts=4 noexpandtab
+# load modules
+
+case "$1" in
+	start)
+		lxc-is-container && exit 0
+		. src/usr/share/cloud/functions
+		[ "${RESIZE_ROOT:-0}" = "0" ] && exit 0
+		marked once resizefs && exit 0
+		resize2fs /dev/root &
+		mark once resize2fs
+		;;
+	stop|restart|reload) : ;;
+  *)
+	echo $"Usage: $0 {start}"
+	exit 1
+esac
+
+exit $?
