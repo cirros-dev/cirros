@@ -44,9 +44,9 @@ timeout         0
 hiddenmenu
 
 title     Linux Kernel
-root      (hd0)
-kernel    /vmlinuz /dev/sda1 ro
-$([ -n "${initrd}" ] && echo "initrd /initrd.img")
+root      (hd0,0)
+kernel    /vmlinuz LABEL=$FS_LABEL ro
+initrd    /initrd.img
 EOF
 }
 
@@ -59,7 +59,7 @@ getopt_out=$(getopt --name "${0##*/}" \
 
 topdir=$(cd "${0%/*}/.." && pwd)
 size=${DEF_SIZE}
-fs_label="mc-rootfs"
+FS_LABEL="mc-rootfs"
 fs_type="ext3"
 
 while [ $# -ne 0 ]; do
