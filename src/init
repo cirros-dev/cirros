@@ -7,7 +7,7 @@ mount -t devtmpfs /dev /dev
 mount -t proc /proc /proc
 
 echo "=== loading modules ==="
-/etc/init.d/load-modules
+/etc/init.d/load-modules start
 
 debug=0
 ROOT=""
