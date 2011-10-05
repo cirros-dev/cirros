@@ -1,6 +1,6 @@
 #!/bin/sh
 
-mkdir -p /proc /newroot /dev
+mkdir -p /proc /newroot /dev /tmp
 mount -t devtmpfs /dev /dev
 mount -t proc /proc /proc
 found=0

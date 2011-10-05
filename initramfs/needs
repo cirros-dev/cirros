@@ -11,3 +11,7 @@ bin/mkdir
 bin/umount
 sbin/switch_root
 sbin/growpart
+/bin/cat
+/bin/rm
+/bin/sed
+/usr/bin/awk
