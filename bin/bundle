@@ -45,7 +45,7 @@ hiddenmenu
 
 title     Linux Kernel
 root      (hd0,0)
-kernel    /vmlinuz LABEL=$FS_LABEL ro
+kernel    /vmlinuz LABEL=$FS_LABEL ro console=ttyS0
 initrd    /initrd.img
 EOF
 }
