@@ -5,6 +5,7 @@ BURL="http://169.254.169.254/2009-04-04"
 MDURL="${BURL}/meta-data"
 UDURL="${BURL}/user-data"
 STATE_D=/var/lib/cloud
+SEM_D=$STATE_D/sem
 CLOUD_CONFIG=${STATE_D}/config.sh
 MD_DEBUG_COUNT=30
 MD_MAX_TRIES=30
@@ -31,13 +32,13 @@ mdget() {
 }
 marked() {
 	local name=${2:-${XN}} iid=${1}
-	[ -f "${STATE_D}/${name}.${iid}" ]
+	[ -f "${SEM_D}/${name}.${iid}" ]
 }
 mark() {
 	local name=${2:-${XN}} iid=${1}
-	{ [ -d "${STATE_D}" ] || mkdir "${STATE_D}"; } ||
-		msg "failed to make ${STATE_D}"
-	date > "${STATE_D}/${name}.${iid}"
+	{ [ -d "${SEM_D}" ] || mkdir "${SEM_D}"; } ||
+		msg "failed to make ${SEM_D}"
+	date > "${SEM_D}/${name}.${iid}"
 }
 
 mddebug() {
