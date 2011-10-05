@@ -65,6 +65,10 @@ hostname -F /etc/hostname
 
 f="/bin/lxc-is-container" && write_lxc_is_container > "$f" && chmod 755 "$f"
 
+for d in $(awk '$2 == "/" { print $1 }' /proc/mounts); do
+	[ -e "/dev/${d#/dev}" ] && ln -sf "${d#/dev/}" /dev/root && break
+done
+
 ## pretend you're runlevel 3
 for s in /etc/rc3.d/S*; do
 	[ -x "$s" ] || continue
