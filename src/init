@@ -6,6 +6,7 @@ mkdir -p /proc /newroot /dev /tmp
 mount -t devtmpfs /dev /dev
 mount -t proc /proc /proc
 
+echo "6 4 1 7" >/proc/sys/kernel/printk
 echo "=== loading modules ==="
 /etc/init.d/load-modules start
 
