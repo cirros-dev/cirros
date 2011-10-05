@@ -4,6 +4,7 @@
 /usr/lib/cloud-init/uncloud-init        f 0755  0  0  -  - - - -
 /var/lib/cloud                          d 0755  0  0  -  - - - -
 /etc/init.d/rc.sysinit                  f 0755  0  0  -  - - - -
+/init                                   f 0755  0  0  -  - - - -
 /dev/console                            c 0600  0  0  5  1 - - -
 /dev/null                               c 0666  0  0  1  3 - - -
 /dev/ttyS0                              c 0664  0  0  4 64 - - -

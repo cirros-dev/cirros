@@ -60,7 +60,7 @@ getopt_out=$(getopt --name "${0##*/}" \
 topdir=$(cd "${0%/*}/.." && pwd)
 size=${DEF_SIZE}
 FS_LABEL="mc-rootfs"
-fs_type="ext3"
+fs_type="ext2"
 
 while [ $# -ne 0 ]; do
 	cur=${1}; next=${2};
@@ -225,13 +225,22 @@ if [ -x "${fixup_fs}" ]; then
 		fail "failed to fixup filesystem"
 fi
 
-
 debug 1 "creating initramfs"
-# FIXME: should do some dynamic query to support busybox being static
-build-initramfs "$topdir/initramfs" "$stage_d" > "$initramfs" ||
-	fail "failed to create initramfs"
+xrsync "$stage_d/" "$initramfs_d" ||
+	fail "failed to copy to initramfs_d"
+rm -Rf "$initramfs_d/vmlinuz" "$initramfs_d/boot" ||
+	fail "failed to remove files in initramfs staging dir"
 
-cp "${initramfs}" "${stage_d}/boot/initrd.img-${kver}" &&
+( cd "$initramfs_d" && find . | cpio --quiet -o -H newc |
+	gzip -9 ) > "$initramfs"
+
+rm -Rf "$initramfs_d/lib/modules/$kver" ||
+	fail "failed to remove lib/modules for mini initramfs"
+
+( cd "$initramfs_d" && find . | cpio --quiet -o -H newc |
+	gzip -9 ) > "${initramfs}.smaller"
+
+cp "${initramfs}.smaller" "$stage_d/boot/initrd.img-${kver}" &&
 	ln -s "boot/initrd.img-${kver}" "${stage_d}/initrd.img" ||
 	fail "failed to copy initramfs to stage dir"
 
@@ -240,14 +249,14 @@ tar -C "$stage_d" -cpf - \
 	vmlinuz initrd.img boot/ lib/modules/ > "$kernel_tar" ||
 	fail "failed to create clean kerne_tar"
 
+( cd "$stage_d" && tar -cpf - * ) > "$filesys_tar" ||
+	fail "failed to create filesys_tar"
+
 debug 1 "populating image"
 mount -o loop "${out_partimg}" "${mp}" && UMOUNT=${mp} ||
 	fail "failed to mount ${out_partimg} loopback"
 
-( cd "$stage_d" && tar -cpf - * ) > "$filesys_tar" ||
-	fail "failed to create filesys_tar"
-
-tar -C "$mp" -xpf  - < "$filesys_tar" ||
+tar -C "$mp" -xpf - < "$filesys_tar" ||
 	fail "failed to populate mount point"
 
 umount "${mp}" && UMOUNT="" ||
