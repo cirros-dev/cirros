@@ -26,7 +26,7 @@ if [ $debug -eq 1 ]; then
 	/bin/sh
 fi
 
-growpart "$ROOT"
+growroot "$ROOT"
 
 if [ -n "$ROOT" ]; then
 	echo "Used ${name} for root filesystem"
