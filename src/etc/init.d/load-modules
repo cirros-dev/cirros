@@ -4,7 +4,7 @@
 
 case "$1" in
 	start)
-		is-lxc && exit 0
+		lxc-is-container && exit 0
 		if [ -f /etc/modules ]; then
 			while read line; do
 				line="${line%%#*}"
