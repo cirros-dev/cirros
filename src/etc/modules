@@ -6,3 +6,5 @@ ne2k-pci
 pcnet32
 mii
 ip_tables
+isofs
+vfat
