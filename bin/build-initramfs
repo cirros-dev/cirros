@@ -74,6 +74,17 @@ while read need; do
 	fi
 done < $needs
 
+loaders=$(cd "$root_d" &&
+	echo lib/ld-uClibc.so.0 lib/ld-uClibc-*.so \
+		lib/ld64-uClibc.so.0 lib/ld64-uClibc-*.so)
+
+for f in $loaders; do
+	[ -f "$root_d/$f" ] || continue
+	mkdir -p "${work_d}/${f%/*}" &&
+	cp -a "$root_d/$f" "$work_d/$f" ||
+		fail "failed to copy $f"
+done
+
 rsync -a "$src_d/" "$work_d" ||
 	fail "failed to sync $src_d to working dir"
 
