@@ -101,16 +101,20 @@ out_partimg="${out_d}/part.img"
 out_kernel="${out_d}/kernel"
 out_initramfs="${out_d}/initramfs"
 out_diskimg="${out_d}/disk.img"
+inter_d="$out_d/intermediate"
 
 mp="${TEMP_D}/mnt"
 kernel_d="${TEMP_D}/kernel"
 kern_list_full="${TEMP_D}/kernel.files.full"
 kern_files="${TEMP_D}/kernel.files"
 kern_modules="${TEMP_D}/kernel.files.modules"
-kern_files_tar="${TEMP_D}/kernel.files.tar"
 overlay_d="${TEMP_D}/overlay"
 initramfs_d="${TEMP_D}/initramfs"
 initramfs="${TEMP_D}/initramfs.img"
+stage_d="$TEMP_D/staging"
+
+kernel_tar="$inter_d/kernel.tar"
+overlay_tar="$inter_d/overlay.tar"
 
 modfile="$src_dir/etc/modules"
 if [ -f "$modfile" ]; then
@@ -121,7 +125,7 @@ else
 fi
 
 mkdir -p "${mp}" "${kernel_d}" "${overlay_d}" \
-	"${initramfs_d}" ||
+	"${initramfs_d}" "$inter_d" "$stage_d" ||
 	fail "failed to make temp dirs"
 
 debug 1 "creating filesystem in ${out_partimg}"
@@ -130,12 +134,6 @@ truncate "--size=${size}" "${out_partimg}" ||
 
 out=$("mkfs.${fs_type}" -F "${out_partimg}" -L "${fs_label}" 2>&1) ||
 	fail "failed to make filesystem of type ${fs_type}: ${out}" 
-
-debug 1 "syncing files to ${out_partimg}"
-mount -o loop "${out_partimg}" "${mp}" && UMOUNT=${mp} ||
-	fail "failed to mount ${out_partimg} loopback"
-
-tar -C "${mp}" -xp < "${rootfs_in}"
 
 debug 1 "preparing kernel overlay"
 # creating kernel tarball
@@ -171,19 +169,8 @@ vmlinuz=$( cd "${kernel_d}" && [ -f boot/vmlinuz-* ] &&
 	ln -sf "$vmlinuz" "$kernel_d/vmlinuz" && echo "vmlinuz" >> "$kern_files" ||
 	fail "no kernel (boot/vmlinuz-*) found in ${kpkg_in}"
 
-debug 1 "creating initramfs"
-# FIXME: should do some dynamic query to support busybox being static
-build-initramfs "$topdir/initramfs" "$mp" > "$initramfs" ||
-	fail "failed to create initramfs"
-
-cp "${initramfs}" "${kernel_d}/boot/initrd.img-${kver}" &&
-	ln -s "boot/initrd.img-${kver}" "${kernel_d}/initrd.img" &&
-	echo "initrd.img" >> "${kern_files}" &&
-	echo "boot/initrd.img-${kver}" >> "${kern_files}" ||
-	fail "failed to copy initramfs to kernel dir"
-
 tar -C "${kernel_d}" -cpf - \
-	--files-from "${kern_files}" > "${kern_files_tar}" ||
+	--files-from "${kern_files}" > "${kernel_tar}" ||
 	fail "failed to collect kernel files"
 
 debug 1 "preparing source overlay from ${src_dir}"
@@ -201,28 +188,54 @@ if [ -f "${src_symlinks}" ]; then
 		done < "${src_symlinks}"
 	) || fail "failed to create symlinks"
 fi
-
-tar -C "${mp}" -xpf - < "${kern_files_tar}" ||
-	fail "failed to copy kernel files to new filesystem"
-
-depmod -a --basedir "${mp}" "${kver}" ||
-	fail "failed to run depmod for kver ${kver} in output"
-
-if [ -x "${fixup_fs}" ]; then
-	"${fixup_fs}" "${mp}" ||
-		fail "failed to fixup filesystem"
-fi
-
 if [ -f "${makedevs_list}" ]; then
 	xmakedevs "$makedevs_list" "$overlay_d" ||
 		fail "failed to makedevs on overlay"
 fi
 
-xrsync "${overlay_d}/" "${mp}"
+( cd "$overlay_d" && tar -cpf - * ) > "$overlay_tar" ||
+	fail "failed to make overlay_tar"
 
-mkdir -p "${mp}/boot/grub" &&
-	write_grub_menu_lst "${out_initramfs}" > "${mp}/boot/grub/menu.lst" ||
+debug 1 "populating staging directory"
+tar -C "$stage_d" -xpf - < "$rootfs_in" ||
+	fail "failed to extract rootfs_tar"
+tar -C "$stage_d" -xpf - < "$overlay_tar" ||
+	fail "failed to extract overlay_tar"
+tar -C "$stage_d" -xpf - < "$kernel_tar" ||
+	fail "failed to extract kernel_tar"
+
+mkdir -p "${stage_d}/boot/grub" &&
+	write_grub_menu_lst "${out_initramfs}" > "${stage_d}/boot/grub/menu.lst" ||
 	fail "failed to write menu.lst"
+
+depmod -a --basedir "$stage_d" "${kver}" ||
+	fail "failed to run depmod for kver ${kver} in output"
+
+if [ -x "${fixup_fs}" ]; then
+	"${fixup_fs}" "${stage_d}" ||
+		fail "failed to fixup filesystem"
+fi
+
+
+debug 1 "creating initramfs"
+# FIXME: should do some dynamic query to support busybox being static
+build-initramfs "$topdir/initramfs" "$stage_d" > "$initramfs" ||
+	fail "failed to create initramfs"
+
+cp "${initramfs}" "${stage_d}/boot/initrd.img-${kver}" &&
+	ln -s "boot/initrd.img-${kver}" "${stage_d}/initrd.img" ||
+	fail "failed to copy initramfs to stage dir"
+
+debug 1 "packing clean kernel_tar"
+tar -C "$stage_d" -cpf - \
+	vmlinuz initrd.img boot/ lib/modules/ > "$kernel_tar" ||
+	fail "failed to create clean kerne_tar"
+
+debug 1 "populating image"
+mount -o loop "${out_partimg}" "${mp}" && UMOUNT=${mp} ||
+	fail "failed to mount ${out_partimg} loopback"
+
+xrsync "$stage_d/" "$mp"
 
 umount "${mp}" && UMOUNT="" ||
 	fail "failed to unmount ${out_partimg}"
@@ -243,6 +256,5 @@ fi
 echo "wrote ${out_partimg}"
 echo "wrote ${out_kernel}"
 echo "wrote ${out_initramfs}"
-
 
 exit 0
