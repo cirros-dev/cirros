@@ -1,4 +1,5 @@
 #!/bin/sh
+# vi: ts=4 noexpandtab
 #
 # This is the initramfs init script
 
@@ -18,7 +19,7 @@ while read maj min blk name other; do
 	[ -n "${maj}" -a "${maj}" != "major" ] || continue
 	umount=0
 	mount -o ro "/dev/${name}" "/newroot" >/dev/null 2>&1 &&
-      MOUNTED="$MOUNTED ${name}" && umount=1 &&
+		MOUNTED="$MOUNTED ${name}" && umount=1 &&
 		[ -x /newroot/sbin/init ] && ROOT="/dev/$name" && break
 	[ ${umount} -eq 0 ] || umount /newroot
 done < /proc/partitions
@@ -35,32 +36,33 @@ if [ $debug -eq 1 ]; then
 fi
 
 if [ -n "$ROOT" ]; then
-   growroot "$ROOT"
+	umount /newroot
+	growroot "$ROOT"
 	echo "Used ${name} for root filesystem"
 	umount /dev
 	umount /proc
 	cd /newroot
-   echo "=== initramfs loading root from $ROOT ==="
+	echo "=== initramfs loading root from $ROOT ==="
 	exec switch_root -c /dev/console /newroot /sbin/init "$@"
 else
-   # here, no root disk was found, but we'll be nice and mount up
-   # the mountable filesystems that we found
-   for d in $MOUNTED; do
-      mkdir -p /media/$d
-      mount /dev/$d /media/$d
-   done
-   while read maj min blk name other; do
-	   [ -n "${maj}" -a "${maj}" != "major" ] || continue
-	   umount=0
-	   mount -o ro "/dev/${name}" "/newroot" >/dev/null 2>&1 &&
-		   umount=1 &&
-		   [ -x /newroot/sbin/init ] && ROOT="/dev/$name" && break
-	   [ ${umount} -eq 0 ] || umount /newroot
-   done < /proc/partitions
-   umount /proc
-   umount /dev
-   echo "=== initramfs did not find root, running as ramdisk ==="
-   exec /sbin/init "$@"
+	# here, no root disk was found, but we'll be nice and mount up
+	# the mountable filesystems that we found
+	for d in $MOUNTED; do
+		mkdir -p /media/$d
+		mount /dev/$d /media/$d
+	done
+	while read maj min blk name other; do
+		[ -n "${maj}" -a "${maj}" != "major" ] || continue
+		umount=0
+		mount -o ro "/dev/${name}" "/newroot" >/dev/null 2>&1 &&
+			umount=1 &&
+			[ -x /newroot/sbin/init ] && ROOT="/dev/$name" && break
+		[ ${umount} -eq 0 ] || umount /newroot
+	done < /proc/partitions
+	umount /proc
+	umount /dev
+	echo "=== initramfs did not find root, running as ramdisk ==="
+	exec /sbin/init "$@"
 fi
 echo "badness occurred in ramdisk"
 exec /bin/sh
