@@ -1,0 +1,127 @@
+#!/bin/sh
+
+MD_URL="http://169.254.169.254/latest"
+CR="
+"
+
+Usage() {
+	cat <<EOF
+Usage: ${0##*/} [options]
+  -u | --url URL    use URL (default: $MD_URL)
+  -h | --help       display usage
+
+       --user-data  dump user data
+       --<item>     dump 'item' from the metadata service
+
+  Special items:
+   --block-device-mappings   dump the block device mappings, space delimited
+   --public-keys             dump the public keys
+
+  with no options given, metadata service will be crawled and
+  dumped.  This will not include user-data.
+EOF
+}
+
+error() { echo "$@" 1>&2; }
+fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
+
+get_field_list() {
+	local under="$1" x="" out="" found=""
+	mdget "$under"
+	out="$_RET"
+	for x in $out; do
+		case "$x" in
+			*/) get_field_list "${under:+${under}/}${x%/}"
+				found="${found} $_RET";;
+			*) found="${found} ${under:+$under/}$x";;
+		esac
+	done
+	_RET="${found# }"
+}
+
+mdget() {
+	local u="$1" t1="" t2=""
+	case "$u" in
+		user-data) :;;
+		public-keys|public-keys/)
+			for t1 in $(wget -q -O - "$MD_URL/meta-data/$u"); do
+				t1="${t1%%=*}"
+				echo "${t1}/"
+			done
+			return
+			;;
+		public-keys/*)
+			t1=${u#public-keys/[0-9]} 
+			# t2 will now have 'public-keys/[0-9]'
+			t2=${u%${t1}}
+			# if t1 has a / (ie, u=public-keys/0=brickies/openssh-keys)
+			# then set t1 to just "/openssh-keys". if not, set it to ""
+			[ "${t1#*/}" = "${t1}" ] && t1="" || t1="/${t1#*/}"
+			u="meta-data/${t2}${t1}"
+			;;
+		*) u="meta-data/$u";;
+	esac
+	_RET=$(wget -q -O - "$MD_URL/$u") ||
+		fail "failed to get ${MD_URL}/$u"
+}
+special() {
+	local out="" x="" t="" ret=""
+	case "$1" in
+		availability-zone)
+			mdget "placement/availability-zone";;
+		public-keys)
+			mdget public-keys
+			out="$_RET"
+			for x in ${out}; do
+				mdget "public-keys/${x}/openssh-key" &&
+				ret="${ret:+${ret}${CR}}${_RET}"
+			done
+			_RET="$ret"
+			;;
+		block-device-mappings)
+			mdget block-device-mapping
+			out="$_RET"
+			for x in ${out}; do
+				mdget "block-device-mapping/$x"
+				ret="${ret:+${ret} }${x}=$_RET";
+			done
+			_RET="$ret"
+	esac
+}
+
+fields=""
+while [ $# -ne 0 ]; do
+	cur=${1}; next=${2};
+	case "$cur" in
+		-h|--help) Usage ; exit 0;;
+		--url=*) MD_URL=${cur#*=}; MD_URL=${MD_URL%/};;
+		--url|-u) MD_URL="${next%/}"; shift;;
+		--availability-zone|--public-keys|--block-device-mappings)
+			fields="$fields special_${cur#--}";;
+		--*) fields="$fields ${cur#--}";;
+	esac
+	shift;
+done
+
+fields="${fields# }"
+if [ -z "$fields" ]; then
+	get_field_list ""
+	fields="${_RET}"
+	prefix=true
+else
+	prefix=false
+fi
+
+for f in $fields; do
+	case "$f" in
+		special_*) special "${f#special_}";;
+		*) mdget "$f";;
+	esac
+	ret=$?
+	[ $ret -eq 0 ] || fail "failed to get $f"
+	$prefix && echo "${f#special_}: $_RET" || echo "$_RET"
+done
+
+exit 0
+
+# vi: ts=4 noexpandtab
