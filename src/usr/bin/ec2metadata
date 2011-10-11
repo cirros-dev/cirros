@@ -122,7 +122,15 @@ for f in $fields; do
 	esac
 	ret=$?
 	[ $ret -eq 0 ] || fail "failed to get $f"
-	$prefix && echo "${f#special_}: $_RET" || echo "$_RET"
+	if $prefix; then
+		if [ "${_RET#*${CR}}" != "${_RET}" ]; then
+			_RET=$(echo "$_RET" | sed 's,^,|,g')
+			_RET="${_RET#|}"
+		fi
+		echo "${f#special_}: $_RET"
+	else
+		echo "$_RET"
+	fi
 done
 
 exit 0
