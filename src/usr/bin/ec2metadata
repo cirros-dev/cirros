@@ -40,13 +40,16 @@ get_field_list() {
 }
 
 mdget() {
-	local u="$1" t1="" t2=""
+	local u="$1" t1="" t2="" out=""
 	case "$u" in
 		user-data) :;;
 		public-keys|public-keys/)
-			for t1 in $(wget -q -O - "$MD_URL/meta-data/$u"); do
+			out=$(wget -q -O - "$MD_URL/meta-data/$u") ||
+				fail "failed to get $MD_URL/meta-data/$u";
+			_RET=""
+			for t1 in $out; do
 				t1="${t1%%=*}"
-				echo "${t1}/"
+				_RET="${_RET:+${_RET}${CR}}${t1%/}/"
 			done
 			return
 			;;
