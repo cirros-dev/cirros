@@ -18,11 +18,12 @@ To use it, you would do something like:
    subsequent steps here.
 
  * Download a kernel to use.
-   CirrOS expects the kernel in deb format.  It is built using the '-virtual'
-   ubuntu kernels as a starting point.
+   The kernel input to bundle must be in deb format. The ubuntu '-virtual'
+   kernel is used as a starting point.
 
    $ ARCH=i386
    $ url=http://FIXME/linux-image-2.6.38-8-virtual_2.6.38-8.42_$ARCH.deb
+   $ url="http://launchpad.net/ubuntu/+archive/primary/+files/linux-image-3.0.0-12-virtual_3.0.0-12.20_$ARCH.deb"
    $ wget "$url" -O "download/${url##*/}"
    $ kernel_deb="download/${url##*/}"
 
