@@ -59,6 +59,9 @@ $(SKEL_D)/.dir:
 	rsync -a $(TOP_D)/src/ $(SKEL_D)/
 	touch $(SKEL_D)/.dir
 
+br-menuconfig: $(BR_OUT_D)/.config
+	$(BR_MAKE) $* menuconfig
+	cp $(BR_OUT_D)/.config $(CONF_D)/buildroot-$(ARCH).config
 br-%:
 	$(BR_MAKE) $*
 
