@@ -1,6 +1,8 @@
 #  <name>    <type>      <mode>  <uid>   <gid>   <major> <minor> <start> <inc>   <count>
 # chown arg, chmod arg, file list (shell expanded)
 /etc/init.d/cloud-*                     f 0755  0  0  -  - - - -
+/etc/sudoers.d                          d 0755  0  0  -  - - - -
+/etc/sudoers.d/*                        f 0440  0  0  -  - - - -
 /usr/lib/cloud-init/uncloud-init        f 0755  0  0  -  - - - -
 /var/lib/cloud                          d 0755  0  0  -  - - - -
 /etc/init.d/rc.sysinit                  f 0755  0  0  -  - - - -

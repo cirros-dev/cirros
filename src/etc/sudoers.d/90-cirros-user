@@ -1,0 +1,2 @@
+# cirros user needs passwordless sudo
+cirros ALL=(ALL) NOPASSWD:ALL
