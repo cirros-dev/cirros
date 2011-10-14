@@ -5,3 +5,7 @@
 #MD_MAX_TRIES=30
 #RESIZE_FS=0
 #IS_NOCLOUD=0
+
+# put your local changes in config.local.sh
+lfile=/var/lib/cloud/config.local.sh;
+[ ! -e "$lfile" ] || . "$lfile"
