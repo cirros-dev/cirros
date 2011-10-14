@@ -136,6 +136,7 @@ mkdir -p "${mp}" "${kernel_d}" "${overlay_d}" \
 	fail "failed to make temp dirs"
 
 debug 1 "creating filesystem in ${out_partimg}"
+rm -f "$out_partimg"
 truncate "--size=${size}" "${out_partimg}" ||
 	fail "failed to create ${out_partimg} of size ${size}"
 
