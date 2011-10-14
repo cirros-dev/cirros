@@ -286,6 +286,14 @@ qemu-img convert -O qcow2 -c "$out_diskimg.raw" "$out_diskimg" ||
 	fail "failed to convert disk image"
 rm -f "$out_diskimg.raw"
 
+debug 1 "fixing grub entry in partimg"
+mount -o loop "$out_partimg" "$mp" && UMOUNT="$mp" ||
+	fail "failed to mount $out_partimg"
+sed -i 's/(hd0,0)/(hd0)/' "$mp/boot/grub/menu.lst" ||
+	fail "failed to edit /boot/grub/menu.lst in image"
+umount "$mp" && UMOUNT="" ||
+	fail "failed to unmount partimg"
+
 if [ -n "${SUDO_USER}" ]; then
 	u=${SUDO_USER}
 	g=$(id -g "${u}") || g=${u}
