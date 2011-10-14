@@ -54,10 +54,11 @@ cd "$root" || fail "failed cd $root"
 while read line; do
 	line=${line%#*}
 	[ -n "$line" ] || continue
+	set -f
 	set -- $line
 	name=$1; type=$2; mode=$3; uid=$4; gid=$5; major=$6; minor=$7; start=$8; inc=$9; count="${10}"
-	
-	files="./$name"
+	set +f
+	files="./${name#/}"
 	if iswild "$name"; then
 		files=$(echo ./$name)
 		iswild "$files" && fail "wildcards in wildcards: $files"
