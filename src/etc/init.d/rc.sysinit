@@ -84,7 +84,7 @@ for s in /etc/rc3.d/S*; do
 done
 
 if is_lxc; then
-	grep -q "^pts/0$"  || echo "pts/0" >> /etc/securetty
+	grep -q "^pts/0$" /etc/securetty || echo "pts/0" >> /etc/securetty
 fi
 
 s_args=""
