@@ -8,8 +8,12 @@ case "$1" in
 		. /usr/share/cloud/functions
 		[ "${RESIZE_FS:-0}" = "0" ] && exit 0
 		marked once resizefs && exit 0
-		resize2fs /dev/root &
-		mark once resize2fs
+		sh -c 'o=/tmp/resize.out;
+		       resize2fs /dev/root >$o 2>&1 &&
+		       rm -f $o && exit 0 ||
+		       echo "resize failed!" 1>&2;
+		       cat $o 1>&2; exit 1;' resizefs &
+		mark once resizefs
 		;;
 	stop|restart|reload) : ;;
   *)
