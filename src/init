@@ -2,6 +2,7 @@
 # vi: ts=4 noexpandtab
 #
 # This is the initramfs init script
+ROOTFS_LABEL="cirros-rootfs"
 
 mkdir -p /proc /newroot /dev /tmp
 mount -t devtmpfs /dev /dev
@@ -35,15 +36,35 @@ if [ $debug -eq 1 ]; then
 	/bin/sh
 fi
 
+if [ -z "$ROOT" ] && blank=$(blkid -L $ROOTFS_LABEL) && [ -e "$blank" ]; then
+	echo "=== copying initramfs to $blank ==="
+	items=""
+	for x in /*; do
+		case "$x" in
+			/dev|/proc|/newroot) : ;;
+			*) items="$items $x";;
+		esac
+	done
+	mount "$blank" /newroot
+	mkdir -p /newroot/dev /newroot/proc
+	cp -a $items /newroot/
+	cp -a /dev/console /newroot/dev
+	mount -o remount,ro /newroot
+	ROOT="$blank"
+fi
+
 if [ -n "$ROOT" ]; then
-	umount /newroot
-	growroot "$ROOT"
-	echo "Used ${name} for root filesystem"
+	if [ "${ROOT%[0-9]}" != "${ROOT}" ]; then
+		echo "Growing root partition $ROOT"
+		umount /newroot
+		# only bother with growroot if root is a partition (sda1, not sda)
+		growroot "$ROOT"
+		mount -o ro "$ROOT" "/newroot" || {
+			echo "uh-oh, $ROOT was there, but not after growroot" 1>&2
+			/bin/sh
+		}
+	fi
 	cd /newroot
-	mount -o ro "$ROOT" "/newroot" || {
-		echo "uh-oh, $ROOT was there, but not now" 1>&2
-		/bin/sh
-	}
 	umount /dev
 	umount /proc
 	echo "=== initramfs loading root from $ROOT ==="
