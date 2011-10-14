@@ -59,7 +59,7 @@ getopt_out=$(getopt --name "${0##*/}" \
 
 topdir=$(cd "${0%/*}/.." && pwd)
 size=${DEF_SIZE}
-FS_LABEL="mc-rootfs"
+FS_LABEL="cirros-rootfs"
 fs_type="ext3"
 
 while [ $# -ne 0 ]; do
@@ -103,6 +103,7 @@ out_diskimg="${out_d}/disk.img"
 out_kernel="${out_d}/kernel"
 out_initramfs="${out_d}/initramfs"
 out_diskimg="${out_d}/disk.img"
+out_blankimg="${out_d}/blank.img"
 inter_d="$out_d/intermediate"
 
 mp="${TEMP_D}/mnt"
@@ -138,8 +139,11 @@ debug 1 "creating filesystem in ${out_partimg}"
 truncate "--size=${size}" "${out_partimg}" ||
 	fail "failed to create ${out_partimg} of size ${size}"
 
-out=$("mkfs.${fs_type}" -F "${out_partimg}" -L "${fs_label}" 2>&1) ||
+out=$("mkfs.${fs_type}" -F "${out_partimg}" -L "${FS_LABEL}" 2>&1) ||
 	fail "failed to make filesystem of type ${fs_type}: ${out}" 
+
+cp "$out_partimg" "$out_blankimg" ||
+	fail "failed to to copy blank partition image"
 
 debug 1 "preparing kernel overlay"
 # creating kernel tarball
@@ -286,5 +290,6 @@ echo "wrote ${out_partimg}"
 echo "wrote ${out_diskimg}"
 echo "wrote ${out_kernel}"
 echo "wrote ${out_initramfs}"
+echo "wrote ${out_blankimg}"
 
 exit 0
