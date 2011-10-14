@@ -1,0 +1,17 @@
+#!/bin/sh
+# vi: ts=4 noexpandtab
+# load modules
+
+LOGO=/usr/share/cirros/logo
+
+case "$1" in
+	start)
+		[ ! -f "$LOGO" ] || cat "$LOGO"
+		;;
+	stop|restart|reload) : ;;
+  *)
+	echo $"Usage: $0 {start}"
+	exit 1
+esac
+
+exit $?
