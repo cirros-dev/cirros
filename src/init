@@ -39,9 +39,13 @@ if [ -n "$ROOT" ]; then
 	umount /newroot
 	growroot "$ROOT"
 	echo "Used ${name} for root filesystem"
+	cd /newroot
+	mount -o ro "$ROOT" "/newroot" || {
+		echo "uh-oh, $ROOT was there, but not now" 1>&2
+		/bin/sh
+	}
 	umount /dev
 	umount /proc
-	cd /newroot
 	echo "=== initramfs loading root from $ROOT ==="
 	exec switch_root -c /dev/console /newroot /sbin/init "$@"
 else
