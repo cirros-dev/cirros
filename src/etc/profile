@@ -6,7 +6,6 @@ ENV=$HOME/.shrc; export ENV
 
 # If running interactively, then:
 if [ "$PS1" ]; then
-	echo "interactive"
 	if [ "`id -u`" -eq 0 ]; then
 		export PS1='# '
 	else
