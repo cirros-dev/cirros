@@ -13,12 +13,12 @@ To use it, you would do something like:
    $ make ARCH=i386 OUT_D=$PWD/output/i386
 
    This will do a full buildroot build, which will take a while. The output
-   That mini-cloudimg is interested in is output/i386/rootfs.tar.
+   that CirrOS is interested in is output/i386/rootfs.tar.
    That file is the full buildroot filesystem, and is used as input for
    subsequent steps here.
 
  * Download a kernel to use.
-   mini-cloudimg expects the kernel in deb format.  It is built using the '-virtual'
+   CirrOS expects the kernel in deb format.  It is built using the '-virtual'
    ubuntu kernels as a starting point.
 
    $ ARCH=i386
@@ -30,5 +30,6 @@ To use it, you would do something like:
    $ sudo ./bin/bundle -v output/$ARCH/rootfs.tar "$kernel_deb" output/$ARCH/images
 
  * Then, test using the images
-   $ kvm -drive file=disk.img,if=virtio -nographic
-   $ kvm -kernel kernel -initrd initrd -drive file=blank.img,if=virtio -nographic
+   $ kvm -drive file=disk.img,if=virtio -curses
+   $ kvm file=blank.img,if=virtio -curses \
+      -kernel kernel -initrd initrd -drive -append "debug-initrd"
