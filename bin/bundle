@@ -152,8 +152,14 @@ dpkg -x "${kpkg_in}" "${kernel_d}" &&
 	( cd "${kernel_d}" && find * -type f ) > "${kern_list_full}" ||
 	fail "failed to extract kernel to ${kernel_d}"
 
-kver=$( cd "${kernel_d}/lib/modules" && for x in 2*; do v="${x}"; done ;
-	[ -d "${v}" ] || exit 1; echo "${v}" ) ||
+kver=""
+for x in "$kernel_d/lib/modules"/*; do
+	[ -d "$x/kernel" ] || continue
+	[ -z "$kver" ] ||
+		fail "2 or more things looked like kernels in lib/modules of $kpkg_in"
+	kver="${x##*/}"
+done
+[ -n "$kver" ] ||
 	fail "failed to find kernel version. no lib/modules/* ?"
 
 depmod -a --basedir "${kernel_d}" "${kver}" ||
