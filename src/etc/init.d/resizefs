@@ -5,6 +5,7 @@
 case "$1" in
 	start)
 		lxc-is-container && exit 0
+		[ -e /dev/root ] || exit 0
 		. /usr/share/cloud/functions
 		[ "${RESIZE_FS:-0}" = "0" ] && exit 0
 		marked once resizefs && exit 0
