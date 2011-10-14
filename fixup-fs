@@ -3,7 +3,7 @@
 rootd=${1}
 [ -n "${rootd}" -a -d "${rootd}" ] || exit 1
 
-mv "$rootd/home/default" "$rootd/home/cirros"
+rm -Rf "$rootd/home/default"
 
 # no need for visudo
 rm -f "$rootd/usr/sbin/visudo"

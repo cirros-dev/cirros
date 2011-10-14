@@ -1,0 +1,19 @@
+# vi: ts=4 noexpandtab syntax=sh
+
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+ENV=$HOME/.shrc; export ENV
+
+# If running interactively, then:
+if [ "$PS1" ]; then
+	echo "interactive"
+	if [ "`id -u`" -eq 0 ]; then
+		export PS1='# '
+	else
+		export PS1='$ '
+	fi
+	export USER=`id -un`
+	export LOGNAME=$USER
+	export HOSTNAME=`/bin/hostname`
+	export EDITOR='/bin/vi'
+fi;
