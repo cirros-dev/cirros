@@ -6,7 +6,7 @@ TEMP_D=""
 UMOUNT=""
 DEF_SIZE=24M
 DEBUG=0
-DEF_MODULES="acpiphp e1000 ne2k-pci 8139cp pcnet32 mii ip_tables"
+DEF_MODULES="acpiphp e1000 ne2k-pci 8139cp pcnet32 ip_tables"
 
 error() { echo "$@" 1>&2; }
 debug() {
