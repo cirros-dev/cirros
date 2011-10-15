@@ -1,0 +1,81 @@
+#!/bin/sh
+# vi: ts=4 noexpandtab
+
+# upon return, the following globals are set (KC=Kernel Commandline)
+# KC_CONSOLES : full path (including /dev) to all console= entries that exist
+# KC_CONSOLE : the last entry on the kernel command line
+# KC_PREF_CONSOLE : the last existing entry on kernel command line
+# KC_ROOT : root= variable
+# KC_DEBUG_INITRAMFS : set to '1' if debug-initramfs is on commandline
+# KC_VERBOSE: set to '1' if 'verbose' on commandline
+parse_cmdline() {
+	# expects that /dev is mounted/populated
+	KC_VERBOSE=0
+	local cmdline="$1" tok="" val="" key="" consoles=""
+	local last_con="" pref_con=""
+	is_lxc && return 0
+	KC_CONSOLE=/dev/tty0
+	set -f
+	[ $# -eq 0 ] && read cmdline < /proc/cmdline
+	for tok in $cmdline; do
+		val=${tok#*=}
+		key=${tok%%=*}
+		case $key in
+			console)
+				val="/dev/${val#/dev}"
+				last_con="$val"
+				[ -e "$val" ] && { echo "" > "$val"; } 2>/dev/null || continue
+				consoles="$consoles $val"
+				pref_con="$val"
+				KC_CONSOLE="$val"
+				;;
+			root) KC_ROOT="$val";;
+			debug-initramfs) KC_DEBUG_INITRAMFS=1;;
+			verbose) KC_VERBOSE=1;;
+		esac
+	done
+
+	# set KC_PREF_CONSOLE to the last writable console
+	# if that is the same as the last
+	[ "$pref_con" = "$last_con" ] && pref_con=""
+	KC_PREF_CONSOLE="$pref_con"
+	KC_CONSOLES="${consoles# }"
+
+	set +f
+	return
+}
+
+idebug() {
+	[ "$KC_VERBOSE" = "0" ] && return
+	echo "debug:" "$@"
+}
+iinfo() {
+	[ "$KC_QUIET" = "1" ] && return
+	echo "info:" "$@"
+}
+failure() {
+	echo "FATAL: ====" "$@" "===="
+	echo "Executing /bin/sh. maybe you can help"
+	exec /bin/sh
+}
+
+is_mounted() {
+	awk '($3 == fs || fs == "") && ( $2 == mp || mp == "") && \
+		( $1 == dev || dev == "" ) { e=0; };  END { exit(e); }' \
+		e=1 "fs=$1" "dev=$2" "mp=$3" /proc/self/mounts
+}
+
+mount_once() {
+	local fs="$1" dev="$2" mp="$3"
+	is_mounted "$fs" "$dev" "$mp" && return
+	shift 3
+	mount -t "$fs" "$dev" "$mp" "$@"
+}
+
+is_lxc() {
+	# lxc tools export 'container', 
+	# libvirt exports LIBVIRT_LXC_NAME and LIBVIRT_LXC_UUID
+	[ "$0" = "/init" ] && return 1 # lxc wont use /init (not a ramdisk)
+	[ -n "$container" -o -n "$LIBVIRT_LXC_UUID" -o -n "$LIBVIRT_LXC_NAME" ]
+}
+is_not_lxc() { ! is_lxc; }

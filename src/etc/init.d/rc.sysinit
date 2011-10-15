@@ -1,22 +1,9 @@
 #!/bin/sh
 # vi: ts=4 noexpandtab
 
+. /lib/cirros/initfuncs
+
 # functions to use
-mount_nt() {
-	local fs=$1 dev=$2 mp=$3 out=""
-	[ -e /proc/self/mounts ] &&
-		out=$(awk '$2 == mp { print $0; exit(0); }' mp="$mp" /proc/self/mounts) &&
-		[ -n "${out}" ] && return 0
-	mount -n -t "$fs" "$dev" "$mp"
-}
-
-is_lxc() {
-	# lxc tools export 'container', 
-	# libvirt exports LIBVIRT_LXC_NAME and LIBVIRT_LXC_UUID
-	[ -n "$container" -o -n "$LIBVIRT_LXC_UUID" -o -n "$LIBVIRT_LXC_NAME" ]
-}
-is_not_lxc() { ! is_lxc; }
-
 lxc_netdown() {
 	local header dev_colon bytes packets other dev
 	{
@@ -52,13 +39,14 @@ warn() { echo "WARN:" "$@"; }
 
 ### begin init ###
 
-mount_nt proc proc /proc || fail "failed mount /proc!"
-mount_nt sysfs sysfs /sys || fail "failed mount /sys!"
-
+mount -n -t proc /proc /proc || fail "failed mount /proc"
 mount -o remount,rw / || fail "failed mount / rw"
+sh
+
+mount_once sysfs sysfs /sys -n || fail "failed mount /sys!"
 
 if ! is_lxc; then
-	mount -t devtmpfs /dev /dev || fail "failed mount /dev"
+	mount_once devtmpfs /dev /dev || fail "failed mount /dev"
 fi
 
 mkdir -p /dev/pts /dev/shm

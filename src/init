@@ -4,15 +4,28 @@
 # This is the initramfs init script
 ROOTFS_LABEL="cirros-rootfs"
 
+. /lib/cirros/initfuncs
+
 mkdir -p /proc /newroot /dev /tmp
+
 mount -t devtmpfs /dev /dev
 mount -t proc /proc /proc
 
 echo "6 4 1 7" >/proc/sys/kernel/printk
-echo "=== loading modules ==="
+
+parse_cmdline
+
+for x in $KC_CONSOLES; do
+	[ "$x" = "$KC_CONSOLE" ] ||
+		echo "further output written to $KC_CONSOLE" > "$x";
+done
+if [ -n "$KC_PREF_CONSOLE" ]; then
+	exec >"$KC_PREF_CONSOLE" 2>&1 <"$KC_PREF_CONSOLE"
+fi
+
+idebug "loading modules"
 /etc/init.d/load-modules start
 
-debug=0
 ROOT=""
 MOUNTED=""
 
@@ -24,20 +37,14 @@ while read maj min blk name other; do
 		[ -x /newroot/sbin/init ] && ROOT="/dev/$name" && break
 	[ ${umount} -eq 0 ] || umount /newroot
 done < /proc/partitions
-read cmdline < /proc/cmdline
-for arg in $cmdline; do
-	case "$arg" in
-		debug-initrd) debug=1;;
-	esac
-done
 
-if [ $debug -eq 1 ]; then
+if [ "$KC_DEBUG" = "1" ]; then
 	echo "dropping into initramfs debug shell"
 	/bin/sh
 fi
 
 if [ -z "$ROOT" ] && blank=$(blkid -L $ROOTFS_LABEL) && [ -e "$blank" ]; then
-	echo "=== copying initramfs to $blank ==="
+	idebug "copying initramfs to $blank"
 	items=""
 	for x in /*; do
 		case "$x" in
@@ -54,21 +61,20 @@ if [ -z "$ROOT" ] && blank=$(blkid -L $ROOTFS_LABEL) && [ -e "$blank" ]; then
 fi
 
 if [ -n "$ROOT" ]; then
-	if [ "${ROOT%[0-9]}" != "${ROOT}" ]; then
-		echo "Growing root partition $ROOT"
-		umount /newroot
+	if [ "${ROOT%[0-9]}" != "${ROOT}" -a -e "${ROOT%[0-9]}" ]; then
 		# only bother with growroot if root is a partition (sda1, not sda)
+		# and there exists a /dev/sda (xen will give xvda1 without xvda)
+		idebug "Growing root partition $ROOT"
+		umount /newroot
 		growroot "$ROOT"
-		mount -o ro "$ROOT" "/newroot" || {
-			echo "uh-oh, $ROOT was there, but not after growroot" 1>&2
-			/bin/sh
-		}
+		mount -o ro "$ROOT" "/newroot" ||
+			failure "uh-oh, $ROOT was there, but not after growroot" 1>&2
 	fi
 	cd /newroot
-	umount /dev
+	mount -o move /dev ./dev
 	umount /proc
-	echo "=== initramfs loading root from $ROOT ==="
-	exec switch_root -c /dev/console /newroot /sbin/init "$@"
+	iinfo "initramfs loading root from $ROOT"
+	exec switch_root /newroot /sbin/init "$@"
 else
 	# here, no root disk was found, but we'll be nice and mount up
 	# the mountable filesystems that we found
@@ -85,9 +91,7 @@ else
 		[ ${umount} -eq 0 ] || umount /newroot
 	done < /proc/partitions
 	umount /proc
-	umount /dev
-	echo "=== initramfs did not find root, running as ramdisk ==="
+	iinfo "initramfs did not find root, running as ramdisk"
 	exec /sbin/init "$@"
 fi
-echo "badness occurred in ramdisk"
-exec /bin/sh
+failure "badness occurred in ramdisk"
