@@ -41,7 +41,6 @@ warn() { echo "WARN:" "$@"; }
 
 mount -n -t proc /proc /proc || fail "failed mount /proc"
 mount -o remount,rw / || fail "failed mount / rw"
-sh
 
 mount_once sysfs sysfs /sys -n || fail "failed mount /sys!"
 
