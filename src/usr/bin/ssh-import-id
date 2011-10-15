@@ -1,5 +1,13 @@
 #!/bin/sh
 
+if [ "${FORCE:-0}" == "0" ]; then
+   cat 1>&2 <<EOF
+Sorry. ssh-import-id needs https support and our wget does not have it.
+don't believe me? try with: FORCE=1 ${0##*/} user
+EOF
+exit 1
+fi
+
 cd
 umask 066
 fail() { echo "$@" 1>&2; exit 1; }
