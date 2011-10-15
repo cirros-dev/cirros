@@ -44,7 +44,7 @@ if [ "$KC_DEBUG" = "1" ]; then
 fi
 
 if [ -z "$ROOT" ] && blank=$(blkid -L $ROOTFS_LABEL) && [ -e "$blank" ]; then
-	idebug "copying initramfs to $blank"
+	iinfo "copying initramfs to $blank"
 	items=""
 	for x in /*; do
 		case "$x" in
