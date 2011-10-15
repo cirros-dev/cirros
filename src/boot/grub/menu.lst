@@ -1,0 +1,10 @@
+default         0
+timeout         0
+hiddenmenu
+
+title     Linux Kernel
+root      (hd0)
+# FS_LABEL
+kernel    /vmlinuz LABEL=cirros-rootfs ro console=tty0 console=ttyS0 console=hvc0
+initrd    /initrd.img
+EOF

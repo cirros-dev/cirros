@@ -36,20 +36,6 @@ xrsync() {
 	rsync --archive --xattrs --hard-links --acls --sparse "$@"
 }
 
-write_grub_menu_lst() {
-	local initrd="$1"
-	cat <<EOF
-default         0
-timeout         0
-hiddenmenu
-
-title     Linux Kernel
-root      (hd0,0)
-kernel    /vmlinuz LABEL=$FS_LABEL ro console=ttyS0
-initrd    /initrd.img
-EOF
-}
-
 short_opts="hs:v"
 long_opts="initrd-busybox:,help,size:,verbose"
 getopt_out=$(getopt --name "${0##*/}" \
@@ -224,10 +210,6 @@ tar -C "$stage_d" -xpf - < "$kernel_tar" ||
 tar -C "$stage_d" -xpf - < "$xgrubd/bootgrub.tar" ||
 	fail "failed to extract bootgrub"
 
-mkdir -p "${stage_d}/boot/grub" &&
-	write_grub_menu_lst "${out_initramfs}" > "${stage_d}/boot/grub/menu.lst" ||
-	fail "failed to write menu.lst"
-
 depmod -a --basedir "$stage_d" "${kver}" ||
 	fail "failed to run depmod for kver ${kver} in output"
 
@@ -279,20 +261,22 @@ cp "${kernel_d}/${vmlinuz}" "${out_kernel}" ||
 { [ -z "${out_initramfs}" ] || cp "${initramfs}" "${out_initramfs}"; }  ||
 	fail "failed to copy initramfs to ${out_initramfs}"
 
-debug 1 "creating disk image"
-out=$(PATH=$xgrubd:$PATH part2disk --grub1 "$out_partimg" "$out_diskimg.raw" 2>&1) ||
-	fail "failed to create disk image: $out"
-qemu-img convert -O qcow2 -c "$out_diskimg.raw" "$out_diskimg" ||
-	fail "failed to convert disk image"
-rm -f "$out_diskimg.raw"
-
 debug 1 "fixing grub entry in partimg"
-mount -o loop "$out_partimg" "$mp" && UMOUNT="$mp" ||
-	fail "failed to mount $out_partimg"
-sed -i 's/(hd0,0)/(hd0)/' "$mp/boot/grub/menu.lst" ||
+tmp_part="$TEMP_D/part.img.disk"
+cp "$out_partimg" "$tmp_part" &&
+	mount -o loop "$tmp_part" "$mp" && UMOUNT="$mp" ||
+	fail "failed to mount $tmp_part"
+sed -i 's/(hd0)/(hd0,0)/' "$mp/boot/grub/menu.lst" ||
 	fail "failed to edit /boot/grub/menu.lst in image"
 umount "$mp" && UMOUNT="" ||
 	fail "failed to unmount partimg"
+
+debug 1 "creating disk image"
+out=$(PATH=$xgrubd:$PATH part2disk --grub1 "$tmp_part" "$out_diskimg.raw" 2>&1) ||
+	fail "failed to create disk image: $out"
+qemu-img convert -O qcow2 -c "$out_diskimg.raw" "$out_diskimg" ||
+	fail "failed to convert disk image"
+rm -f "$out_diskimg.raw" "$tmp_part"
 
 if [ -n "${SUDO_USER}" ]; then
 	u=${SUDO_USER}
