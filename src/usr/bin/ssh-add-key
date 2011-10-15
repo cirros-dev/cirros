@@ -1,0 +1,62 @@
+#!/bin/sh
+
+error() { echo "$@" 1>&2; }
+fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
+
+Usage() {
+	cat <<EOF
+Usage: ${0##*/} [ options ] key
+
+   add the key to .ssh/authorized_keys
+   give '-' to read keys from stdin
+
+   options:
+      -p | --prefix STRING  prefix key with STRING
+EOF
+}
+
+bad_Usage() { Usage 1>&2; [ $# -eq 0 ] || error "$@"; exit 1; }
+
+short_opts="hpu"
+long_opts="help,prefix:,user:"
+getopt_out=$(getopt --name "${0##*/}" \
+	--options "${short_opts}" --long "${long_opts}" -- "$@") &&
+	eval set -- "${getopt_out}" ||
+	bad_Usage
+
+user=""
+prefix=""
+key=""
+
+while [ $# -ne 0 ]; do
+	cur=${1}; next=${2};
+	case "$cur" in
+		-h|--help) Usage ; exit 0;;
+		-p|--prefix) prefix="$next"; shift;;
+		--) shift; break;;
+	esac
+	shift;
+done
+
+[ $# -ge 1 ] || bad_Usage "must provide keys"
+
+cd ~/ || fail "failed to cd ~"
+mkdir -p -m 0755 .ssh || fail "failed to make .ssh"
+umask 066
+: >> .ssh/authorized_keys ||
+	fail "can't write to ~/.ssh/authorized_keys"
+
+{
+	if [ "$1" == "-" ]; then
+		while read key; do
+			echo "${prefix:+${prefix} }$key"
+		done
+	else
+		for key in "$@"; do
+			echo "${prefix:+${prefix} }$key"
+		done
+	fi
+} >> .ssh/authorized_keys
+chmod 600 .ssh/authorized_keys
+
+# vi: ts=4 noexpandtab
