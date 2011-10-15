@@ -39,10 +39,13 @@ warn() { echo "WARN:" "$@"; }
 
 ### begin init ###
 
-mount -n -t proc /proc /proc || fail "failed mount /proc"
+if [ ! -d /proc/1 ]; then
+	mount -n -t proc /proc /proc || fail "failed mount /proc"
+fi
 mount -o remount,rw / || fail "failed mount / rw"
 
-mount_once sysfs sysfs /sys -n || fail "failed mount /sys!"
+is_mounted sysfs "" /sys ||
+	mount -t sysfs sysfs /sys || fail "failed mount /sys!"
 
 if ! is_lxc; then
 	mount_once devtmpfs /dev /dev || fail "failed mount /dev"
