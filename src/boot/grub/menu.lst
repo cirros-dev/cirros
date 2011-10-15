@@ -3,6 +3,8 @@ timeout         0
 hiddenmenu
 
 title     Linux Kernel
+# Note, the root entry will be hd0,0 in disk image, but hd0 in partition
+# it is changed on disk image creation.
 root      (hd0)
 # FS_LABEL
 kernel    /vmlinuz LABEL=cirros-rootfs ro console=tty0 console=ttyS0 console=hvc0
