@@ -46,28 +46,17 @@ start() {
 		msg "failed to read iid from metadata. tried ${max}"; return 1;
 	fi
 
-	marked ${iid} &&
+	marked "$iid" import-keys &&
 		{ msg "previously ran for ${iid}"; return 0; }
-	mark ${iid}
 
-	mkdir -p /root/.ssh
-	chmod 700 /root/.ssh
-
-	mdget public-keys/ "${TMPF}"
-	echo >> "${TMPF}" # while loop will fail if no trailing newline
-	keys=""
-	while read line; do
-		keys="${keys} ${line}"
-	done < "${TMPF}"
-	keys=${keys# }
-	# keys is list of [0-9]=name
-	if [ -n "${keys}" ]; then
-		msg "cloudinit: getting ssh keys: [${keys}]"
-		for toks in ${keys}; do
-			n=${toks%%=*}
-			mdget public-keys/${n}/openssh-key - >> /root/.ssh/authorized_keys
-		done
+    local prefix="command=\"echo Please login as \\'cirros\\' user, not as root; echo; sleep 10\""
+	if ec2metadata --public-keys > "$TMPF"; then
+		su -c "ssh-add-key -" cirros < "$TMPF"
+		ssh-add-key --prefix "$prefix" - < "$TMPF"
 	fi
+
+	mark "$iid" import-keys
+
 	return 0
 }
 
