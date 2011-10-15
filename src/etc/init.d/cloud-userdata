@@ -14,10 +14,10 @@ start() {
 	[ -n "${iid}" -a "${iid#i-}" != "${iid}" ] ||
 		{ echo "failed to read instance-id, found ${iid}"; return 1; }
 
-	marked ${iid} &&
+	marked "$iid" "user-data" &&
 		{ msg "user data previously read"; return 0; }
 
-	mark ${iid}
+	mark "$iid" user-data
 
 	wget -q -O - "${UDURL}" > "${udf}" ||
 		{ msg "failed to read user data url: ${UDURL}"; return 1; }
