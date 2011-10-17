@@ -62,6 +62,11 @@ $(SKEL_D)/.dir:
 br-menuconfig: $(BR_OUT_D)/.config
 	$(BR_MAKE) $* menuconfig
 	cp $(BR_OUT_D)/.config $(CONF_D)/buildroot-$(ARCH).config
+
+br-busybox-menuconfig: $(BR_OUT_D)/busybox.config
+	$(BR_MAKE) $* busybox-menuconfig
+	cp $(BR_OUT_D)/build/busybox-1.18.5/.config $(CONF_D)/busybox.config
+
 br-%:
 	$(BR_MAKE) $*
 
