@@ -42,30 +42,34 @@ case "${out}" in
 		exit 0;;
 esac
 
+was_mounted=false
 while read src mp fstype opts o p; do
 	if [ "$src" = "$ROOT" ]; then
 		FS=$fstype;
 		OPTS=$opts;
 		MP=$mp
+		was_mounted=true
 	fi
 done < /proc/mounts
 
-umount "${ROOT}" ||
-	fail "failed to umount ${ROOT}";
+if was_mounted; then
+	umount "${ROOT}" || fail "failed to umount ${ROOT}";
+fi
 
 sfdisk -R "${rootdisk}" ||
 	msg "failed to re-read partition for ${rootdisk}"
 
-# this is taken from 'mountroot' function
-#   see /usr/share/initramfs-tools/scripts/local
-i=0
-while [ $i -lt 50 ]; do
-	mount -o "$OPTS" "$ROOT" "$MP" >/dev/null 2>&1 && exit 0
-	i=$(($i+1))
-	sleep .2
-done
-[ $i -eq 50 ] && fail "unable to remount, that is bad"
-
+if was_mounted; then
+	# this is taken from 'mountroot' function
+	#   see /usr/share/initramfs-tools/scripts/local
+	i=0
+	while [ $i -lt 50 ]; do
+		mount -o "$OPTS" "$ROOT" "$MP" >/dev/null 2>&1 && exit 0
+		i=$(($i+1))
+		sleep .2
+	done
+	[ $i -eq 50 ] && fail "unable to remount, that is bad"
+fi
 
 # write to /etc/grownroot-grown. most likely this wont work (readonly)
 { date --utc > "${rootmnt}/etc/growroot-grown" ; } >/dev/null 2>&1 || :
