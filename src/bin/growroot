@@ -52,14 +52,14 @@ while read src mp fstype opts o p; do
 	fi
 done < /proc/mounts
 
-if was_mounted; then
+if $was_mounted; then
 	umount "${ROOT}" || fail "failed to umount ${ROOT}";
 fi
 
 sfdisk -R "${rootdisk}" ||
 	msg "failed to re-read partition for ${rootdisk}"
 
-if was_mounted; then
+if $was_mounted; then
 	# this is taken from 'mountroot' function
 	#   see /usr/share/initramfs-tools/scripts/local
 	i=0
