@@ -23,6 +23,9 @@ if [ -n "$KC_PREF_CONSOLE" ]; then
 	exec >"$KC_PREF_CONSOLE" 2>&1 <"$KC_PREF_CONSOLE"
 fi
 
+read uptime cputime < /proc/uptime
+iinfo "initramfs: up at $uptime"
+
 idebug "loading modules"
 /etc/init.d/load-modules start
 

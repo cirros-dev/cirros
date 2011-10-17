@@ -42,6 +42,10 @@ warn() { echo "WARN:" "$@"; }
 if [ ! -d /proc/1 ]; then
 	mount -n -t proc /proc /proc || fail "failed mount /proc"
 fi
+
+read uptime cputime < /proc/uptime
+iinfo "$0: up at $uptime"
+
 mount -o remount,rw / || fail "failed mount / rw"
 
 is_mounted sysfs "" /sys ||
