@@ -4,9 +4,10 @@ function for debugging or developing cloud infrastructure.
 To use it, you would do something like:
 
  * download buildroot and setup environment
-   $ wget http://FIXME/buildroot-version.tar.gz
-   $ tar -xvf buildroot-version.tar.gz
-   $ ln -snf buildroot-version buildroot/
+   $ br_ver="2011.08"
+   $ wget http://buildroot.uclibc.org/downloads/buildroot-${br_ver}.tar.gz
+   $ tar -xvf buildroot-${br_ver}.tar.gz
+   $ ln -snf buildroot-${br_ver} buildroot/
    $ mkdir output download
 
  * Build buildroot for a given arch
@@ -22,8 +23,8 @@ To use it, you would do something like:
    kernel is used as a starting point.
 
    $ ARCH=i386
-   $ url=http://FIXME/linux-image-2.6.38-8-virtual_2.6.38-8.42_$ARCH.deb
    $ url="http://launchpad.net/ubuntu/+archive/primary/+files/linux-image-3.0.0-12-virtual_3.0.0-12.20_$ARCH.deb"
+   $ [ "$ARCH" = "arm" ] && url=https://launchpad.net/ubuntu/+archive/primary/+files/linux-image-3.0.0-12-omap_3.0.0-12.20_armel.deb
    $ wget "$url" -O "download/${url##*/}"
    $ kernel_deb="download/${url##*/}"
 
