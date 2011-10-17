@@ -23,7 +23,8 @@ To use it, you would do something like:
    kernel is used as a starting point.
 
    $ ARCH=i386
-   $ url="http://launchpad.net/ubuntu/+archive/primary/+files/linux-image-3.0.0-12-virtual_3.0.0-12.20_$ARCH.deb"
+   $ xarch=$ARCH; [ "$xarch" = "x86_64" ] && xarch="amd64"
+   $ url="http://launchpad.net/ubuntu/+archive/primary/+files/linux-image-3.0.0-12-virtual_3.0.0-12.20_$xarch.deb"
    $ [ "$ARCH" = "arm" ] && url=https://launchpad.net/ubuntu/+archive/primary/+files/linux-image-3.0.0-12-omap_3.0.0-12.20_armel.deb
    $ wget "$url" -O "download/${url##*/}"
    $ kernel_deb="download/${url##*/}"
