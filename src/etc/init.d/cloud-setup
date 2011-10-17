@@ -49,9 +49,9 @@ start() {
 	marked "$iid" import-keys &&
 		{ msg "previously ran for ${iid}"; return 0; }
 
-    local prefix="command=\"echo Please login as \\'cirros\\' user, not as root; echo; sleep 10\""
+	local prefix="command=\"echo Please login as \\'cirros\\' user, not as root; echo; sleep 10\""
 	if ec2metadata --public-keys > "$TMPF"; then
-		su -c "ssh-add-key -" cirros < "$TMPF"
+		su -c "ssh-add-key --replace -" cirros < "$TMPF"
 		ssh-add-key --prefix "$prefix" - < "$TMPF"
 	fi
 

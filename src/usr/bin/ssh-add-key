@@ -12,13 +12,21 @@ Usage: ${0##*/} [ options ] key
 
    options:
       -p | --prefix STRING  prefix key with STRING
+      -r | --replace        replace any existing entries
 EOF
+}
+
+removekey() {
+	local file="$1" keyline="$2"
+	shift;
+	set -- $keyline
+	sed -i "\\|$2|d" "$file" || return
 }
 
 bad_Usage() { Usage 1>&2; [ $# -eq 0 ] || error "$@"; exit 1; }
 
-short_opts="hpu"
-long_opts="help,prefix:,user:"
+short_opts="hpru"
+long_opts="help,prefix:,replace,user:"
 getopt_out=$(getopt --name "${0##*/}" \
 	--options "${short_opts}" --long "${long_opts}" -- "$@") &&
 	eval set -- "${getopt_out}" ||
@@ -27,12 +35,14 @@ getopt_out=$(getopt --name "${0##*/}" \
 user=""
 prefix=""
 key=""
+replace=false
 
 while [ $# -ne 0 ]; do
 	cur=${1}; next=${2};
 	case "$cur" in
 		-h|--help) Usage ; exit 0;;
 		-p|--prefix) prefix="$next"; shift;;
+		-r|--replace) replace=true;;
 		--) shift; break;;
 	esac
 	shift;
@@ -46,16 +56,28 @@ umask 066
 : >> .ssh/authorized_keys ||
 	fail "can't write to ~/.ssh/authorized_keys"
 
+if [ "$1" == "-" ]; then
+	keys=""
+	while read key; do
+		keys="${keys}|${key}"
+	done
+	keys=${keys#|};
+	oifs="$IFS"
+	IFS="|"
+	set -- $keys
+	IFS="$oifs"
+fi
+
+if $replace; then
+	for key in "$@"; do
+		removekey ".ssh/authorized_keys" "$key" || fail "failed to remove: $key"
+	done
+fi
+
 {
-	if [ "$1" == "-" ]; then
-		while read key; do
-			echo "${prefix:+${prefix} }$key"
-		done
-	else
 		for key in "$@"; do
 			echo "${prefix:+${prefix} }$key"
 		done
-	fi
 } >> .ssh/authorized_keys
 chmod 600 .ssh/authorized_keys
 
