@@ -22,3 +22,7 @@ links="lib/pcmcia pcmcia lock cache log spool pcmcia"
 rm $rootd/etc/resolv.conf && 
    ln -sf ../run/resolv.conf "$rootd/etc/resolv.conf" ||
    fail "failed to create resolv.conf symlink"
+
+if [ -L "$rootd/sbin/blkid" -a -x "$rootd/usr/sbin/blkid" ]; then
+   rm -f "$rootd/usr/sbin/blkid"
+fi
