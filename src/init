@@ -46,7 +46,8 @@ if [ "$KC_DEBUG" = "1" ]; then
 	/bin/sh
 fi
 
-if [ -z "$ROOT" ] && blank=$(blkid -L $ROOTFS_LABEL) && [ -e "$blank" ]; then
+if [ -z "$ROOT" ] && blank=$(blkid -l -o device -t LABEL=$ROOTFS_LABEL) &&
+   [ -e "$blank" ]; then
 	iinfo "copying initramfs to $blank"
 	items=""
 	for x in /*; do
