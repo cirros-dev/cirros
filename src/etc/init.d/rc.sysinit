@@ -55,9 +55,12 @@ if ! is_lxc; then
 	mount_once devtmpfs /dev /dev || fail "failed mount /dev"
 fi
 
-mkdir -p /dev/pts /dev/shm
+mkdir -p /dev/pts /dev/shm /run
 
 mount -a
+
+mkdir /run/var.tmp
+
 hostname -F /etc/hostname
 
 f="/bin/lxc-is-container" && write_lxc_is_container > "$f" && chmod 755 "$f"
