@@ -1,0 +1,61 @@
+VER=0.2.9
+pre=cirros-$VER;
+
+out="$PWD/../out"
+mkdir -p $out
+
+for arch in i386 x86_64 arm; do echo 
+  "$(date): start $arch" >> $out/date.txt;
+  time make ARCH=$arch "OUT_D=$out/build/$arch" 2>&1 |
+     tee "$out/build-$arch.log";
+done;
+echo "$(date): finish" >> date.txt
+
+mkdir -p $out/stage/{i386,arm,x86_64}
+
+sudo ./bin/bundle -v $out/build/i386/rootfs.tar \
+  ./download/linux-image-3.0.0-12-virtual_3.0.0-12.20_i386.deb \
+  $out/stage/i386
+
+sudo ./bin/bundle -v $out/build/x86_64/rootfs.tar \
+  ./download/linux-image-3.0.0-12-virtual_3.0.0-12.20_amd64.deb \
+  $out/stage/x86_64
+
+sudo ./bin/bundle -v $out/build/arm/rootfs.tar \
+  ./download/linux-image-3.0.0-12-omap_3.0.0-12.20_armel.deb \
+  $out/stage/arm
+
+sudo chown -R $USER:$USER $out/stage
+
+mkdir -p $out/release
+
+( srcd=$PWD && tmpd=$(mktemp -d) && cd $tmpd &&
+  bzr branch "$srcd" -r tag:$VER cirros-$VER &&
+  tar cvzf - cirros-$VER ) > $out/release/cirros-$VER-source.tar.gz
+
+rm $out/stage/*/$pre*
+for arch in i386 x86_64 arm; do
+  p=$pre-$arch
+  ( cd "$out/stage/$arch" &&
+    ln kernel $p-vmlinuz && ln kernel $p-kernel &&
+    ln initramfs $p-initrd && ln initramfs $p-initramfs &&
+    ln part.img $p-rootfs.img &&
+    ln blank.img $p-blank.img &&
+    ln disk.img $p-disk.img &&
+    ln filesys.tar.gz $p-lxc.tar.gz &&
+    true
+  ); done
+
+for arch in i386 x86_64 arm; do
+  p=$pre-$arch
+  ( cd "$out/stage/$arch" &&
+    cp $p-kernel $p-initramfs $p-lxc.tar.gz $out/release/ &&
+    gzip -9 -c $p-rootfs.img > $out/release/$p-rootfs.img.gz ) &&
+  ( cd "$out/stage/$arch" &&
+    tar cvzf - $p-blank.img $p-vmlinuz $p-initrd ) > \
+    $out/release/$p-uec.tar.gz
+  [ "$arch" = "arm" ] ||
+     cp "$out/stage/$arch/$p-disk.img" "$out/release/$p-disk.img"
+done
+
+chmod 644 "$out/release/"*
