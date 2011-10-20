@@ -1,22 +1,43 @@
 #!/bin/sh
 
-if [ "${FORCE:-0}" == "0" ]; then
-   cat 1>&2 <<EOF
-Sorry. ssh-import-id needs https support and our wget does not have it.
-don't believe me? try with: FORCE=1 ${0##*/} user
-EOF
-exit 1
-fi
+# busybox's wget does not support https
+# as a result, I put a small web service up at 
+# http://cirros.brickies.net/keys that simply gets
+# the launchpad key and returns it.  Ie:
+#   http://cirros.brickies.net/keys/v1/smoser 
+# is the same as
+#   https://launchpad.net/~smoser/+sshkeys
 
+burl="http://cirros.brickies.net/keys/v1"
+
+Usage() {
+   cat <<EOF
+Usage: ${0##*/} user1 [ user2 [ ... ] ]
+   Import ssh keys for the user from http://launchpad.net
+
+   **** NOTE *****
+   This currently uses a service at ${burl}
+   rather than using https://launchpad.net . That is because
+   wget in busybox does not support https.  Be aware that that means
+   a.) $burl could do evil things
+   b.) someone could MIM you (as it is not http)
+EOF
+}
+[ $# -eq 0 ] && { Usage 1>&2; exit 1; }
+[ "$1" = "-h" -o "$1" == "--help" ] && { Usage; exit 0; }
 cd
 umask 066
 fail() { echo "$@" 1>&2; exit 1; }
 mkdir -m 755 -p .ssh  || { fail "failed to make .ssh dir" 1>&2; exit 1; }
 
 for u in "$@"; do
-   out=$(wget -O - "https://launchpad.net/~$u/+sshkeys") ||
-      fail "failed to get key for $u" 1>&2
-   printf "%s" "$out" >> ".ssh/authorized_keys" ||
+   out=$(wget -q -O - "$burl/$u") ||
+      fail "failed to get key for $u [$burl/$u]" 1>&2
+   # some keys come back with dos line end
+	out=$(echo "$out" | sed -e '/^$/d' -e '/^\r/d' \
+		   -e ':join /=[ ]/!{ N; s/[\n\r]//g ; b join }' \
+	       -e 's/[^a-zA-Z0-9@: .\/=+-]//g')
+   printf "%s\n" "$out" >> ".ssh/authorized_keys" ||
       fail "failed to write to .ssh/authorized_keys"
-   echo "authorized $u" 1>&2
+   echo "Successfully authorized [$u]"
 done
