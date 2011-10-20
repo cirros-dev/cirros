@@ -32,21 +32,24 @@ idebug "loading modules"
 ROOT=""
 MOUNTED=""
 
-while read maj min blk name other; do
-	[ -n "${maj}" -a "${maj}" != "major" ] || continue
-	umount=0
-	mount -o ro "/dev/${name}" "/newroot" >/dev/null 2>&1 &&
-		MOUNTED="$MOUNTED ${name}" && umount=1 &&
-		[ -x /newroot/sbin/init ] && ROOT="/dev/$name" && break
-	[ ${umount} -eq 0 ] || umount /newroot
-done < /proc/partitions
+if [ "$KC_RAMDISK_ROOT" != "1" ]; then
+	while read maj min blk name other; do
+		[ -n "${maj}" -a "${maj}" != "major" ] || continue
+		umount=0
+		mount -o ro "/dev/${name}" "/newroot" >/dev/null 2>&1 &&
+			MOUNTED="$MOUNTED ${name}" && umount=1 &&
+			[ -x /newroot/sbin/init ] && ROOT="/dev/$name" && break
+		[ ${umount} -eq 0 ] || umount /newroot
+	done < /proc/partitions
+fi
 
 if [ "$KC_DEBUG" = "1" ]; then
 	echo "dropping into initramfs debug shell"
 	/bin/sh
 fi
 
-if [ -z "$ROOT" ] && blank=$(blkid -l -o device -t LABEL=$ROOTFS_LABEL) &&
+if [ -z "$ROOT" -a "$KC_RAMDISK_ROOT" != "1" ] &&
+   blank=$(blkid -l -o device -t LABEL=$ROOTFS_LABEL) &&
    [ -e "$blank" ]; then
 	iinfo "copying initramfs to $blank"
 	items=""
@@ -95,7 +98,9 @@ else
 		[ ${umount} -eq 0 ] || umount /newroot
 	done < /proc/partitions
 	umount /proc
-	iinfo "initramfs did not find root, running as ramdisk"
+	[ "$KC_RAMDISK_ROOT" = "0" &&
+		iinfo "initramfs did not find root, running as ramdisk" ||
+		iinfo "running in ramdisk mode as requested"
 	exec /sbin/init "$@"
 fi
 failure "badness occurred in ramdisk"

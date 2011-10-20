@@ -8,9 +8,11 @@
 # KC_ROOT : root= variable
 # KC_DEBUG_INITRAMFS : set to '1' if debug-initramfs is on commandline
 # KC_VERBOSE: set to '1' if 'verbose' on commandline
+# KC_RAMDISK_ROOT: set to 1 if cmdline said not to mount a root (0 otherwise)
 parse_cmdline() {
 	# expects that /dev is mounted/populated
 	KC_VERBOSE=0
+	KC_RAMDISK_ROOT=0
 	local cmdline="$1" tok="" val="" key="" consoles=""
 	local last_con="" pref_con=""
 	is_lxc && return 0
@@ -29,11 +31,16 @@ parse_cmdline() {
 				pref_con="$val"
 				KC_CONSOLE="$val"
 				;;
+			rdroot) KC_RAMDISK_ROOT=1;;
 			root) KC_ROOT="$val";;
 			debug-initramfs) KC_DEBUG_INITRAMFS=1;;
 			verbose) KC_VERBOSE=1;;
 		esac
 	done
+
+	case "$KC_ROOT" in
+		[Nn][Oo][Nn][Ee]|ramdisk) KC_RAMDISK_ROOT=1;;
+	esac
 
 	# set KC_PREF_CONSOLE to the last writable console
 	# if that is the same as the last
