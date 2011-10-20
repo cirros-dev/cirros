@@ -90,6 +90,7 @@ out_kernel="${out_d}/kernel"
 out_initramfs="${out_d}/initramfs"
 out_diskimg="${out_d}/disk.img"
 out_blankimg="${out_d}/blank.img"
+out_filesys_lxc="${out_d}/filesys.tar.gz"
 inter_d="$out_d/intermediate"
 
 mp="${TEMP_D}/mnt"
@@ -205,6 +206,10 @@ tar -C "$stage_d" -xpf - < "$rootfs_in" ||
 	fail "failed to extract rootfs_tar"
 tar -C "$stage_d" -xpf - < "$overlay_tar" ||
 	fail "failed to extract overlay_tar"
+
+( cd "$stage_d" && tar -Scpzf - -- * ) > "$out_filesys_lxc" ||
+	fail "failed to create filesys tarball"
+
 tar -C "$stage_d" -xpf - < "$kernel_tar" ||
 	fail "failed to extract kernel_tar"
 tar -C "$stage_d" -xpf - < "$xgrubd/bootgrub.tar" ||
@@ -290,5 +295,6 @@ echo "wrote ${out_diskimg}"
 echo "wrote ${out_kernel}"
 echo "wrote ${out_initramfs}"
 echo "wrote ${out_blankimg}"
+echo "wrote ${out_filesys_lxc}"
 
 exit 0
