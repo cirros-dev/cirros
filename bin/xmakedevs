@@ -81,7 +81,7 @@ while read line; do
 			for f in $files; do
 				mkdir -p "${f%/*}" || fail "failed to make ${f%/*}";
 			done
-			if [ $count == "-" ]; then
+			if [ "$count" = "-" ]; then
 				$DEBUG mknod $files $type $major $minor
 			else
 				[ "$count" = "-" ] && count=1;
