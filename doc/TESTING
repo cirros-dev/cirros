@@ -1,0 +1,46 @@
+Before a release, the following tests should be done.
+
+Notes:
+ * Until a way to disable ec2 metadata search exists, we have to fake a
+   metadata server.
+
+- Prereqs for local boot EC2 Metadata test:
+  - download 'mdserv' at https://gist.github.com/1278651
+  - bring up interface for 169.254.169.254
+    sudo ifconfig eth0:0 up 169.254.169.254 netmask 255.255.255.255
+  - ./mdserv 169.254.169.254:80
+
+- qemu system boot
+  - test boot to from partition
+    qemu-system-$ARCH -kernel kernel -initrd initramfs -hda part.img -curses
+  - test boot to blank partition
+    qemu-system-$ARCH -kernel kernel -initrd initramfs -hda blank.img -curses
+  - test boot to initramfs partition
+    qemu-system-$ARCH -kernel kernel -initrd initramfs -hda part.img -append "root=noroot" -curses
+  - test boot from full disk image (not arm yet)
+    qemu-system-$ARCH -drive if=virtio,file=disk.img -curses
+
+- lxc system boot
+  - download lxc-libvirt-run from http://smoser.brickies.net/git/?p=tildabin.git;a=blob;f=lxc-libvirt-root
+  - sudo mkdir -p lxc/cirros-$ARCH
+  - zcat initramfs | ( cd lxc/cirros-$ARCH && sudo cpio -uid )
+  - if [ "$ARCH" == "arm" ]; then
+       sudo apt-get install -y
+       sudo cp /usr/bin/qemu-arm-static $ARCH/usr/bin
+    fi
+  - ./lxc-libvirt-root lxc/cirros-$ARCH
+
+- Openstack boot
+  - cloud-publish-tarball cirros-VERSION-ARCH-partimg.tar.gz
+  - cloud-publish-image --type image disk.img
+
+- Ec2 boot
+  - cloud-publish-tarball cirros-VERSION-ARCH-partimg.tar.gz
+    # us-east-1 aki-805ea7e9 amazon pv-grub-hd0_1.02-i386.gz
+    # us-east-1 aki-825ea7eb amazon pv-grub-hd0_1.02-x86_64.gz
+    aki=aki-805ea7e9
+    [ "$ARCH" = "x86_64" ] && aki=aki-825ea7eb
+    cloud-publish-tarball cirros-$VERSION-$ARCH-partimg.tar.gz \
+       --kernel $aki --ramdisk none $USER-bucket $ARCH
+
+  - TBD: EBS boot and register

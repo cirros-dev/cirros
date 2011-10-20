@@ -1,0 +1,18 @@
+For a release, the following files should be made available:
+ - cirros-VERSION-source.tar.gz
+   source tarball.
+ - cirros-VERSION-ARCH-partimg.tar.gz
+   uec style tarball, compatible with uec-publish-tarball
+   contains:
+     cirros-VERSION-ARCH-vmlinuz
+     cirros-VERSION-ARCH-initrd
+     cirros-VERSION-ARCH-partimg.img
+ - cirros-VERSION-ARCH-blank.tar.gz
+   uec style tarball, compatible with uec-publish-tarball
+   The blank.img is a mkfs'd disk image only, no contents.
+   It will demonstrate initramfs copies itself to root
+     cirros-VERSION-ARCH-vmlinuz
+     cirros-VERSION-ARCH-initrd
+     cirros-VERSION-ARCH-blank.img
+ - cirros-VERSION-ARCH-disk.img
+   full disk image, suitable for upload to openstack
