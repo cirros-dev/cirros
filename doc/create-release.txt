@@ -59,3 +59,12 @@ for arch in i386 x86_64 arm; do
 done
 
 chmod 644 "$out/release/"*
+
+( cd $out/release/ && md5sum $(ls * | grep -v .asc) > MD5SUMS ) 
+
+for x in "$out/release/"*; do
+   [ "${x%.asc}" = "$x" ] || continue
+   [ -e "$x.asc" ] && continue
+   gpg --armor --sign --detach-sig "$x"
+done
+

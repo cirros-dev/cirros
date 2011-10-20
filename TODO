@@ -1,0 +1,19 @@
+- consider moving to yocto or micro-core linux
+  - micro-core:
+    - eglibc based, yet tiny size
+    - packages made by others easily downloaded and used
+    - no arm arch, and no public build system, so how would you build arm?
+  - yocto:
+    - eglibc based
+    - could potentially use ubuntu debs or easily re-use binary packages
+- some sort of "build-release"
+  - that would do all the release build cleanly
+  - download files, build, create release output
+  - get-deps with config
+    - get-deps conf/foo.conf (default 'dev')
+      get-deps conf/0.3.conf
+    - downloads kernels and buildroot and checksums
+- automated testing on kvm and lxc
+- configdrive support (openstack) and support for reading data from ISO
+- add script for 'get-extra-modules'
+  that would download modules from launchpad
