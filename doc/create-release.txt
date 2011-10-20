@@ -31,6 +31,7 @@ mkdir -p $out/release
 
 ( srcd=$PWD && tmpd=$(mktemp -d) && cd $tmpd &&
   bzr branch "$srcd" -r tag:$VER cirros-$VER &&
+  rm -Rf cirros-$VER/.bzr &&
   tar cvzf - cirros-$VER ) > $out/release/cirros-$VER-source.tar.gz
 
 rm $out/stage/*/$pre*
