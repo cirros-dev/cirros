@@ -59,7 +59,7 @@ fi
 ## pretend you're runlevel 3
 for s in /etc/rc3.d/S*; do
 	[ -x "$s" ] || continue
-+	"$s" "start" 0<&- || warn "$s failed"
+	"$s" "start" 0<&- || warn "$s failed"
 done
 
 if is_lxc; then
