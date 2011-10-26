@@ -207,6 +207,11 @@ tar -C "$stage_d" -xpf - < "$rootfs_in" ||
 tar -C "$stage_d" -xpf - < "$overlay_tar" ||
 	fail "failed to extract overlay_tar"
 
+if [ -x "${fixup_fs}" ]; then
+	"${fixup_fs}" "${stage_d}" ||
+		fail "failed to fixup filesystem"
+fi
+
 ( cd "$stage_d" && tar -Scpzf - -- * ) > "$out_filesys_lxc" ||
 	fail "failed to create filesys tarball"
 
@@ -217,11 +222,6 @@ tar -C "$stage_d" -xpf - < "$xgrubd/bootgrub.tar" ||
 
 depmod -a --basedir "$stage_d" "${kver}" ||
 	fail "failed to run depmod for kver ${kver} in output"
-
-if [ -x "${fixup_fs}" ]; then
-	"${fixup_fs}" "${stage_d}" ||
-		fail "failed to fixup filesystem"
-fi
 
 debug 1 "creating initramfs"
 xrsync "$stage_d/" "$initramfs_d" ||
