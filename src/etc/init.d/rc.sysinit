@@ -3,21 +3,6 @@
 
 . /lib/cirros/initfuncs
 
-# functions to use
-lxc_netdown() {
-	local header dev_colon bytes packets other dev
-	{
-		read header; read header;
-		while read dev_colon bytes packets other; do
-			dev=${dev_colon%:}
-			[ "${dev#lo}" = "${dev}" ] || continue # skip 'lo' host interfaces
-			echo "==== taking down interface ${dev} ===="
-			ifconfig ${dev} down
-			sleep 1
-		done
-	} < /proc/net/dev
-}
-
 write_lxc_is_container() {
 	cat <<"EOF"
 #!/bin/sh
@@ -70,9 +55,6 @@ if ! is_lxc; then
 		[ -e "/dev/${d#/dev}" ] && ln -sf "${d#/dev/}" /dev/root && break
 	done
 fi
-
-#
-is_lxc && lxc_netdown
 
 ## pretend you're runlevel 3
 for s in /etc/rc3.d/S*; do
