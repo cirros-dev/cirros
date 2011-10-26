@@ -9,8 +9,12 @@
 /etc/shadow                             f 0600  0  0  -  - - - -
 /init                                   f 0755  0  0  -  - - - -
 /dev/console                            c 0600  0  0  5  1 - - -
+/dev/tty1                               c 0600  0  0  4  1 - - -
+/dev/tty2                               c 0600  0  0  4  2 - - -
 /dev/null                               c 0666  0  0  1  3 - - -
 /dev/ttyS0                              c 0664  0  0  4 64 - - -
+/dev/random                             b 0666  0  0  1  8 - - -
+/dev/urandom                            b 0666  0  0  1  9 - - -
 /home/cirros                            d 0755  1000 1000 - - - - -
 /home/cirros/.[a-z]*                    f 0755  1000 1000 - - - - -
 /root                                   d 0700  0  0  -  - - - -
