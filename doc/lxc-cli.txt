@@ -1,0 +1,30 @@
+To run with lxc-cli do the following.
+
+$ lxcdir=/var/lib/lxc
+$ name="cirros"
+$ arch="amd64"
+$ tarball="cirros-0.3.0-$arch-lxc.tar.gz"
+$ dir="$lxcdir/$name"
+$ sudo mkdir -p "$dir"
+$ cat <<EOF | sudo sh -c "cat >'$dir/config'"
+lxc.network.type=veth
+lxc.network.link=virbr0
+lxc.network.flags=up
+lxc.utsname=$name
+lxc.tty = 4
+lxc.pts = 1024
+lxc.rootfs = $dir/rootfs
+lxc.mount = $dir/fstab
+lxc.arch = $arch
+EOF
+
+$ cat <<EOF | sudo sh -c "cat > '$dir/fstab'"
+proc  $dir/rootfs/proc proc    nodev,noexec,nosuid 0 0
+sysfs $dir/rootfs/sys  sysfs   defaults  0 0
+EOF
+
+$ sudo rm -Rf "$dir/rootfs" && sudo mkdir $dir/rootfs && \
+  ( cd $dir && sudo tar -Sxvzf - ) < $tarball
+
+$ echo "IS_NOCLOUD=1" | sudo tee "$dir/rootfs/var/lib/cloud/config.local.sh"
+$ lxc -n "$name" start
