@@ -98,7 +98,7 @@ else
 		[ ${umount} -eq 0 ] || umount /newroot
 	done < /proc/partitions
 	umount /proc
-	[ "$KC_RAMDISK_ROOT" = "0" &&
+	[ "$KC_RAMDISK_ROOT" = "0" ] &&
 		iinfo "initramfs did not find root, running as ramdisk" ||
 		iinfo "running in ramdisk mode as requested"
 	exec /sbin/init "$@"
