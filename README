@@ -4,13 +4,13 @@ function for debugging or developing cloud infrastructure.
 To use it, you would do something like:
 
  * get some build dependencies:
-   $ sudo apt-get -y install bison flex texinfo build-essential
+   $ sudo apt-get -y install bison flex texinfo build-essential gettext
 
  * download buildroot and setup environment
    $ br_ver="2011.08"
    $ wget http://buildroot.uclibc.org/downloads/buildroot-${br_ver}.tar.gz
    $ tar -xvf buildroot-${br_ver}.tar.gz
-   $ ln -snf buildroot-${br_ver} buildroot/
+   $ ln -snf buildroot-${br_ver} buildroot
    $ mkdir output download
 
  * Build buildroot for a given arch
