@@ -13,11 +13,11 @@ To use it, you would do something like:
 
  * download buildroot and setup environment
    $ br_ver="2011.08"
-   $ wget http://buildroot.uclibc.org/downloads/buildroot-${br_ver}.tar.gz
-   $ tar -xvf buildroot-${br_ver}.tar.gz
-   $ ln -snf buildroot-${br_ver} buildroot
    $ mkdir -p ../download
    $ ln -snf ../download download
+   $ ( cd download && wget http://buildroot.uclibc.org/downloads/buildroot-${br_ver}.tar.gz )
+   $ tar -xvf download/buildroot-${br_ver}.tar.gz
+   $ ln -snf buildroot-${br_ver} buildroot
 
  $ download the buildroot sources
    $ make ARCH=i386 br-source
