@@ -17,6 +17,8 @@ BR_MAKE = cd $(BR_D) && make O=$(BR_OUT_D) BR2_DL_DIR=$(DL_D) \
 
 BR_DEPS = $(BR_D) $(BR_OUT_D)/busybox.config $(BR_OUT_D)/.config $(SKEL_D)/.dir
 
+unexport SED # causes random issues (LP: #920620)
+
 all: $(TAR_IMG)
 
 debug:
