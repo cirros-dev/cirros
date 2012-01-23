@@ -16,7 +16,11 @@ To use it, you would do something like:
    $ wget http://buildroot.uclibc.org/downloads/buildroot-${br_ver}.tar.gz
    $ tar -xvf buildroot-${br_ver}.tar.gz
    $ ln -snf buildroot-${br_ver} buildroot
-   $ mkdir output download
+   $ mkdir -p ../download
+   $ ln -snf ../download download
+
+ $ download the buildroot sources
+   $ make ARCH=i386 br-source
 
  * Build buildroot for a given arch
    # ARCH should be set to 'i386', 'x86_64' or 'arm'
