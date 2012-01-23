@@ -1,7 +1,12 @@
 This is a project to build a small cloud image that has useful tools and
 function for debugging or developing cloud infrastructure.
 
+The following works on Ubuntu 11.04 (Natty).  On Ubuntu 11.10 (Oneiric) it
+does not work (LP: #920620).
+
 To use it, you would do something like:
+ * bzr branch lp:cirros
+ * cd cirros
 
  * get some build dependencies:
    $ sudo apt-get -y install bison flex texinfo build-essential gettext
