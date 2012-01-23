@@ -67,7 +67,7 @@ br-busybox-menuconfig: $(BR_OUT_D)/busybox.config
 	$(BR_MAKE) $* busybox-menuconfig
 	cp $(BR_OUT_D)/build/busybox-1.18.5/.config $(CONF_D)/busybox.config
 
-br-%:
+br-%: $(BR_OUT_D)/.config $(BR_OUT_D)/busybox.config
 	$(BR_MAKE) $*
 
 %/.dir:
