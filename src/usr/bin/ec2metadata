@@ -1,6 +1,7 @@
 #!/bin/sh
 
 MD_URL="http://169.254.169.254/latest"
+OIFS="$IFS"
 CR="
 "
 
@@ -47,10 +48,12 @@ mdget() {
 			out=$(wget -q -O - "$MD_URL/meta-data/$u") ||
 				fail "failed to get $MD_URL/meta-data/$u";
 			_RET=""
+			IFS="$CR"
 			for t1 in $out; do
 				t1="${t1%%=*}"
-				_RET="${_RET:+${_RET}${CR}}${t1%/}/"
+				_RET="${_RET:+${_RET}${CR}}${t1%/}"
 			done
+			IFS="$OIFS"
 			return
 			;;
 		public-keys/*)
@@ -75,10 +78,13 @@ special() {
 		public-keys)
 			mdget public-keys
 			out="$_RET"
+			IFS="$CR"
 			for x in ${out}; do
-				mdget "public-keys/${x}/openssh-key" &&
+				IFS="$OIFS" mdget \
+					"public-keys/${x}/openssh-key" &&
 				ret="${ret:+${ret}${CR}}${_RET}"
 			done
+			IFS="$OIFS"
 			_RET="$ret"
 			;;
 		block-device-mappings)
