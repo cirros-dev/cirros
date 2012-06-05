@@ -7,3 +7,4 @@ pcnet32
 ip_tables
 isofs
 vfat
+nls_cp437
