@@ -5,3 +5,4 @@
  - support mounting of vfat filesystems (LP: #929841)
  - support acpi shutdown (LP: #944151)
  - ec2metadata: remove double '/' in --public-keys requests (LP: #992492)
+ - upgrade kernel to Ubuntu 12.04 LTS kernel (3.2.0-25.40)
