@@ -18,7 +18,10 @@ To use it, you would do something like:
    $ tar -xvf download/buildroot-${br_ver}.tar.gz
    $ ln -snf buildroot-${br_ver} buildroot
 
- $ download the buildroot sources
+ * apply any local cirros patches to buildroot
+   ( cd buildroot && QUILT_PATCHES=$PWD/../patches-buildroot quilt push -a )
+
+ * download the buildroot sources
    $ make ARCH=i386 br-source
 
  * Build buildroot for a given arch

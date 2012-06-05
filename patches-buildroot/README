@@ -1,0 +1,6 @@
+This directory contains patches to be applied to buildroot.
+They're in quilt style format, but nothing automated will apply
+them.  After downloading and extracting buildroot, linking it
+to ./buildroot , you will need to run:
+  ( cd buildroot && QUILT_PATCHES=$PWD/../patches-buildroot quilt push -a )
+
