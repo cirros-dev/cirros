@@ -11,7 +11,7 @@ To use it, you would do something like:
    $ sudo apt-get -y install bison flex texinfo build-essential gettext ncurses-dev unzip
 
  * download buildroot and setup environment
-   $ br_ver="2011.08"
+   $ br_ver="2012.05"
    $ mkdir -p ../download
    $ ln -snf ../download download
    $ ( cd download && wget http://buildroot.uclibc.org/downloads/buildroot-${br_ver}.tar.gz )
