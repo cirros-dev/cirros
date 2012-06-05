@@ -31,13 +31,15 @@ fail() { echo "$@" 1>&2; exit 1; }
 mkdir -m 755 -p .ssh  || { fail "failed to make .ssh dir" 1>&2; exit 1; }
 
 for u in "$@"; do
-   out=$(wget -q -O - "$burl/$u") ||
-      fail "failed to get key for $u [$burl/$u]" 1>&2
-   # some keys come back with dos line end
+	out=$(wget -q -O - "$burl/$u") ||
+		fail "failed to get key for $u [$burl/$u]" 1>&2
+	# some keys come back with dos line end
 	out=$(echo "$out" | sed -e '/^$/d' -e '/^\r/d' \
-		   -e ':join /=[ ]/!{ N; s/[\n\r]//g ; b join }' \
-	       -e 's/[^a-zA-Z0-9@: .\/=+-]//g')
-   printf "%s\n" "$out" >> ".ssh/authorized_keys" ||
-      fail "failed to write to .ssh/authorized_keys"
-   echo "Successfully authorized [$u]"
+			-e ':join /=[ ]/!{ N; s/[\n\r]//g ; b join }' \
+			 -e 's/[^a-zA-Z0-9@: .\/=+-]//g')
+	printf "%s\n" "$out" >> ".ssh/authorized_keys" ||
+		fail "failed to write to .ssh/authorized_keys"
+	echo "Successfully authorized [$u]"
 done
+
+# vi: ts=4 noexpandtab
