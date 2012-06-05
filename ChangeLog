@@ -1,0 +1,7 @@
+0.3.1
+ - move to buildroot 2012.05
+ - build on 12.04
+ - support https client via curl/openssl (LP: #918702)
+ - support mounting of vfat filesystems (LP: #929841)
+ - support acpi shutdown (LP: #944151)
+ - ec2metadata: remove double '/' in --public-keys requests (LP: #992492)
