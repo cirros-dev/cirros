@@ -67,7 +67,9 @@ br-menuconfig: $(BR_OUT_D)/.config
 
 br-busybox-menuconfig: $(BR_OUT_D)/busybox.config
 	$(BR_MAKE) $* busybox-menuconfig
-	cp $(BR_OUT_D)/build/busybox-1.18.5/.config $(CONF_D)/busybox.config
+	out=$$(ls -tr "$(BR_OUT_D)"/build/busybox-*/.config) \
+	   && f=$$(echo "$$out" | tail -n 1) && \
+	   cp "$$f" "$(CONF_D)/busybox.config"
 
 br-%: $(BR_OUT_D)/.config $(BR_OUT_D)/busybox.config
 	$(BR_MAKE) $*
