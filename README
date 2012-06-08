@@ -8,7 +8,7 @@ To use it, you would do something like:
  * cd cirros
 
  * get some build dependencies:
-   $ sudo apt-get -y install bison flex texinfo build-essential gettext ncurses-dev unzip
+   $ sudo apt-get -y install bison flex texinfo build-essential gettext ncurses-dev unzip cvs
 
  * download buildroot and setup environment
    $ br_ver="2012.05"
@@ -17,6 +17,9 @@ To use it, you would do something like:
    $ ( cd download && wget http://buildroot.uclibc.org/downloads/buildroot-${br_ver}.tar.gz )
    $ tar -xvf download/buildroot-${br_ver}.tar.gz
    $ ln -snf buildroot-${br_ver} buildroot
+
+ * update ./bin/mkcabundle > src/etc/ssl/certs/ca-certificates.crt
+   $ ./bin/mkcabundle > src/etc/ssl/certs/ca-certificates.crt
 
  * apply any local cirros patches to buildroot
    ( cd buildroot && QUILT_PATCHES=$PWD/../patches-buildroot quilt push -a )
