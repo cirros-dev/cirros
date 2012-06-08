@@ -1,0 +1,22 @@
+#!/bin/sh
+# acpid
+
+case "$1" in
+	start)
+		echo -n "Starting acpid: "
+		start-stop-daemon -S -q -p /var/run/acpid.pid --exec /sbin/acpid
+		echo "OK"
+		;;
+	stop|restart|reload)
+		echo -n "Stopping acpid: "
+		start-stop-daemon -K -q -p /var/run/acpid.pid
+		echo "OK"
+		;;
+	*)
+		echo $"Usage: $0 {start}"
+		exit 1
+esac
+
+exit $?
+
+# vi: ts=4 noexpandtab
