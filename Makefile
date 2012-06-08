@@ -17,6 +17,12 @@ BR_MAKE = cd $(BR_D) && make O=$(BR_OUT_D) BR2_DL_DIR=$(DL_D) \
 
 BR_DEPS = $(BR_D) $(BR_OUT_D)/busybox.config $(BR_OUT_D)/.config $(SKEL_D)/.dir
 
+BR_CONFIG = $(CONF_D)/buildroot-$(ARCH).config
+
+BUSYBOX_VERSION := $(shell sed -n -e s/BR2_BUSYBOX_VERSION="\(.*\)"/\\1/p < $(BR_CONFIG))
+BUSYBOX_BUILD_DIR = $(BR_OUT_D)/build/busybox-$(BUSYBOX_VERSION)
+BUSYBOX_BUILD_CONFIG = $(BUSYBOX_BUILD_DIR)/.config
+
 unexport SED # causes random issues (LP: #920620)
 
 all: $(TAR_IMG)
@@ -25,6 +31,7 @@ debug:
 	@echo "BR_DEPS: $(BR_DEPS)"
 	@echo "BR_MAKE: $(BR_MAKE)"
 	@echo "BR_OUT_D: $(BR_OUT_D)"
+	@echo "BUSYBOX_BUILD_CONFIG: $(BUSYBOX_BUILD_CONFIG)"
 
 source: br_source minicloud_source
 
@@ -43,8 +50,8 @@ $(BR_OUT_D)/busybox.config: $(CONF_D)/busybox.config $(BR_OUT_D)/.dir
 	cp $(CONF_D)/busybox.config $@
 	for s in configured built target_installed; do rm -f $(BR_OUT_D)/build/busybox-1.18.5/.stamp_$$s; done
 
-$(BR_OUT_D)/.config: $(CONF_D)/buildroot-$(ARCH).config $(BR_OUT_D)/.dir
-	cp $(CONF_D)/buildroot-$(ARCH).config $@
+$(BR_OUT_D)/.config: $(BR_CONFIG) $(BR_OUT_D)/.dir
+	cp $(BR_CONFIG) $@
 
 $(TAR_IMG): $(BR_TAR_IMG)
 	cp $(BR_TAR_IMG) $(TAR_IMG)
@@ -65,9 +72,12 @@ br-menuconfig: $(BR_OUT_D)/.config
 	$(BR_MAKE) $* menuconfig
 	cp $(BR_OUT_D)/.config $(CONF_D)/buildroot-$(ARCH).config
 
-br-busybox-menuconfig: $(BR_OUT_D)/busybox.config
+$(BUSYBOX_BUILD_CONFIG): $(CONF_D)/busybox.config
+	cp $(CONF_D)/busybox.config $(BUSYBOX_BUILD_CONFIG)
+
+br-busybox-menuconfig: $(BUSYBOX_BUILD_CONFIG)
 	$(BR_MAKE) $* busybox-menuconfig
-	cp $(BR_OUT_D)/build/busybox-1.18.5/.config $(CONF_D)/busybox.config
+	cp $(BUSYBOX_BUILD_CONFIG) $(CONF_D)/busybox.config
 
 br-%: $(BR_OUT_D)/.config $(BR_OUT_D)/busybox.config
 	$(BR_MAKE) $*

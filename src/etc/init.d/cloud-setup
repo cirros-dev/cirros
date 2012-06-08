@@ -8,9 +8,10 @@ start() {
 	local i=0 max=${MD_MAX_TRIES} iid="" uptime="" toks="" n="" cmdline=""
 	is_nocloud &&
 		{ msg "nocloud specified, not using metadata"; return 0; }
-	read cmdline < /proc/cmdline
 	[ -f "${STATE_D}/cloud_tries" ] && read max < "${STATE_D}/cloud_tries"
 	if ! lxc-is-container; then
+		# reading cmdline in a container doesn't make sense, as you get the HOST's
+		read cmdline < /proc/cmdline
 		for n in ${cmdline}; do
 			case "${n}" in
 				cloud_tries=*) max=${n#cloud_tries=}; break;;

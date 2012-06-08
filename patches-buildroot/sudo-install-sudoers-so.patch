@@ -1,0 +1,29 @@
+install sudoers.so in /usr/lib/sudo
+
+Without this patch, the 'sudo' command in 1.8.X is broken on install.
+'sudo ls' will result in a message complaining about 
+/usr/libexec/sudoers.so.
+
+diff --git a/package/sudo/sudo.mk b/package/sudo/sudo.mk
+index 3629ad1..5d2bc61 100644
+--- a/package/sudo/sudo.mk
++++ b/package/sudo/sudo.mk
+@@ -12,7 +12,8 @@ SUDO_CONF_OPT = \
+ 		--without-umask \
+ 		--with-logging=syslog \
+ 		--without-interfaces \
+-		--without-pam
++		--without-pam \
++		--libexecdir=/usr/lib/sudo
+ 
+ define SUDO_INSTALL_TARGET_CMDS
+ 	install -m 4555 -D $(@D)/src/sudo $(TARGET_DIR)/usr/bin/sudo
+@@ -20,6 +21,8 @@ define SUDO_INSTALL_TARGET_CMDS
+ 		$(TARGET_DIR)/usr/sbin/visudo
+ 	install -m 0440 -D $(@D)/plugins/sudoers/sudoers \
+ 		$(TARGET_DIR)/etc/sudoers
++	install -m 0440 -D $(@D)/plugins/sudoers/.libs/sudoers.so \
++		$(TARGET_DIR)/usr/lib/sudo/sudoers.so
+ endef
+ 
+ $(eval $(call AUTOTARGETS))

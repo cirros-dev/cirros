@@ -5,20 +5,26 @@ The following works on Ubuntu 10.04 or 12.04 LTS.
 
 To use it, you would do something like:
  * get some build dependencies:
-   $ sudo apt-get -y install bison flex texinfo build-essential gettext ncurses-dev unzip bzr qemu-kvm
+   $ sudo apt-get -y install bison flex texinfo build-essential gettext ncurses-dev unzip bzr qemu-kvm cvs
 
  * bzr branch lp:cirros
  * cd cirros
 
  * download buildroot and setup environment
-   $ br_ver="2011.08"
+   $ br_ver="2012.05"
    $ mkdir -p ../download
    $ ln -snf ../download download
    $ ( cd download && wget http://buildroot.uclibc.org/downloads/buildroot-${br_ver}.tar.gz )
    $ tar -xvf download/buildroot-${br_ver}.tar.gz
    $ ln -snf buildroot-${br_ver} buildroot
 
- $ download the buildroot sources
+ * update ./bin/mkcabundle > src/etc/ssl/certs/ca-certificates.crt
+   $ ./bin/mkcabundle > src/etc/ssl/certs/ca-certificates.crt
+
+ * apply any local cirros patches to buildroot
+   ( cd buildroot && QUILT_PATCHES=$PWD/../patches-buildroot quilt push -a )
+
+ * download the buildroot sources
    $ make ARCH=i386 br-source
 
  * Build buildroot for a given arch
@@ -34,15 +40,19 @@ To use it, you would do something like:
    The kernel input to bundle must be in deb format. The ubuntu '-virtual'
    kernel is used as a starting point.
 
-   $ ARCH=i386
-   $ xarch=$ARCH; [ "$xarch" = "x86_64" ] && xarch="amd64"
-   $ url="http://launchpad.net/ubuntu/+archive/primary/+files/linux-image-3.0.0-12-virtual_3.0.0-12.20_$xarch.deb"
-   $ [ "$ARCH" = "arm" ] && url=https://launchpad.net/ubuntu/+archive/primary/+files/linux-image-3.0.0-12-omap_3.0.0-12.20_armel.deb
-   $ wget "$url" -O "download/${url##*/}"
-   $ kernel_deb="download/${url##*/}"
+   $ kver="3.2.0-25.40";
+   $ burl="https://launchpad.net/ubuntu/+archive/primary/+files/linux-image"
+   $ for arch in i386 x86_64 arm; do
+     xarch=$arch; flav="virtual"
+     [ "$arch" = "x86_64" ] && xarch="amd64";
+     [ "$arch" = "arm" ] && xarch="armel" && flav="omap"
+     url="$burl-${kver%.*}-${flav}_${kver}_${xarch}.deb"
+     wget "$url" -O download/${url##*/}
+     ln -sf ${url##*/} download/kernel-${arch}.deb
+   done
 
  * build disk images using bin/bundle
-   $ sudo ./bin/bundle -v output/$ARCH/rootfs.tar "$kernel_deb" output/$ARCH/images
+   $ sudo ./bin/bundle -v output/$ARCH/rootfs.tar download/kernel-$ARCH.deb output/$ARCH/images
 
  * Then, test using the images
    $ kvm -drive file=disk.img,if=virtio -curses

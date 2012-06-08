@@ -80,9 +80,27 @@ mount_once() {
 }
 
 is_lxc() {
-	# lxc tools export 'container', 
-	# libvirt exports LIBVIRT_LXC_NAME and LIBVIRT_LXC_UUID
+	local container=""
 	[ "$0" = "/init" ] && return 1 # lxc wont use /init (not a ramdisk)
-	[ -n "$container" -o -n "$LIBVIRT_LXC_UUID" -o -n "$LIBVIRT_LXC_NAME" ]
+
+	# logic copied from ubuntu's /etc/init/container-detect.conf (upstart)
+	if [ -z "$container" ]; then
+		[ -n "$LIBVIRT_LXC_UUID" ] && container=lxc-libvirt
+	fi
+
+	# Detect OpenVZ containers
+	if [ -z "$container" ]; then
+		[ -d /proc/vz ] && [ ! -d /proc/bc ] && container=openvz
+	fi
+
+	# Detect Vserver containers
+	if [ -z "$container" -a -f /proc/self/status ]; then
+		while read k v; do
+			[ "$k" = "VxID:" ] && [ ${v:-0} -gt 1 ] &&
+				container=vserver && break;
+		done < /proc/self/status >/dev/null 2>&1
+	fi
+
+	[ -n "$container" ]
 }
 is_not_lxc() { ! is_lxc; }
