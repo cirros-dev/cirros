@@ -13,17 +13,10 @@ echo "$(date): finish" >> date.txt
 
 mkdir -p $out/stage/{i386,arm,x86_64}
 
-sudo ./bin/bundle -v $out/build/i386/rootfs.tar \
-  ./download/linux-image-3.0.0-12-virtual_3.0.0-12.20_i386.deb \
-  $out/stage/i386
-
-sudo ./bin/bundle -v $out/build/x86_64/rootfs.tar \
-  ./download/linux-image-3.0.0-12-virtual_3.0.0-12.20_amd64.deb \
-  $out/stage/x86_64
-
-sudo ./bin/bundle -v $out/build/arm/rootfs.tar \
-  ./download/linux-image-3.0.0-12-omap_3.0.0-12.20_armel.deb \
-  $out/stage/arm
+for arch in i386 x86_64 arm; do
+  sudo ./bin/ bundle -v $out/build/$arch/rootfs.tar \
+     ./download/kernel-$arch.deb $out/stage/$arch;
+done
 
 sudo chown -R $USER:$USER $out/stage
 
