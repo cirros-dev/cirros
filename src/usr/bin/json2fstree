@@ -329,7 +329,7 @@ END {
 		fpath = outd "/" path
 		ret = system("mkdir -p " dirname(fpath))
 		assert(ret == 0, "failed to mkdir " fpath)
-		print data[key] > fpath
+		printf("%s", data[key]) > fpath
 	}
 }
 
