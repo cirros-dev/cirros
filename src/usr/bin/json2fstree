@@ -287,6 +287,12 @@ function dirname(path) {
 	else
 		return "/"
 }
+
+function has_suffix(str, suf, len1, len2) {
+	len1 = length(str)
+	len2 = length(suf)
+	return len2 <= len1 && substr(str, len1 - len2 + 1) == suf
+}
 ### end from awkenough ####
 
 BEGIN {
