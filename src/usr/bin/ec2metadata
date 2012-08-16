@@ -2,6 +2,7 @@
 
 MD_URL="http://169.254.169.254/latest"
 OIFS="$IFS"
+TIMEOUT=10
 CR="
 "
 
@@ -40,12 +41,16 @@ get_field_list() {
 	_RET="${found# }"
 }
 
+caturl() {
+	curl --silent --max-time "${TIMEOUT}" "$1"
+}
+
 mdget() {
 	local u="$1" t1="" t2="" out=""
 	case "$u" in
 		user-data) :;;
 		public-keys|public-keys/)
-			out=$(wget -q -O - "$MD_URL/meta-data/$u") ||
+			out=$(caturl "$MD_URL/meta-data/$u") ||
 				fail "failed to get $MD_URL/meta-data/$u";
 			_RET=""
 			IFS="$CR"
@@ -67,7 +72,7 @@ mdget() {
 			;;
 		*) u="meta-data/$u";;
 	esac
-	_RET=$(wget -q -O - "$MD_URL/$u") ||
+	_RET=$(caturl "$MD_URL/$u") ||
 		fail "failed to get ${MD_URL}/$u"
 }
 special() {
