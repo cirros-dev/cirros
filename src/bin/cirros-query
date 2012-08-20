@@ -9,6 +9,7 @@ Usage: ${0##*/} command [options]
 
    commands:
      datasource:  list the datasource name
+     dsmode:      list the datasource mode ('net', or 'local')
      available:   list available fields for datasource
      get field:   dump field
 EOF
@@ -37,16 +38,22 @@ cirros_query() {
 
 	[ $# -ne 0 ] || { bad_Usage "must provide arguments"; return; }
 
-	local command="$1" dsname="" start_d="$PWD"
+	local command="$1" dsname="" dsmode="" start_d="$PWD"
 
 	assert_datasource ||
 		{ debug 1 "no datasource"; return 1; }
-	dsname="${_RET}"
+	dsname="${_DATASOURCE_NAME}"
+	dsmode="${_DATASOURCE_MODE}"
 
 	if [ "$command" = "datasource" ]; then
 		[ $# -eq 1 ] ||
 			{ error "confused by '$2' to mode $command"; return 1; }
-		echo "$DSNAME"
+		echo "$dsname"
+		return
+	elif [ "$command" = "dsmode" ]; then
+		[ $# -eq 1 ] ||
+			{ error "confused by '$2' to mode $command"; return 1; }
+		echo "$dsmode"
 		return
 	elif [ "$command" = "available" ]; then
 		[ $# -eq 1 ] ||
