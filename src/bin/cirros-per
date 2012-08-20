@@ -63,8 +63,6 @@ cirros_per() {
 			marker="always-ds.always.${name}"
 			assert_datasource ||
 				{ error "no datasource found"; return 1; }
-			cirros-query datasource >/dev/null 2>&1 ||
-				fail "no datasource available"
 			;;
 		instance)
 			state_d="${STATE_D}";
