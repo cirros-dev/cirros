@@ -78,12 +78,21 @@ mount_callback_umount() {
 	# dev, opts, callback, args
 	local dev="$1" opts="$2" callback="$3" ret=""
 	local tmpd=$(mktemp -d "${TMPDIR:-/tmp}/${0##*/}.mp.XXXXXX")
-	mount "$dev" $opts "$tmpd" ||
-		{ ret=$?; debug 2 "failed mount $dev"; return $ret; }
+	mount "$dev" $opts "$tmpd" || {
+		ret=$?;
+		debug 2 "failed mount $dev";
+		rmdir "$tmpd"
+		return $ret;
+	}
 	shift 3;
 	"$callback" "$tmpd" "$@"
 	ret=$?
-	umount "$tmpd" || { ret=$?; debug 1 "failed umount $dev"; return $ret; }
+	umount "$tmpd" || {
+		ret=$?;
+		debug 1 "failed umount $dev";
+		return $ret;
+	}
+	rmdir "$tmpd"
 	return 0
 }
 
