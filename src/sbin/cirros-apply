@@ -1,0 +1,95 @@
+#!/bin/sh
+
+. ${CIRROS_LIB:=/lib/cirros/shlib_cirros} ||
+	{ echo "failed to read ${CIRROS_LIB}" 1>&2; exit 1; }
+
+Usage() {
+	cat <<EOF
+Usage: ${0##*/} [ options ] mode
+
+   Call appropriate datasource for its 'apply-<mode>' stage, 
+   and then apply generic 'apply-<mode>' hooks.
+
+   If there is no data source, or datasource configured is
+   not of type 'mode', then it will exit silently with success.
+
+   mode is one of 'net' or 'local'
+
+   options:
+   -v | --verbose  : be more verbose
+EOF
+}
+
+cirros_apply() {
+	local short_opts="hv"
+	local long_opts="help,verbose"
+	local getopt_out=""
+	getopt_out=$(getopt --name "${0##*/}" \
+		--options "${short_opts}" --long "${long_opts}" -- "$@") &&
+		eval set -- "${getopt_out}" ||
+		{ bad_Usage; return; }
+
+	local cur="" next="" mode="" VERBOSITY
+
+	while [ $# -ne 0 ]; do
+		cur=${1}; next=${2};
+		case "$cur" in
+			-h|--help) Usage ; exit 0;;
+			-v|--verbose) VERBOSITY=$((${VERBOSITY}+1));;
+			--) shift; break;;
+		esac
+		shift;
+	done
+
+	[ $# -ne 0 ] || { bad_Usage "must provide mode"; return; }
+	mode="$1"
+	shift
+
+	[ "$mode" = "net" -o "$mode" = "local" ] ||
+		{ bad_Usage "mode must be 'net' or 'local'"; return; }
+
+	local dsname dsmode root
+
+	assert_datasource ||
+		{ debug 1 "no datasource present"; return 0; }
+
+	dsname="${_DATASOURCE_NAME}"
+	dsmode="${_DATASOURCE_MODE}"
+
+	[ "${dsmode}" = "mode" ] || {
+		debug 1 "datasource found is mode '${dsmode}', skipping";
+		return 0;
+	}
+
+	PATH="${DS_D}:$PATH"
+	local root="${TARGET_ROOT}"
+	if [ -n "$root" ]; then
+		local sd="$PWD"
+		cd "$root" && root="$PWD" && cd "$sd" ||
+			return 1;
+	else
+		root="/"
+	fi
+	TARGET_ROOT=$root "$dsname" "apply-${dsmode}" "$RESULTS_D" ||
+		{ error "$dsname failed in apply-$dsmode"; return 1; }
+
+	#
+	# here do any common things for $mode
+	#
+
+	# if we were provided with a network/interfaces file copy it
+	if [ -f "$RESULTS_D/network-interfaces" ]; then
+		local nif="$TARGET_ROOT/etc/network/interfaces"
+		[ -d "$TARGET_ROOT/etc/network" ] ||
+			mkdir -p "$TARGET_ROOT/etc/network"
+		[ ! -f "$nif" ] || cp "$nif" "$nif.dist" ||
+			error "failed to copy network interfaces"
+		debug 1 "copied network/interfaces"
+	fi
+
+	return 0
+}
+
+cirros_apply "$@"
+
+# vi: ts=4 noexpandtab

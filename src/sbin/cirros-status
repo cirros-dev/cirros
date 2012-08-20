@@ -1,0 +1,48 @@
+#!/bin/sh
+
+. ${CIRROS_LIB:=/lib/cirros/shlib_cirros} ||
+	{ echo "failed to read ${CIRROS_LIB}" 1>&2; exit 1; }
+
+Usage() {
+	cat <<EOF
+Usage: ${0##*/} [ options ]
+
+   output status of the system.
+   Normally this would be used for debugging, or to console
+   to show user information.
+
+   options:
+   -v | --verbose  : be more verbose
+EOF
+}
+
+cirros_status() {
+	local short_opts="hv"
+	local long_opts="help,verbose"
+	local getopt_out=""
+	getopt_out=$(getopt --name "${0##*/}" \
+		--options "${short_opts}" --long "${long_opts}" -- "$@") &&
+		eval set -- "${getopt_out}" ||
+		{ bad_Usage; return; }
+
+	local cur="" next="" mode="" VERBOSITY
+
+	while [ $# -ne 0 ]; do
+		cur=${1}; next=${2};
+		case "$cur" in
+			-h|--help) Usage ; exit 0;;
+			-v|--verbose) VERBOSITY=$((${VERBOSITY}+1));;
+			--) shift; break;;
+		esac
+		shift;
+	done
+
+	[ $# -eq 0 ] || { bad_Usage "no arguments expected"; return; }
+
+	## TODO: implement me
+	return 0
+}
+
+cirros_status"$@"
+
+# vi: ts=4 noexpandtab

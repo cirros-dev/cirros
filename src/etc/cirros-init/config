@@ -1,0 +1,2 @@
+# must set DATASOURCE_LIST
+DATASOURCE_LIST="nocloud nocloud-net configdrive configdrive-net ec2"
