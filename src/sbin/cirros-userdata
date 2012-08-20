@@ -1,0 +1,83 @@
+#!/bin/sh
+
+. ${CIRROS_LIB:=/lib/cirros/shlib_cirros} ||
+	{ echo "failed to read ${CIRROS_LIB}" 1>&2; exit 1; }
+
+Usage() {
+	cat <<EOF
+Usage: ${0##*/} [file]
+
+   handle the user-data present in file.
+   If no file is present, retrieve 'user-data' from datasource.
+
+   if no file is given, and no datasource is found, exit silently.
+   
+   options:
+        --dry-run  : only report, do not update results
+   -v | --verbose  : be more verbose
+EOF
+}
+
+cirros_userdata() {
+	local short_opts="hv"
+	local long_opts="help,dry-run,verbose"
+	local getopt_out=""
+	getopt_out=$(getopt --name "${0##*/}" \
+		--options "${short_opts}" --long "${long_opts}" -- "$@") &&
+		eval set -- "${getopt_out}" ||
+		{ bad_Usage; return; }
+
+	local dryrun=false cur="" next="" VERBOSITY="$VERBOSITY"
+
+	while [ $# -ne 0 ]; do
+		cur=${1}; next=${2};
+		case "$cur" in
+			-h|--help) Usage ; exit 0;;
+			-v|--verbose) VERBOSITY=$((${VERBOSITY}+1));;
+		   	--dry-run) dryrun=true;;
+			--) shift; break;;
+		esac
+		shift;
+	done
+
+	if [ $# -eq 0 ]; then
+		assert_datasource || exit 0
+		ds_get_item_path user-data || { error "failed to get user-data"; return 1; }
+		set -- "$_RET"
+	fi
+
+	local tempf="" ret="" failures=0
+	for cur in "$@"; do
+		[ -f "$@" ] || { error "$cur is not a file"; return 1; }
+		if [ -x "$cur" ]; then
+			"$cur"
+			ret=$?
+			debug 1 "$cur returned $ret"
+		elif [ "$(head -c 2 "$cur" )" = "#!" ]; then
+			dryrun && { error "execute ${cur}"; continue; }
+			if [ -z "$tempf" ]; then
+				tempf=$(mktemp "${TMPDIR:-/tmp}/${0##*/}.XXXXXX") ||
+					{ error "failed to make tempdir"; return 1; }
+			fi
+			cat "$cur" > "$tempf" && chmod 700 "$cur" || {
+				error "failed to copy $cur to make executable";
+				rm -f "$tempf";
+				return 1;
+			}
+			"$cur"
+			ret=$?
+			debug 1 "$cur returned $ret"
+		else
+			ret=0
+			debug 1 "$cur was not '#!' or executable"
+		fi
+		[ $ret -eq 0 ] || failures=$(($failures+1))
+	done
+	rm -f "$tempf"
+
+	return $failures
+}
+
+cirros_userdata "$@"
+
+# vi: ts=4 noexpandtab

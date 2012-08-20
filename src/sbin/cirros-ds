@@ -1,0 +1,117 @@
+#!/bin/sh
+
+. ${CIRROS_LIB:=/lib/cirros/shlib_cirros} ||
+	{ echo "failed to read ${CIRROS_LIB}" 1>&2; exit 1; }
+
+Usage() {
+	cat <<EOF
+Usage: ${0##*/} [ options ] mode [datasource [datasource [ ... ] ]
+
+   Search for datasources of type 'mode'.
+   mode is one of 'net' or 'local'
+
+   if no datasources are provided, all available are searched
+   see configuration in $CONFIG
+
+   options:
+        --dry-run  : only report, do not update results
+   -v | --verbose  : be more verbose
+EOF
+}
+
+cleanup() {
+	[ -z "${TEMP_D}" -o ! -d "${TEMP_D}" ] || rm -Rf "${TEMP_D}"
+}
+
+cirros_ds() {
+	local short_opts="hv"
+	local long_opts="help,dry-run,verbose"
+	local getopt_out=""
+	getopt_out=$(getopt --name "${0##*/}" \
+		--options "${short_opts}" --long "${long_opts}" -- "$@") &&
+		eval set -- "${getopt_out}" ||
+		{ bad_Usage; return; }
+
+	local dryrun=false uptime="" cur="" next="" mode="" VERBOSITY
+	read_uptime && uptime=${_RET}
+
+	while [ $# -ne 0 ]; do
+		cur=${1}; next=${2};
+		case "$cur" in
+			-h|--help) Usage ; exit 0;;
+			-v|--verbose) VERBOSITY=$((${VERBOSITY}+1));;
+		       --dry-run) dryrun=true;;
+			--) shift; break;;
+		esac
+		shift;
+	done
+
+	[ $# -ne 0 ] || { bad_Usage "must provide mode"; return; }
+	mode="$1"
+	shift
+
+	[ "$mode" = "net" -o "$mode" = "local" ] ||
+		{ bad_Usage "mode must be 'net' or 'local'"; return; }
+
+	debug 1 "${0##*} up at $uptime"
+
+	local cmdline tok cmdline_list oifs="$IFS"
+	if [ $# -eq 0 ]; then
+		{ read cmdline < /proc/cmdline; } >/dev/null 2>&1
+		for tok in $cmdline; do
+			case "$tok" in
+				dslist=) cmdline_list=none;;
+				dslist=*) cmdline_list=${tok#dslist=};;
+			esac
+		done
+		if [ -n "${cmdline_list}" -a "${cmdline_list}" != "none" ]; then
+			IFS=","; set -- ${cmdline_list}; IFS="$oifs"
+			debug 1 "found datasource list on cmdline:" "$@"
+		else
+			set -- ${DATASOURCE_LIST}
+			debug 1 "found datasource list in config:" "$@"
+		fi
+		[ $# -ne 0 ] || { error "no datasource list configured?"; return 1; }
+	fi
+
+	TEMP_D=$(mktemp -d "${TMPDIR:-/tmp}/${0##*/}.XXXXXX") ||
+		{ error "failed to make tempdir"; return 1; }
+	trap cleanup EXIT
+
+	local ds result="" ret=""
+
+	PATH="${DS_D}:$PATH"
+	for ds in "$@"; do
+		result="${TEMP_D}/${ds}/result"
+		read_uptime
+		debug 1 "running: $ds $mode $TEMP_D/${ds} [up ${_RET}]"
+		"$ds" "$mode" "${TEMP_D}/${ds}" > "${TEMP_D}/output" 2>&1
+		ret=$?
+		if [ $ret -eq 0 ] && [ -r "$result" ]; then
+			rm -f "$result"
+			if $dryrun; then
+				error "$ds-$mode: datasource found"
+			else
+				rm -Rf "$RESULTS_D" && mkdir -p "${RESULTS_D%/*}" &&
+					cp -a "${TEMP_D}/$ds/" "${RESULTS_D}" || {
+						error "failed to copy results from $ds to $RESULTS_D";
+						return 1;
+					}
+				echo "$ds" > "$RESULTS_D/dsname"
+				echo "$mode" > "$RESULTS_D/dsmode"
+			fi
+			return 0
+		elif [ $ret -eq 0 ]; then
+			debug 1 "$ds-$mode: no datasource found"
+		else
+			error "$ds-$mode: returned error"
+		fi
+	done
+
+	debug 1 "no results found for mode=$mode. up $uptime. searched:" "$@"
+	return 1
+}
+
+cirros_ds "$@"
+
+# vi: ts=4 noexpandtab

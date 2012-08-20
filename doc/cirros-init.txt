@@ -1,0 +1,67 @@
+cirros-ds
+cirros-query
+cirros-apply
+cirros-per
+
+cirros-ds calls each of the datasources configured.  They're expected
+to be in the path or in /lib/cirros/ds/.
+ datasources are called with:
+   mode: 'local' or 'net'
+   out_d: directory to copy data to
+ datasource should exit 0 on success.
+ non-zero means failure.
+ expect to populate out_d/result with '0' on success.
+ exit of 0 without that means "no source found"
+
+cirros-query
+  datasource: list the datasource
+  available: list available fields for datasource
+  get field: dump field
+
+cirros-apply
+  take a mode of local or net
+  for 'local' could do things like copy network interfaces
+  basically this is something like cloud-init's boothooks
+
+cirros-per
+  run a command at given frequency
+  this handles checking if the command name has already been
+  run and running if not.
+
+datasources:
+ called in 1 of 4 modes:
+   * local
+   * apply-local
+   * net
+   * apply-net
+
+ Each receives the second argument of a directory. 
+
+ for 'local' and 'net' this is the output directory that should be populated.
+ The ds should created a data/ directory underneith this
+
+ for 'apply' and 'apply-net' this is the directory previously provided to
+ 'local' or 'net' respectively.
+
+jobs in /etc/init.d
+  - S35 cirros-ds-local
+  - S36 cirros-apply-local
+  - S40 network
+  - S45 cirros-net-ds
+  - S46 cirros-apply-net
+  - S95 cirros-userdata    : run #!
+  - S98 cirros-final       : print status info
+  - S99 cirros-logo        : logo
+
+kernel cmdline:
+ - dslist=nocloud,nocloud-net,configdrive,configdrive-net,ec2
+
+datasources:
+ - nocloud
+ - configdrive
+ - ec2
+
+config:
+ - /etc/cirros/ds.conf
+   DATA_PATH=/run/cirros/ds
+   SOURCES=

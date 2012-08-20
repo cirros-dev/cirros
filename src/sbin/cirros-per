@@ -1,0 +1,110 @@
+#!/bin/sh
+
+. ${CIRROS_LIB:=/lib/cirros/shlib_cirros} ||
+	{ echo "failed to read ${CIRROS_LIB}" 1>&2; exit 1; }
+
+Usage() {
+	cat <<EOF
+Usage: ${0##*/} [ options ] frequency name cmd [args]
+
+   run cmd with given arguments for the given frequency.
+   frequency is:
+     always:    run every time
+     always-ds: run every time, but only if there is a datasource
+     boot:      run only once per boot
+     instance:  run once per instance (first boot)
+   name is the name of this thing.  subsequent runs of will be
+     run with the given frequency based on state kept in 'name'
+   
+   options:
+        --dry-run  : only report, do not update results
+   -v | --verbose  : be more verbose
+EOF
+}
+
+cirros_per() {
+	local short_opts="hv"
+	local long_opts="help,dry-run,verbose"
+	local getopt_out=""
+	getopt_out=$(getopt --name "${0##*/}" \
+		--options "${short_opts}" --long "${long_opts}" -- "$@") &&
+		eval set -- "${getopt_out}" ||
+		{ bad_Usage; return; }
+
+	local dryrun=false cur="" next="" VERBOSITY="$VERBOSITY"
+	local freq="" name="" state_d="" marker=""
+
+	while [ $# -ne 0 ]; do
+		cur=${1}; next=${2};
+		case "$cur" in
+			-h|--help) Usage ; exit 0;;
+			-v|--verbose) VERBOSITY=$((${VERBOSITY}+1));;
+		   	   --dry-run) dryrun=true;;
+			--) shift; break;;
+		esac
+		shift;
+	done
+	[ $# -lt 3 ] || { bad_Usage "must provide frequency, name, cmd"; return; }
+
+	freq="$1"
+	name="$2"
+	shift 2;
+
+	[ ! -r "$CONFIG" ] || . "$CONFIG" ||
+		fail "failed to read $CONFIG"
+
+	case "$freq" in
+		always)
+			state_d="${STATE_D}";
+			marker="always.always.${name}"
+			;;
+		always-ds)
+			state_d="${STATE_D}";
+			marker="always-ds.always.${name}"
+			assert_datasource ||
+				{ error "no datasource found"; return 1; }
+			cirros-query datasource >/dev/null 2>&1 ||
+				fail "no datasource available"
+			;;
+		instance)
+			state_d="${STATE_D}";
+			ds_get_item "instance-id" ||
+				{ error "failed to get instance-id of datasource"; return 1; }
+			iid="${_RET}"
+			marker="instance.${iid}.${name}"
+			;;
+		boot)
+			state_d="${BOOT_STATE_D}"
+			marker="boot.boot.${name}"
+			;;
+		*) fail "bad frequency $freq";;
+	esac
+
+	debug 2 "using state_dir=${state_d}, marker=${marker}"
+
+	[ -d "$state_d" ] || mkdir -p "$state_d" ||
+		{ error "failed to create state_dir ${state_d}"; return 1; }
+
+	if [ "${freq#always}" = "$freq" -a -f "${state_d}/${marker}" ]; then
+		{ error "${name} already run per ${frequency}"; return 1; }
+	fi
+
+	if dryrun; then
+		error "run" "$@"
+		return 0
+	fi
+
+	local ret=0 uptime="" idle=""
+	debug 1 "[$freq]" "$@"
+	"$@"
+	ret=$?
+
+	read_uptime
+	echo "[${_RET}]" "$@" > "${state_d}/${marker}"
+
+	return "$ret"
+}
+
+cirros_per "$@"
+
+# vi: ts=4 noexpandtab

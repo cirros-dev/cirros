@@ -1,0 +1,71 @@
+#!/bin/sh
+
+. ${CIRROS_LIB:=/lib/cirros/shlib_cirros} ||
+	{ echo "failed to read ${CIRROS_LIB}" 1>&2; exit 1; }
+
+Usage() {
+	cat <<EOF
+Usage: ${0##*/} command [options]
+
+   commands:
+     datasource:  list the datasource name
+     available:   list available fields for datasource
+     get field:   dump field
+EOF
+}
+
+cirros_query() {
+	local short_opts="hqv"
+	local long_opts="help,quiet,verbose"
+	local getopt_out=""
+	getopt_out=$(getopt --name "${0##*/}" \
+		--options "${short_opts}" --long "${long_opts}" -- "$@") &&
+		eval set -- "${getopt_out}" ||
+		{ bad_Usage; return; }
+
+	local cur="" next="" command="" VERBOSITY
+	while [ $# -ne 0 ]; do
+		cur=${1}; next=${2};
+		case "$cur" in
+			-h|--help) Usage ; exit 0;;
+			-v|--verbose) VERBOSITY=$((${VERBOSITY}+1));;
+			-q|--quiet) VERBOSITY=0;;
+			--) shift; break;;
+		esac
+		shift;
+	done
+
+	[ $# -ne 0 ] || { bad_Usage "must provide arguments"; return; }
+
+	local command="$1" dsname="" start_d="$PWD"
+
+	assert_datasource ||
+		{ debug 1 "no datasource"; return 1; }
+	dsname="${_RET}"
+
+	if [ "$command" = "datasource" ]; then
+		[ $# -eq 1 ] ||
+			{ error "confused by '$2' to mode $command"; return 1; }
+		echo "$DSNAME"
+		return
+	elif [ "$command" = "available" ]; then
+		[ $# -eq 1 ] ||
+			{ error "confused by '$2' to mode $command"; return 1; }
+		ds_list_items ||
+			{ error "failed to list items"; return 1; }
+		echo "$_RET"
+		return
+	elif [ "$command" = "get" ]; then
+		[ "$#" -eq 2 ] || fail "can only query 1 item at a time"
+		ds_cat_item "$2"
+		return
+	else
+		error "unknown command '$command'"
+	fi
+
+	return 1
+}
+
+cirros_query "$@"
+
+# vi: ts=4 noexpandtab

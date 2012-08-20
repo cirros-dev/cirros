@@ -1,0 +1,9 @@
+#!/bin/sh
+
+case "$1" in
+	start) cirros-ds local;;
+	stop) :;;
+	*) msg "unknown argument ${1}";;
+esac
+
+# vi: ts=4 noexpandtab
