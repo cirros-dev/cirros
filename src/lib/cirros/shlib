@@ -1,0 +1,115 @@
+#!/bin/sh
+set -f
+
+CR="
+"
+
+error() { echo "$@" 1>&2; }
+fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
+
+bad_Usage() { Usage 1>&2; [ $# -eq 0 ] || error "$@"; return 1; }
+read_uptime() {
+	local idle
+	{ read _RET idle </proc/uptime; } >/dev/null 2>&1 || _RET=""
+}
+
+debug() {
+	local level=${1}; shift;
+	[ "${level}" -gt "${VERBOSITY}" ] && return
+	error "${@}"
+}
+
+net_get_gateway() {
+	_RET=$(route -n | awk '$1 == "0.0.0.0" && $2 != "0.0.0.0" { print $2 }')
+}
+net_get_nameservers() {
+	local gw nslist
+	local t1 t2 t3 nslist="" ns=""
+	while read t1 t2 t3; do
+		case "$t1" in
+			nameserver) nslist="${nslist} ${t2}";;
+		esac
+	done < /etc/resolv.conf
+	_RET="$nslist"
+}
+
+debug_connection() {
+	local gw=""
+
+	echo "############ debug start ##############"
+	echo "### /etc/rc.d/init.d/sshd start"
+	/etc/rc.d/init.d/sshd start
+	net_get_gateway && gw=$_RET
+	gw=$(route -n | awk '$1 == "0.0.0.0" && $2 != "0.0.0.0" { print $2 }')
+	echo "### ifconfig -a"
+	ifconfig -a
+	echo "### route -n"
+	route -n
+	echo "### cat /etc/resolv.conf"
+	cat /etc/resolv.conf
+	if [ -n "${gw}" ]; then
+		echo "### ping -c 5 ${gw}"
+		ping -c 5 ${gw}
+	else
+		echo "### gateway not found"
+	fi
+	local t1 t2 t3 nslist="" ns=""
+	while read t1 t2 t3; do
+		case "$t1" in
+			nameserver) nslist="${nslist} ${t2}";;
+		esac
+	done < /etc/resolv.conf
+	echo "### pinging nameservers"
+	for ns in ${nslist}; do
+		echo "#### ping -c 5 ${ns}"
+		ping -c 5 ${ns}
+	done
+	echo "### uname -a"
+	uname -a
+	lxc-is-container || { echo "### lsmod"; lsmod; }
+	echo "### dmesg | tail"
+	dmesg | tail
+	echo "### tail -n 25 /var/log/messages"
+	tail -n 25 /var/log/messages
+	echo "############ debug end   ##############"
+}
+
+mount_callback_umount() {
+	# dev, opts, callback, args
+	local dev="$1" opts="$2" callback="$3" ret=""
+	local tmpd=$(mktemp -d "${TMPDIR:-/tmp}/${0##*/}.mp.XXXXXX")
+	mount "$dev" $opts "$tmpd" ||
+		{ ret=$?; debug 2 "failed mount $dev"; return $ret; }
+	shift 3;
+	"$callback" "$tmpd" "$@"
+	ret=$?
+	umount "$tmpd" || { ret=$?; debug 1 "failed umount $dev"; return $ret; }
+	return 0
+}
+
+find_devs_with() {
+	# return a list of devices that match filter
+	# where filter is like:
+    #  TYPE=<filesystem>
+    #  LABEL=<label>
+    #  UUID=<uuid>
+	local filter="$1"
+	local out ret=""
+	out=$(blkid "-t$filter" "-odevice" 2>/dev/null)
+	ret=$?
+	if [ $ret -eq 0 ]; then
+		local item=""
+		for item in ${out}; do
+			_RET="${_RET} ${item}"
+		done
+		_RET=${_RET# }
+		return 0
+	elif [ $ret -eq 2 ]; then
+		# 2 is "no matching devices"
+		_RET=""
+		return 0
+	fi
+	return $ret
+}
+
+# vi: ts=4 noexpandtab syntax=sh
