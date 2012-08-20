@@ -1,0 +1,188 @@
+#!/bin/sh
+
+VERBOSITY=0
+TEMP_D=""
+CONFIG=/etc/cirros/ds-ec2
+MDURL="http://169.254.169.254/2009-04-04"
+NAME="${0##*/}"
+
+. ${CIRROS_SHLIB:=/lib/cirros/shlib} ||
+	{ echo "failed to read ${CIRROS_SHLIB}" 1>&2; exit 1; }
+
+error() { echo "$@" 1>&2; }
+fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
+
+Usage() {
+	cat <<EOF
+Usage: ${0##*/} mode output_d
+
+   Datasource for EC2 metadata service
+   Requires network.
+EOF
+}
+
+mdget() {
+	ec2metadata "--url=$MDURL" "$@"
+}
+
+search_local() {
+	local out_d="$1"
+	local devlist="" num="" found="" rdir="" fstree_d=""
+	local raw_d="" dev="" rdir="" mdjson="" ud="" found=""
+	find_devs_with "LABEL=$LABEL" ||
+		fail "failed to find devs"
+
+	devlist=${_RET}
+	[ -n "$devlist" ] || { debug 1 "no devices labeled $LABEL"; exit 0; }
+
+	num=0
+	for dev in ${devlist}; do num=$(($num+1)); done
+	[ $num -eq 1 ] || debug 1 "multiple devices matching $LABEL: $devlist"
+
+	[ -d "$out_d" ] || mkdir -p "$out_d" ||
+		fail "failed to create outputdir: ${out_d}"
+
+	found=""
+	rdir=""
+	fstree_d="${out_d}/processed"
+	raw_d="${out_d}/raw"
+	for dev in ${devlist}; do
+		rdir="${raw_d}.tmp"
+		rm -Rf "$rdir"
+		mount_callback_umount "$dev" -o,ro cp -a "${rdir}" ||
+			{ debug 1 "mount callback umount $dev failed"; continue; }
+
+		mdjson="$rdir/openstack/latest/meta_data.json"
+		if [ -f "$mdjson" ]; then
+			json2fstree "$fstree_d" "$mdjson" ||
+				fail "json2fstree failed on $mdjson for $dev"
+			ud="$rdir/openstack/latest/user_data" 
+			[ -f "$ud" ] && cp "$ud" "$fstree_d/user-data"
+			found="$dev"
+			mv "$rdir" "$raw_d" ||
+				fail "rename failed!"
+			break
+		fi
+	done
+
+	[ -z "$found" ] && return 0
+
+	# now we have filesystem rendering at $fstree_d
+	# and raw data (copy of config drive data) at $raw_d
+	mkdir -p "${out_d}/data" ||
+		fail "failed to make data dir"
+
+	start_d="$PWD"
+	cd "${out_d}/data"
+	ln -sf ../processed/uuid ./instance-id &&
+		ln -sf ../processed/hostname ../processed/name . ||
+		fail "failed to make symlinks"
+	[ -f ../processed/user-data ] &&
+		ln -sf ../processed/user-data ./user-data
+	if [ -d ../processed/public_keys ]; then
+		set +f
+		cat ../processed/public_keys/* > public-keys || rm public-keys
+		set -f
+	fi
+
+	cd "$start_d"
+	echo 0 > "$out_d/result"
+}
+
+cleanup() {
+	[ -z "${TMPF}" -o ! -f "$TMPF" ] || rm -f "${TMPF}"
+}
+
+search_local() {
+	local out_d="$1"
+	local i="" max="" iid="" uptime=""
+	[ -d "$out_d" ] || mkdir -p "$out_d" ||
+		{ error "failed to create output dir"; return 1; }
+	TMPF="${out_d}/tmpf"
+
+	trap cleanup EXIT
+
+	debug 1 "checking $MDURL/instance-id"
+	i=0
+	MAX_TRIES=${MAX_TRIES:-30}
+	SLEEP_TIME=${SLEEP_TIME:-2}
+
+	max=${MAX_TRIES}
+	while [ $i -lt ${max} ] && i=$(($i+1)); do
+		read uptime idle < /proc/uptime
+		if iid=$(mdget --instance-id); then
+			[ "${iid#i-}" != "${iid}" ] && break
+			debug 1 "failed $i/${max}: up ${uptime}. iid had '${iid}'"
+		else
+			debug 1 "failed $i/${max}: up ${uptime}. request failed"
+		fi
+		sleep $SLEEP_TIME
+	done
+
+	if [ -n "${iid}" ]; then
+		debug 1 "successful after ${i}/${max} tries: up ${uptime}. iid=${iid}"
+	else
+		error "failed to read iid from metadata. tried ${max}";
+		return 0
+	fi
+
+	local keys="" key=""
+	keys="public-keys instance-id ami-launch-index instance-type local-ipv4
+  		public-ipv4 public-keys hostname local-hostname user-data
+  		block-device-mappings"
+	mkdir -p "${out_d}/data"
+	for key in $keys; do
+		mdget "--${key}" > "${out_d}/data/${key}" ||
+			debug 1 "warning: no ec2 metadata for $key"
+	done
+	echo 0 > "$out_d/result"
+	return
+}
+
+apply() {
+	# ec2 datasource does nothing for apply
+	local mode="$1" data_d="$2"
+	return 0
+}
+
+short_opts="hv"
+long_opts="help,verbose"
+getopt_out=$(getopt --name "${0##*/}" \
+	--options "${short_opts}" --long "${long_opts}" -- "$@") &&
+	eval set -- "${getopt_out}" ||
+	bad_Usage
+
+output=""
+
+while [ $# -ne 0 ]; do
+	cur=${1}; next=${2};
+	case "$cur" in
+		-h|--help) Usage ; exit 0;;
+		-v|--verbose) VERBOSITY=$((${VERBOSITY}+1));;
+		--) shift; break;;
+	esac
+	shift;
+done
+
+[ $# -eq 2 ] || bad_Usage "must provide mode and data dir"
+mode="$1"
+out_d="$2"
+
+[ "$mode" = "net" -o "$mode" = "apply-net" ] || {
+	debug 1 "only supported in mode 'net' or 'apply-net'";
+	exit 0;
+}
+
+[ ! -e "$CONFIG" ] || . "$CONFIG" ||
+	fail "failed to read $CONFIG"
+
+if [ "$mode" = "local" ]; then
+	search_local "$out_d"
+elif [ "$mode" = "apply-local" ]; then
+	apply "$mode" "$out_d"
+else
+	fail "error, unexpected input"
+fi
+
+exit
+# vi: ts=4 noexpandtab

@@ -1,0 +1,85 @@
+#!/bin/sh
+
+assert_datasource() {
+	[ -n "${_DATASOURCE_NAME}" ] && return
+	[ -d "${RESULTS_D}" ] && [ -r "${RESULTS_D}/dsname" ] ||
+		{ debug 2 "no datasource found"; return 1; }
+
+	local dsname="" dsmode=""
+	{ read dsname < "${RESULTS_D}/dsname"; } >/dev/null 2>&1 ||
+		{ debug 1 "failed to read dsname"; return 1; }
+
+	[ -n "$dsname" ] ||
+		{ debug 1 "empty datasource name"; return 1; }
+
+	{ read dsmode < "${RESULTS_D}/dsmode"; } >/dev/null 2>&1 ||
+		{ debug 1 "failed to read dsmode"; return 1; }
+
+	_DATASOURCE_NAME="$dsname"
+	_DATASOURCE_MODE="$dsmode"
+	_RET="${dsname}"
+}
+
+ds_list_items() {
+	set +f;
+	local found=0 start="$PWD" items=""
+	cd "${RESULTS_D}/data" || return 1
+	for item in *; do
+		[ -f "$item" ] || continue
+		items="${items}${CR}${item}"
+		found=$(($found+1))
+	done
+	items=${items#${CR}}
+	[ -n "$items" ] || debug 2 "empty items in $RESULTS_D/data"
+	set -f
+	cd "$start" || { debug 2 "failed to cd back to $start"; return 1; }
+	[ -n "$items" ] && _RET="$items"
+}
+
+ds_get_item_path() {
+	assert_datasource || return
+	local field="$1"
+	local fpath="${RESULTS_D}/data/$field"
+	if [ ! -f "$fpath" ]; then
+		debug 2 "field $field not available for ds '$_DATASOURCE_NAME'";
+		return 1;
+	fi
+	[ -r "$fpath" ] || { debug 2 "cannot read $field. need root?"; return 1; }
+	_RET="$fpath"
+	return
+}
+ds_get_item() {
+	ds_get_item_path "$1" || return
+	local fpath="$_RET"
+	# file exists and is readable due to above, if read fails, it is due to EOF.
+	read _RET "$fpath" || :
+}
+
+ds_cat_item() {
+	ds_get_item_path "$1" && cat "$_RET"
+}
+
+cirros_status() {
+}
+
+. ${CIRROS_SHLIB:=/lib/cirros/shlib} ||
+	{ error "failed to read ${CIRROS_SHLIB}" 1>&2; exit 1; }
+
+INTERNAL=false
+VERBOSITY=1
+CONFIG=/etc/cirros-init/config
+STATE_D=/var/lib/cirros/sem
+BOOT_STATE_D=/run/cirros/sem
+DS_D=/lib/cirros/ds
+RESULTS_D=/run/cirros/datasource
+
+[ ! -r "$CONFIG" ] || . "$CONFIG" ||
+	fail "failed to read $CONFIG"
+
+# remove any trailing /
+STATE_D=${STATE_D%/}
+BOOT_STATE_D=${BOOT_STATE_D%/}
+DS_D=${DS_D%/}
+RESULTS_D=${RESULTS_D%/}
+
+# vi: ts=4 noexpandtab syntax=sh

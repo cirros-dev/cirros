@@ -1,0 +1,162 @@
+#!/bin/sh
+
+VERBOSITY=0
+CONFIG=/etc/cirros/configdrive
+NAME="${0##*/}"
+LABEL="config-2"
+
+. ${CIRROS_SHLIB:=/lib/cirros/shlib} ||
+	{ echo "failed to read ${CIRROS_SHLIB}" 1>&2; exit 1; }
+
+Usage() {
+	cat <<EOF
+Usage: ${0##*/} mode output_d
+
+   Datasource for openstack config drive
+EOF
+}
+
+search_local() {
+	local out_d="$1"
+	local devlist="" num="" found="" rdir="" fstree_d=""
+	local raw_d="" dev="" rdir="" mdjson="" ud="" found=""
+	find_devs_with "LABEL=$LABEL" ||
+		fail "failed to find devs"
+
+	devlist=${_RET}
+	[ -n "$devlist" ] || { debug 1 "no devices labeled $LABEL"; exit 0; }
+
+	num=0
+	for dev in ${devlist}; do num=$(($num+1)); done
+	[ $num -eq 1 ] || debug 1 "multiple devices matching $LABEL: $devlist"
+
+	[ -d "$out_d" ] || mkdir -p "$out_d" ||
+		fail "failed to create outputdir: ${out_d}"
+
+	found=""
+	rdir=""
+	fstree_d="${out_d}/processed"
+	raw_d="${out_d}/raw"
+	for dev in ${devlist}; do
+		rdir="${raw_d}.tmp"
+		rm -Rf "$rdir"
+		mount_callback_umount "$dev" -o,ro cp -a "${rdir}" ||
+			{ debug 1 "mount callback umount $dev failed"; continue; }
+
+		mdjson="$rdir/openstack/latest/meta_data.json"
+		if [ -f "$mdjson" ]; then
+			json2fstree "$fstree_d" "$mdjson" ||
+				fail "json2fstree failed on $mdjson for $dev"
+			ud="$rdir/openstack/latest/user_data" 
+			[ -f "$ud" ] && cp "$ud" "$fstree_d/user-data"
+			found="$dev"
+			mv "$rdir" "$raw_d" ||
+				fail "rename failed!"
+			break
+		fi
+	done
+
+	[ -z "$found" ] && return 0
+
+	# now we have filesystem rendering at $fstree_d
+	# and raw data (copy of config drive data) at $raw_d
+	mkdir -p "${out_d}/data" ||
+		fail "failed to make data dir"
+
+	start_d="$PWD"
+	cd "${out_d}/data"
+	ln -sf ../processed/uuid ./instance-id &&
+		ln -sf ../processed/hostname ../processed/name . ||
+		fail "failed to make symlinks"
+	[ -f ../processed/user-data ] &&
+		ln -sf ../processed/user-data ./user-data
+	if [ -d ../processed/public_keys ]; then
+		set +f
+		cat ../processed/public_keys/* > public-keys || rm public-keys
+		set -f
+	fi
+
+	# now create files/ tree
+	cd "${start_d}"
+	cd "${out_d}"
+	local d path content_path omask
+	omask=$(umask)
+	umask 0226
+	if [ -f processed/files/0 ]; then
+		# processed/files/0 is the length
+		set +f
+		for d in processed/files/*; do
+			[ "${d##*/}" = "0" ] && continue
+			set -f
+			[ -f "$d/path" -a -f "$d/content_path" ] ||
+				{ debug 1 "$d unexpected file dir"; continue; }
+			{ read path < "$d/path" || [ -n "$path" ] ; } &&
+				{ read content_path < "$d/content_path" ||
+				  [ -n "$content_path" ]; } ||
+				{ debug 1 "skipping $d, failed reads"; continue; }
+			mkdir -p "files/${path%/*}" &&
+				cp "raw/openstack/${content_path}" "files/${path}" ||
+				{ fail "failed to create ${path} in files"; return 1; }
+		done
+		set -f
+	fi
+
+	umask $omask
+
+	cd "$start_d"
+	echo 0 > "$out_d/result"
+}
+
+apply() {
+	local mode="$1" data_d="$2"
+	if [ -d "$data_d/files" ]; then
+		local omask="" f="" path="" tpath=""
+		omask=$(umask)
+		umask 0226
+		for f in $(find "$data_d/files/" -type f); do
+			path="${f#${data_d}/files/}"
+			tpath="${TARGET_ROOT}/${path}"
+			mkdir -p "${tpath%/*}" && cp "${f}" "${tpath}" ||
+				{ error "failed to create ${tpath}"; return 1; }
+		done
+		umask "$omask"
+	fi
+}
+
+short_opts="hv"
+long_opts="help,verbose"
+getopt_out=$(getopt --name "${0##*/}" \
+	--options "${short_opts}" --long "${long_opts}" -- "$@") &&
+	eval set -- "${getopt_out}" ||
+	bad_Usage
+
+while [ $# -ne 0 ]; do
+	cur=${1}; next=${2};
+	case "$cur" in
+		-h|--help) Usage ; exit 0;;
+		-v|--verbose) VERBOSITY=$((${VERBOSITY}+1));;
+		--) shift; break;;
+	esac
+	shift;
+done
+
+[ $# -eq 2 ] || bad_Usage "must provide mode and output dir"
+mode="$1"
+out_d="$2"
+
+[ "$mode" = "local" -o "$mode" = "apply-local" ] ||
+	{ debug 1 "only supported in mode 'local'"; exit 0; }
+
+[ ! -e "$CONFIG" ] || . "$CONFIG" ||
+	fail "failed to read $CONFIG"
+
+if [ "$mode" = "local" ]; then
+	search_local "$out_d"
+elif [ "$mode" = "apply-local" ]; then
+	apply "$mode" "$out_d"
+else
+	fail "error, unexpected input"
+fi
+
+exit
+# vi: ts=4 noexpandtab
