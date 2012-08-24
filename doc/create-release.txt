@@ -1,4 +1,4 @@
-VER=0.2.9
+VER=0.3.1~pre2
 pre=cirros-$VER;
 
 out="$PWD/../out"
@@ -9,12 +9,12 @@ for arch in i386 x86_64 arm; do
   time make ARCH=$arch "OUT_D=$out/build/$arch" 2>&1 |
      tee "$out/build-$arch.log";
 done;
-echo "$(date): finish" >> date.txt
+echo "$(date): finish" >> $out/date.txt
 
 mkdir -p $out/stage/{i386,arm,x86_64}
 
 for arch in i386 x86_64 arm; do
-  sudo ./bin/ bundle -v $out/build/$arch/rootfs.tar \
+  sudo ./bin/bundle -v $out/build/$arch/rootfs.tar \
      ./download/kernel-$arch.deb $out/stage/$arch;
 done
 
