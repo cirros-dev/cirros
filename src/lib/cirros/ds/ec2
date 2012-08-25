@@ -175,7 +175,6 @@ out_d="$2"
 
 [ ! -e "$CONFIG" ] || . "$CONFIG" ||
 	fail "failed to read $CONFIG"
-exit 0
 
 if [ "$mode" = "net" ]; then
 	search_local "$out_d"
