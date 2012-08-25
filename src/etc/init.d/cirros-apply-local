@@ -2,8 +2,8 @@
 
 case "$1" in
 	start)
-		mode=$(cirros-query dsmode >/dev/null 2>&1) || exit
-		[ "$mode" = "local" ] || exit
+		mode=$(cirros-query dsmode >/dev/null 2>&1) || exit 0
+		[ "$mode" = "local" ] || exit 0
 		cirros-per instance cirros-apply-local cirros-apply local;;
 	stop) :;;
 	*) msg "unknown argument ${1}";;

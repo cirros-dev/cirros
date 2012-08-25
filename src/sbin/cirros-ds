@@ -32,14 +32,16 @@ cirros_ds() {
 		eval set -- "${getopt_out}" ||
 		{ bad_Usage; return; }
 
-	local dryrun=false uptime="" cur="" next="" mode="" VERBOSITY
+	local dryrun=false uptime="" cur="" next="" mode="" ptv="" VERBOSITY
 	read_uptime && uptime=${_RET}
 
 	while [ $# -ne 0 ]; do
 		cur=${1}; next=${2};
 		case "$cur" in
 			-h|--help) Usage ; exit 0;;
-			-v|--verbose) VERBOSITY=$((${VERBOSITY}+1));;
+			-v|--verbose)
+				[ -z "${ptv}" ] && ptv="-v" || ptv="${ptv}v"
+				VERBOSITY=$((${VERBOSITY}+1));;
 		       --dry-run) dryrun=true;;
 			--) shift; break;;
 		esac
@@ -53,7 +55,7 @@ cirros_ds() {
 	[ "$mode" = "net" -o "$mode" = "local" ] ||
 		{ bad_Usage "mode must be 'net' or 'local'"; return; }
 
-	debug 1 "${0##*} up at $uptime"
+	debug 1 "${0##*/} '$mode' up at $uptime"
 
 	local cmdline tok cmdline_list oifs="$IFS"
 	if [ $# -eq 0 ]; then
@@ -66,10 +68,10 @@ cirros_ds() {
 		done
 		if [ -n "${cmdline_list}" -a "${cmdline_list}" != "none" ]; then
 			IFS=","; set -- ${cmdline_list}; IFS="$oifs"
-			debug 1 "found datasource list on cmdline:" "$@"
+			debug 2 "found datasource list on cmdline:" "$@"
 		else
 			set -- ${DATASOURCE_LIST}
-			debug 1 "found datasource list in config:" "$@"
+			debug 2 "found datasource list in config:" "$@"
 		fi
 		[ $# -ne 0 ] || { error "no datasource list configured?"; return 1; }
 	fi
@@ -84,8 +86,8 @@ cirros_ds() {
 	for ds in "$@"; do
 		result="${TEMP_D}/${ds}/result"
 		read_uptime
-		debug 1 "running: $ds $mode $TEMP_D/${ds} [up ${_RET}]"
-		"$ds" "$mode" "${TEMP_D}/${ds}" > "${TEMP_D}/output" 2>&1
+		debug 2 "running: $ds $ptv $mode $TEMP_D/${ds} [up ${_RET}]"
+		"$ds" $ptv "$mode" "${TEMP_D}/${ds}" > "${TEMP_D}/output"
 		ret=$?
 		if [ $ret -eq 0 ] && [ -r "$result" ]; then
 			rm -f "$result"
@@ -102,7 +104,7 @@ cirros_ds() {
 			fi
 			return 0
 		elif [ $ret -eq 0 ]; then
-			debug 1 "$ds-$mode: no datasource found"
+			debug 2 "$ds-$mode: no datasource found"
 		else
 			error "$ds-$mode: returned error"
 		fi

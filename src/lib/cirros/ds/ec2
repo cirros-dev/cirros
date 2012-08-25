@@ -1,6 +1,6 @@
 #!/bin/sh
 
-VERBOSITY=0
+VERBOSITY=1
 TEMP_D=""
 CONFIG=/etc/cirros/ds-ec2
 MDURL="http://169.254.169.254/2009-04-04"
@@ -104,13 +104,13 @@ search_local() {
 
 	debug 1 "checking $MDURL/instance-id"
 	i=0
-	MAX_TRIES=${MAX_TRIES:-30}
+	MAX_TRIES=${MAX_TRIES:-20}
 	SLEEP_TIME=${SLEEP_TIME:-2}
 
 	max=${MAX_TRIES}
 	while [ $i -lt ${max} ] && i=$(($i+1)); do
 		read uptime idle < /proc/uptime
-		if iid=$(mdget --instance-id); then
+		if iid=$(mdget --instance-id 2>/dev/null); then
 			[ "${iid#i-}" != "${iid}" ] && break
 			debug 1 "failed $i/${max}: up ${uptime}. iid had '${iid}'"
 		else
@@ -175,10 +175,11 @@ out_d="$2"
 
 [ ! -e "$CONFIG" ] || . "$CONFIG" ||
 	fail "failed to read $CONFIG"
+exit 0
 
-if [ "$mode" = "local" ]; then
+if [ "$mode" = "net" ]; then
 	search_local "$out_d"
-elif [ "$mode" = "apply-local" ]; then
+elif [ "$mode" = "apply-net" ]; then
 	apply "$mode" "$out_d"
 else
 	fail "error, unexpected input"

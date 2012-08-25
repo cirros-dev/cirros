@@ -1,10 +1,10 @@
 #!/bin/sh
 
 case "$1" in
-	start) cirros-apply local;;
-		mode=$(cirros-query dsmode >/dev/null 2>&1) || exit
-		[ "$mode" = "net" ] || exit
-		cirros-per instance cirros-apply-local cirros-apply local;;
+	start)
+		mode=$(cirros-query dsmode >/dev/null 2>&1) || exit 0
+		[ "$mode" = "net" ] || exit 0
+		cirros-per instance cirros-apply-net cirros-apply net;;
 	stop) :;;
 	*) msg "unknown argument ${1}";;
 esac
