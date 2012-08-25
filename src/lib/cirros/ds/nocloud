@@ -1,0 +1,137 @@
+#!/bin/sh
+
+VERBOSITY=1
+CONFIG=/etc/cirros/nocloud
+NAME="${0##*/}"
+LABEL="cidata"
+
+. ${CIRROS_SHLIB:=/lib/cirros/shlib} ||
+	{ echo "failed to read ${CIRROS_SHLIB}" 1>&2; exit 1; }
+
+Usage() {
+	cat <<EOF
+Usage: ${0##*/} mode output_d
+
+   Datasource for 'nocloud' config disk.
+EOF
+}
+
+search_local() {
+	local out_d="$1"
+	local devlist="" num="" found="" dev="" tmpd="" found="" f=""
+	find_devs_with "LABEL=$LABEL" ||
+		{ error "failed to find devs"; return 1; }
+
+	devlist=${_RET}
+	[ -n "$devlist" ] || { debug 2 "no devices labeled $LABEL"; exit 0; }
+
+	num=0
+	for dev in ${devlist}; do num=$(($num+1)); done
+	[ $num -eq 1 ] || debug 1 "multiple devices matching $LABEL: $devlist"
+
+	[ -d "$out_d" ] || mkdir -p "$out_d" ||
+		{ error "failed to create outputdir: ${out_d}"; return 1; }
+
+	found=""
+	tmpd="${out_d}/raw"
+	data_d="${out_d}/data"
+	for dev in ${devlist}; do
+		rm -Rf "$tmpd"
+		mount_callback_umount "$dev" -o,ro cp -a "${tmpd}" ||
+			{ debug 1 "mount callback umount $dev failed"; continue; }
+
+		[ -f "${tmpd}/meta-data" ] ||
+			{ debug 2 "$dev had no meta-data"; continue; }
+
+		json2fstree "${data_d}" "${tmpd}/meta-data" || {
+			error "json2fstree failed on ${tmpd}/meta-data from $dev"
+			return 1;
+		}
+
+		[ ! -f "${tmpd}/user-data" ] || cp "${tmpd}/user-data" "${data_d}" ||
+			{ error "failed to copy user-data from $dev"; return 1; }
+
+		[ -d "${tmpd}/files" ] && cp -a "${tmpd}/files" "${data_d}"
+
+		found="$dev"
+		rm -Rf "$tmpd"
+		break
+	done
+
+	[ -z "$found" ] && return 0
+
+	# now we have filesystem rendering at $fstree_d
+	# and raw data (copy of config drive data) at $raw_d
+	mkdir -p "${out_d}/data" ||
+		fail "failed to make data dir"
+
+	if [ ! -f "${data_d}/instance-id" ]; then
+		echo "i-nocloud-default" > "${data_d}/instance-id"
+	fi
+	if [ -d "${data_d}/public-keys" ]; then
+		# turn public-keys list into 
+		mv "${data_d}/public-keys" "${out_d}/public-keys-d";
+		set +f
+		for f in "${out_d}/public-keys-d/"*; do
+			[ -f "${f}" -a "${f##*/}" != "0" ] && cat "$f"
+		done  > "${data_d}/public-keys"
+		set -f
+	fi
+
+	echo 0 > "$out_d/result"
+}
+
+apply() {
+	local mode="$1" data_d="$2"
+	# support copying 'files' if it happened to be on that disk
+	if [ -d "$data_d/files" ]; then
+		local omask="" f="" path="" tpath=""
+		omask=$(umask)
+		umask 0226
+		for f in $(find "$data_d/files/" -type f); do
+			path="${f#${data_d}/files/}"
+			tpath="${TARGET_ROOT}/${path}"
+			mkdir -p "${tpath%/*}" && cp "${f}" "${tpath}" ||
+				{ error "failed to create ${tpath}"; return 1; }
+		done
+		umask "$omask"
+	fi
+}
+
+short_opts="hv"
+long_opts="help,verbose"
+getopt_out=$(getopt --name "${0##*/}" \
+	--options "${short_opts}" --long "${long_opts}" -- "$@") &&
+	eval set -- "${getopt_out}" ||
+	bad_Usage
+
+while [ $# -ne 0 ]; do
+	cur=${1}; next=${2};
+	case "$cur" in
+		-h|--help) Usage ; exit 0;;
+		-v|--verbose) VERBOSITY=$((${VERBOSITY}+1));;
+		--) shift; break;;
+	esac
+	shift;
+done
+
+[ $# -eq 2 ] || bad_Usage "must provide mode and output dir"
+mode="$1"
+out_d="$2"
+
+[ "$mode" = "local" -o "$mode" = "apply-local" ] ||
+	{ debug 1 "only supported in mode 'local'"; exit 0; }
+
+[ ! -e "$CONFIG" ] || . "$CONFIG" ||
+	fail "failed to read $CONFIG"
+
+if [ "$mode" = "local" ]; then
+	search_local "$out_d"
+elif [ "$mode" = "apply-local" ]; then
+	apply "$mode" "$out_d"
+else
+	fail "error, unexpected input"
+fi
+
+exit
+# vi: ts=4 noexpandtab
