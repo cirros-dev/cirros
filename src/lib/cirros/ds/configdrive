@@ -18,7 +18,7 @@ EOF
 
 search_local() {
 	local out_d="$1"
-	local devlist="" num="" found="" rdir="" fstree_d=""
+	local devlist="" num="" found="" fstree_d=""
 	local raw_d="" dev="" rdir="" mdjson="" ud="" found=""
 	find_devs_with "LABEL=$LABEL" ||
 		fail "failed to find devs"
