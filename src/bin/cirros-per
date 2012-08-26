@@ -87,7 +87,7 @@ cirros_per() {
 		{ error "${name} already run per ${frequency}"; return 1; }
 	fi
 
-	if dryrun; then
+	if $dryrun; then
 		error "run" "$@"
 		return 0
 	fi
