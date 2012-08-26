@@ -120,7 +120,7 @@ mode="$1"
 out_d="$2"
 
 [ "$mode" = "local" -o "$mode" = "apply-local" ] ||
-	{ debug 1 "only supported in mode 'local'"; exit 0; }
+	{ debug 2 "only supported in mode 'local'"; exit 0; }
 
 [ ! -e "$CONFIG" ] || . "$CONFIG" ||
 	fail "failed to read $CONFIG"

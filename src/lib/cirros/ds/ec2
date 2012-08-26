@@ -169,7 +169,7 @@ mode="$1"
 out_d="$2"
 
 [ "$mode" = "net" -o "$mode" = "apply-net" ] || {
-	debug 1 "only supported in mode 'net' or 'apply-net'";
+	debug 2 "only supported in mode 'net' or 'apply-net'";
 	exit 0;
 }
 
