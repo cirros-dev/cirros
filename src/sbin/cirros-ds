@@ -111,7 +111,8 @@ cirros_ds() {
 		fi
 	done
 
-	debug 1 "no results found for mode=$mode. up $uptime. searched:" "$@"
+	read_uptime
+	debug 1 "no results found for mode=$mode. up $_RET. searched:" "$@"
 	return 1
 }
 
