@@ -13,6 +13,7 @@ Usage: ${0##*/} [ options ] frequency name cmd [args]
      always-ds: run every time, but only if there is a datasource
      boot:      run only once per boot
      instance:  run once per instance (first boot)
+     once:      run once ever (first boot with or without datasource)
    name is the name of this thing.  subsequent runs of will be
      run with the given frequency based on state kept in 'name'
    
@@ -71,6 +72,10 @@ cirros_per() {
 			iid="${_RET}"
 			marker="instance.${iid}.${name}"
 			;;
+		once)
+			state_d="${STATE_D}";
+			marker="once.once.${name}"
+			
 		boot)
 			state_d="${BOOT_STATE_D}"
 			marker="boot.boot.${name}"
