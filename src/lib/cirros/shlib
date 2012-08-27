@@ -132,7 +132,6 @@ ipinfo() {
 				if [ -n "$cur_if" ]; then
 					dline="${cur_if},${cur_up},${cur_ipv4},${cur_nm},${cur_ipv6}"
 					data="${data}|${dline}"
-					echo "data: $dline"
 				fi
 				set -- ${line}
 				cur_if=${2%:}
