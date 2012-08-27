@@ -103,22 +103,22 @@ find_devs_with() {
     #  LABEL=<label>
     #  UUID=<uuid>
 	local filter="$1"
-	local out ret=""
+	local out rc ret=""
 	out=$(blkid "-t$filter" "-odevice" 2>/dev/null)
-	ret=$?
-	if [ $ret -eq 0 ]; then
+	rc=$?
+	if [ $rc -eq 0 ]; then
 		local item=""
 		for item in ${out}; do
-			_RET="${_RET} ${item}"
+			ret="${ret} ${item}"
 		done
-		_RET=${_RET# }
+		_RET=${ret# }
 		return 0
-	elif [ $ret -eq 2 ]; then
+	elif [ $rc -eq 2 ]; then
 		# 2 is "no matching devices"
 		_RET=""
 		return 0
 	fi
-	return $ret
+	return $rc
 }
 
 ipinfo() {
