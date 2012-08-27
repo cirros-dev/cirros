@@ -3,7 +3,7 @@ case "$1" in
 	start)
 		cirros-status;;
 	stop) :;;
-	*) msg "unknown argument ${1}";;
+	*) echo "unknown argument ${1}" 1>&2;;
 esac
 
 # vi: ts=4 noexpandtab

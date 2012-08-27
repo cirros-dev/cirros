@@ -4,7 +4,7 @@ case "$1" in
 		cirros-query datasource >/dev/null 2>&1 || exit 0
 		cirros-per instance userdata cirros-userdata;;
 	stop) :;;
-	*) msg "unknown argument ${1}";;
+	*) echo "unknown argument ${1}" 1>&2;;
 esac
 
 # vi: ts=4 noexpandtab
