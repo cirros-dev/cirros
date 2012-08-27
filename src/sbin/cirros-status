@@ -16,6 +16,10 @@ Usage: ${0##*/} [ options ]
 EOF
 }
 
+cleanup() {
+	[ -z "${TEMP_D}" -o ! -d "${TEMP_D}" ] || rm -Rf "${TEMP_D}"
+}
+
 cirros_status() {
 	local short_opts="hv"
 	local long_opts="help,verbose"
@@ -38,6 +42,10 @@ cirros_status() {
 	done
 
 	[ $# -eq 0 ] || { bad_Usage "no arguments expected"; return; }
+
+	TEMP_D=$(mktemp -d "${TMPDIR:-/tmp}/${0##*/}.XXXXXX") ||
+		{ error "failed to make tempdir"; return 1; }
+	trap cleanup EXIT
 
 	local oifs="" x="" val=""
 	echo "=== network info ==="
