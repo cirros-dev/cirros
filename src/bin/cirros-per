@@ -75,7 +75,7 @@ cirros_per() {
 		once)
 			state_d="${STATE_D}";
 			marker="once.once.${name}"
-			
+			;;
 		boot)
 			state_d="${BOOT_STATE_D}"
 			marker="boot.boot.${name}"
