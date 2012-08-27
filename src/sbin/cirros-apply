@@ -56,7 +56,7 @@ cirros_apply() {
 	dsname="${_DATASOURCE_NAME}"
 	dsmode="${_DATASOURCE_MODE}"
 
-	[ "${dsmode}" = "mode" ] || {
+	[ "${dsmode}" = "$mode" ] || {
 		debug 1 "datasource found is mode '${dsmode}', skipping";
 		return 0;
 	}
