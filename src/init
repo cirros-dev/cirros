@@ -53,12 +53,14 @@ if [ -z "$ROOT" -a "$KC_RAMDISK_ROOT" != "1" ] &&
    [ -e "$blank" ]; then
 	iinfo "copying initramfs to $blank"
 	items=""
+	set +f
 	for x in /*; do
 		case "$x" in
 			/dev|/proc|/newroot) : ;;
 			*) items="$items $x";;
 		esac
 	done
+	set -f
 	mount "$blank" /newroot
 	mkdir -p /newroot/dev /newroot/proc
 	cp -a $items /newroot/

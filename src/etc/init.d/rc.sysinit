@@ -1,7 +1,7 @@
 #!/bin/sh
 # vi: ts=4 noexpandtab
 
-. /lib/cirros/initfuncs
+. /lib/cirros/shlib
 
 write_lxc_is_container() {
 	cat <<"EOF"
@@ -57,10 +57,12 @@ if ! is_lxc; then
 fi
 
 ## pretend you're runlevel 3
+set +f
 for s in /etc/rc3.d/S*; do
 	[ -x "$s" ] || continue
 	"$s" "start" </dev/null || warn "$s failed"
 done
+set -f
 
 if is_lxc; then
 	grep -q "^pts/0$" /etc/securetty || echo "pts/0" >> /etc/securetty
