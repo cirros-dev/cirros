@@ -39,7 +39,27 @@ cirros_status() {
 
 	[ $# -eq 0 ] || { bad_Usage "no arguments expected"; return; }
 
-	## TODO: implement me
+	local oifs="" x="" val=""
+	echo "=== network info ==="
+	ip addr show > "$TEMP_D/ip-addr-show"
+	ipinfo < "$TEMP_D/ip-addr-show"
+	IFS="|"; set -- $_RET; IFS="$oifs"
+	for x in "$@"; do
+		echo "if-info: $x"
+	done
+	ip route | sed 's,^,ip-route:,'
+
+	if assert_datasource; then
+		echo "=== datasource: $_DATASOURCE_NAME $_DATASOURCE_MODE ==="
+		for x in instance-id name availability-zone local-hostname \
+		         launch-index; do
+			ds_get_item "$x" && val="$_RET" || val="N/A"
+			echo "$x: ${val}"
+		done
+	else
+		echo "=== datasource: None None ==="
+	fi
+
 	return 0
 }
 

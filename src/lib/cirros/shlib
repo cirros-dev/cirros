@@ -37,8 +37,8 @@ debug_connection() {
 	local gw=""
 
 	echo "############ debug start ##############"
-	echo "### /etc/rc.d/init.d/sshd start"
-	/etc/rc.d/init.d/sshd start
+	echo "### /etc/init.d/sshd start"
+	/etc/init.d/sshd start
 	net_get_gateway && gw=$_RET
 	gw=$(route -n | awk '$1 == "0.0.0.0" && $2 != "0.0.0.0" { print $2 }')
 	echo "### ifconfig -a"
@@ -119,6 +119,49 @@ find_devs_with() {
 		return 0
 	fi
 	return $ret
+}
+
+ipinfo() {
+	# return a list of ip info
+	# each line contain: ifname,up/down,ipv4,ipv4mask
+	local cur_if="" cur_up=0 cur_inargs=0 cur_good=0 cur_ipv4="" cur_ipv6="" cur_nm
+	local data="" dline=""
+	while read line; do
+		case "$line" in
+			[0-9]:*|[0-9][0-9]:*|[0-9][0-9][0-9]:*)
+				if [ -n "$cur_if" ]; then
+					dline="${cur_if},${cur_up},${cur_ipv4},${cur_nm},${cur_ipv6}"
+					data="${data}|${dline}"
+					echo "data: $dline"
+				fi
+				set -- ${line}
+				cur_if=${2%:}
+				cur_up=down
+				cur_ipv4=""
+				cur_ipv6=""
+				case "$3" in
+					*,UP,*|*,UP\>|\<UP,*) cur_up=up;;
+				esac
+		esac
+		case "$line" in
+			*inet\ *)
+				set -- $line
+				[ "${2#*/}" != "$2" ] && {
+					cur_ipv4="${2%/*}";
+					cur_nm="${2#*/}";
+				}
+				;;
+			*inet6\ *) :
+				# don't know how to do this
+				set -- $line
+				[ "${2#*/}" != "$2" ] && cur_ipv6="${2%/*}";;
+		esac
+	done
+	if [ -n "$cur_if" ]; then
+		data="${data}|${cur_if},${cur_up},${cur_ipv4},${cur_nm},${cur_ipv6}"
+	fi
+	_RET="${data#|}"
+	return 0
 }
 
 # vi: ts=4 noexpandtab syntax=sh
