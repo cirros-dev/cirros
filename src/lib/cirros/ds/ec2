@@ -2,7 +2,7 @@
 
 VERBOSITY=1
 TEMP_D=""
-CONFIG=/etc/cirros/ds-ec2
+CONFIG=/etc/cirros-init/ds-ec2
 MDURL="http://169.254.169.254/2009-04-04"
 NAME="${0##*/}"
 

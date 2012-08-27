@@ -1,7 +1,7 @@
 #!/bin/sh
 
 VERBOSITY=0
-CONFIG=/etc/cirros/configdrive
+CONFIG=/etc/cirros-init/configdrive
 NAME="${0##*/}"
 LABEL="config-2"
 

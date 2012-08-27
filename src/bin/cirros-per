@@ -44,7 +44,7 @@ cirros_per() {
 		esac
 		shift;
 	done
-	[ $# -lt 3 ] || { bad_Usage "must provide frequency, name, cmd"; return; }
+	[ $# -ge 3 ] || { bad_Usage "must provide frequency, name, cmd"; return; }
 
 	freq="$1"
 	name="$2"
@@ -84,7 +84,7 @@ cirros_per() {
 		{ error "failed to create state_dir ${state_d}"; return 1; }
 
 	if [ "${freq#always}" = "$freq" -a -f "${state_d}/${marker}" ]; then
-		{ error "${name} already run per ${frequency}"; return 1; }
+		{ error "${name} already run per ${freq}"; return 1; }
 	fi
 
 	if $dryrun; then
@@ -93,7 +93,7 @@ cirros_per() {
 	fi
 
 	local ret=0 uptime="" idle=""
-	debug 1 "[$freq]" "$@"
+	debug 2 "[$freq]" "$@"
 	"$@"
 	ret=$?
 

@@ -1,7 +1,7 @@
 #!/bin/sh
 
 VERBOSITY=1
-CONFIG=/etc/cirros/nocloud
+CONFIG=/etc/cirros-init/nocloud
 NAME="${0##*/}"
 LABEL="cidata"
 
