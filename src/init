@@ -83,12 +83,6 @@ if [ -n "$ROOT" ]; then
 	iinfo "initramfs loading root from $ROOT"
 	exec switch_root /newroot /sbin/init "$@"
 else
-	# here, no root disk was found, but we'll be nice and mount up
-	# the mountable filesystems that we found
-	for d in $MOUNTED; do
-		mkdir -p /media/$d
-		mount /dev/$d /media/$d
-	done
 	while read maj min blk name other; do
 		[ -n "${maj}" -a "${maj}" != "major" ] || continue
 		umount=0

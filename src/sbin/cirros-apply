@@ -75,7 +75,15 @@ cirros_apply() {
 
 	#
 	# here do any common things for $mode
-	#
+	# 
+	## if there is a 'ephemeral0' block device, mount it
+	if find_devs_with LABEL=ephemeral0; then
+		# get the first one only
+		local dev="${_RET% *}"
+		echo "${dev}     /mnt      auto     rw,defaults 0 0" >> /etc/fstab
+		mount /mnt ||
+			error "failed to mount ${dev}"
+	fi
 
 	# if we were provided with a network/interfaces file copy it
 	if [ -f "$RESULTS_D/network-interfaces" ]; then
