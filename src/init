@@ -4,7 +4,7 @@
 # This is the initramfs init script
 ROOTFS_LABEL="cirros-rootfs"
 
-. /lib/cirros/initfuncs
+. /lib/cirros/shlib
 
 mkdir -p /proc /newroot /dev /tmp
 
