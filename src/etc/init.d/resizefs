@@ -5,7 +5,7 @@ case "$1" in
 	start)
 		lxc-is-container && exit 0
 		[ -e /dev/root ] || exit 0
-		cirros-per once resizefs \
+		cirros-per once resizefs -- \
 			sh -c 'o=/tmp/resize.out;
 				resize2fs /dev/root >$o 2>&1 &&
 				rm -f $o && exit 0 ||
