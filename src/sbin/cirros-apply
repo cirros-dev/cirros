@@ -77,7 +77,7 @@ cirros_apply() {
 	# here do any common things for $mode
 	# 
 	## if there is a 'ephemeral0' block device, mount it
-	if find_devs_with LABEL=ephemeral0; then
+	if find_devs_with LABEL=ephemeral0 && [ -n "${_RET}" ]; then
 		# get the first one only
 		local dev="${_RET% *}"
 		echo "${dev}     /mnt      auto     rw,defaults 0 0" >> /etc/fstab
