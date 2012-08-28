@@ -89,7 +89,7 @@ cirros_per() {
 		{ error "failed to create state_dir ${state_d}"; return 1; }
 
 	if [ "${freq#always}" = "$freq" -a -f "${state_d}/${marker}" ]; then
-		{ error "${name} already run per ${freq}"; return 1; }
+		{ error "${name} already run per ${freq}"; return 0; }
 	fi
 
 	if $dryrun; then
