@@ -68,6 +68,13 @@ cirros_status() {
 		echo "=== datasource: None None ==="
 	fi
 
+	local cur="" avail="" msg=""
+	cirros_version_available && available="$_RET"
+	cirros_version && cur="$_RET"
+	msg="cirros_version: $cur"
+	[ "$avail" != "0.0" ] && msg="$msg , available: $avail"
+	echo "$msg"
+
 	return 0
 }
 
