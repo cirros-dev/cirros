@@ -3,6 +3,8 @@
 . ${CIRROS_LIB:=/lib/cirros/shlib_cirros} ||
 	{ echo "failed to read ${CIRROS_LIB}" 1>&2; exit 1; }
 
+SSH_ROOT_PREFIX="command=\"echo Please login as \\'cirros\\' user, not as root; echo; sleep 10\""
+
 Usage() {
 	cat <<EOF
 Usage: ${0##*/} [ options ] mode
@@ -94,6 +96,17 @@ cirros_apply() {
 			error "failed to copy network interfaces"
 		debug 1 "copied network/interfaces"
 	fi
+
+	# if we have public-keys, put them in cirros user						     
+	if ds_get_item_path public-keys; then
+		local keyfile="$_RET"
+		ds_get_item public-keys ||
+			error "failed to get public-keys"
+		mkdir -p "${TARGET_ROOT}/home/cirros" "${TARGET_ROOT}/root"
+		HOME=$TARGET_ROOT/home/cirros su -c "ssh-add-key --replace -" cirros < "$keyfile"
+		HOME=$TARGET_ROOT/root ssh-add-key --replace \
+			--prefix "$SSH_ROOT_PREFIX" - < "$keyfile"
+	fi 
 
 	return 0
 }
