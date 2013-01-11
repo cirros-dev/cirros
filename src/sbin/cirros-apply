@@ -108,6 +108,15 @@ cirros_apply() {
 			--prefix "$SSH_ROOT_PREFIX" - < "$keyfile"
 	fi 
 
+	local name=""
+	if [ -c /dev/urandom ]; then
+		for name in random_seed random-seed; do
+			if ds_has_item "$name"; then
+				ds_cat_item "$name" > /dev/urandom && break
+			fi
+		done
+	fi
+
 	return 0
 }
 
