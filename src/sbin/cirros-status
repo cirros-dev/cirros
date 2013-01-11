@@ -69,7 +69,7 @@ cirros_status() {
 	fi
 
 	local cur="" avail="" msg=""
-	cirros_version_available && available="$_RET"
+	cirros_version_available && avail="$_RET"
 	cirros_version && cur="$_RET"
 	msg="current=$cur"
 	[ "$avail" != "0.0" ] && msg="$msg latest=$avail"
