@@ -76,9 +76,14 @@ cirros_status() {
 	echo "=== cirros: $msg ==="
 	echo "$msg"
 
+	if ! check_ping_gateway; then
+		echo "=== pinging gateway failed, debugging connection ==="
+ 		debug_connection
+	fi
+
 	return 0
 }
 
-cirros_status"$@"
+cirros_status "$@"
 
 # vi: ts=4 noexpandtab

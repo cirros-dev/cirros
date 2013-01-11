@@ -33,6 +33,13 @@ net_get_nameservers() {
 	_RET="$nslist"
 }
 
+check_ping_gateway() {
+	local gw="$1"
+	[ -z "$gw" ] && net_get_gateway && gw=$_RET
+	[ -n "$gw" ] || { debug 2 "No gateway found"; return 1; }
+	ping -c 1 $gw -W 3 >/dev/null 2>&1
+}
+
 debug_connection() {
 	local gw=""
 
