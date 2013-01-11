@@ -65,7 +65,7 @@ search_local() {
 	local keys="" key=""
 	keys="public-keys instance-id ami-launch-index instance-type local-ipv4
   		public-ipv4 public-keys hostname local-hostname user-data
-  		block-device-mappings"
+  		block-device-mappings public-hostname"
 	mkdir -p "${out_d}/data"
 	for key in $keys; do
 		mdget "--${key}" > "${out_d}/data/${key}" ||
