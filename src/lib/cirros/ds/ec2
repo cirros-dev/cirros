@@ -65,12 +65,22 @@ search_local() {
 	local keys="" key=""
 	keys="public-keys instance-id ami-launch-index instance-type local-ipv4
   		public-ipv4 public-keys hostname local-hostname user-data
-  		block-device-mappings public-hostname"
+  		block-device-mappings public-hostname availability-zone"
 	mkdir -p "${out_d}/data"
 	for key in $keys; do
 		mdget "--${key}" > "${out_d}/data/${key}" ||
 			debug 1 "warning: no ec2 metadata for $key"
 	done
+
+	local fix="" t="" f=""
+	for fix in ami-launch-index:launch-index; do
+		f="${fix%:*}"
+		t="${fix#*:}"
+		[ -f "${out_d}/data/$f" -a ! -f "${out_d}/data/$t" ] || continue
+		ln -sf "$f" "${out_d}/data/$t" ||
+			fail "failed to link $f to ${out_d}/data/t"
+	done
+
 	echo 0 > "$out_d/result"
 	return
 }
