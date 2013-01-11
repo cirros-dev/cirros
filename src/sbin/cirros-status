@@ -47,7 +47,7 @@ cirros_status() {
 		{ error "failed to make tempdir"; return 1; }
 	trap cleanup EXIT
 
-	local oifs="" x="" val=""
+	local oifs="$IFS" x="" val=""
 	echo "=== network info ==="
 	ip addr show > "$TEMP_D/ip-addr-show"
 	ipinfo < "$TEMP_D/ip-addr-show"
@@ -73,6 +73,8 @@ cirros_status() {
 	cirros_version && cur="$_RET"
 	msg="current=$cur"
 	[ "$avail" != "0.0" ] && msg="$msg latest=$avail"
+
+	read_uptime && [ -n "$_RET" ] && msg="$msg uptime=$_RET"
 	echo "=== cirros: $msg ==="
 
 	if ! check_ping_gateway; then
