@@ -42,6 +42,8 @@ cirros_userdata() {
 
 	if [ $# -eq 0 ]; then
 		assert_datasource || exit 0
+		ds_has_item user-data ||
+			{ debug 1 "no userdata for datasource"; return 0; }
 		ds_get_item_path user-data || { error "failed to get user-data"; return 1; }
 		set -- "$_RET"
 	fi

@@ -42,12 +42,17 @@ ds_get_item_path() {
 	local fpath="${RESULTS_D}/data/$field"
 	if [ ! -f "$fpath" ]; then
 		debug 2 "field $field not available for ds '$_DATASOURCE_NAME'";
-		return 1;
+		return 2;
 	fi
 	[ -r "$fpath" ] || { debug 2 "cannot read $field. need root?"; return 1; }
 	_RET="$fpath"
 	return
 }
+
+ds_has_item() {
+	[ -f "${RESULTS_D}/data/$1" ]
+}
+
 ds_get_item() {
 	ds_get_item_path "$1" || return
 	local fpath="$_RET"
