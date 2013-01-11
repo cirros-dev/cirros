@@ -40,7 +40,6 @@ debug_connection() {
 	echo "### /etc/init.d/sshd start"
 	/etc/init.d/sshd start
 	net_get_gateway && gw=$_RET
-	gw=$(route -n | awk '$1 == "0.0.0.0" && $2 != "0.0.0.0" { print $2 }')
 	echo "### ifconfig -a"
 	ifconfig -a
 	echo "### route -n"
