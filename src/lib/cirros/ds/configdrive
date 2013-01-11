@@ -65,16 +65,25 @@ search_local() {
 
 	start_d="$PWD"
 	cd "${out_d}/data"
-	ln -sf ../processed/uuid ./instance-id &&
-		ln -sf ../processed/hostname ../processed/name . ||
-		fail "failed to make symlinks"
-	[ -f ../processed/user-data ] &&
-		ln -sf ../processed/user-data ./user-data
+	local f="" t="" fix=""
+	for f in ../processed/*; do
+		[ -f "$f" ] || continue
+		ln -s "$f" .
+	done
+
 	if [ -d ../processed/public_keys ]; then
 		set +f
 		cat ../processed/public_keys/* > public-keys || rm public-keys
 		set -f
 	fi
+
+	for fix in uuid:instance-id hostname:local-hostname user_data:user-data \
+		availability_zone:availability-zone launch_index:launch-index; do
+		f="${fix%:*}"
+		t="${fix#*:}"
+		[ -f "$f" -a ! -f "$t" ] || continue
+		ln -sf "$f" "$t" || fail "failed to link $f to $t"
+	done
 
 	# now create files/ tree
 	cd "${start_d}"
