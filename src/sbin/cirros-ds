@@ -102,7 +102,7 @@ cirros_ds() {
 				echo "$ds" > "$RESULTS_D/dsname"
 				echo "$mode" > "$RESULTS_D/dsmode"
 			fi
-			debug 1 "found datasource '$mode'"
+			debug 1 "found datasource ($ds, $mode)"
 			return 0
 		elif [ $ret -eq 0 ]; then
 			debug 2 "$ds-$mode: no datasource found"
