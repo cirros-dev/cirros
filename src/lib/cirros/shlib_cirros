@@ -65,25 +65,31 @@ cirros_version() {
 
 cirros_version_available() {
 	local na="0.0" af="$DATA_D/cirros_available"
-	local url="http://cirros-cloud.net/version/released"
+	local url="http://download.cirros-cloud.net/version/released"
 	[ -d "$DATA_D" ] || mkdir -p "$DATA_D"
 
 	[ "$1" = "-f" ] && { rm -f "$af"; shift; }
-	local block="${1:-20}"
+	local block="${1:-0}"
 
 	if [ ! -f "$af" ]; then
+		local max=$block
+		[ "$max" = "0" ] && max=20
+
+		local agent="cirros/$CIRROS_VERSION ($(uname -m))"
+		local curlcmd="curl --location --silent --fail --max-time $max"
+
+		curlcmd="$curlcmd ${url}"
 		echo "$na" > "$af"
 		if [ "${block}" != "0" ]; then
 			local out=""
-			out=$(curl --location --silent --max-time "${block}" "${url}") &&
-				echo "$out" > "$af"
+			out=$($curlcmd --user-agent "$agent" "$url") && echo "$out" > "$af"
 		else
-			sh -c 'out=$(curl --location --silent --max-time 20 "$1") &&
-				echo "${out}" > "$2"' -- "$url" "$af" &
+			sh -c "out=$($curlcmd --user-agent '$agent' '$url') &&
+				echo \"\${out}\" > '$af'" &
 		fi
 	fi
 	{ read _RET < "$af"; } >/dev/null 2>&1
-	[ -n "$_RET" ] || _RET="0.0"
+	[ -n "$_RET" ] || _RET="$na"
 	return
 }
 
@@ -98,6 +104,9 @@ STATE_D=/var/lib/cirros/sem
 BOOT_STATE_D=/run/cirros/sem
 DS_D=/lib/cirros/ds
 RESULTS_D=/run/cirros/datasource
+
+cirros_version
+CIRROS_VERSION="$_RET"
 
 [ ! -r "$CONFIG" ] || . "$CONFIG" ||
 	fail "failed to read $CONFIG"
