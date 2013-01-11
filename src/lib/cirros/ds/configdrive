@@ -66,12 +66,12 @@ search_local() {
 	start_d="$PWD"
 	cd "${out_d}/data"
 	local f="" t="" fix=""
-	set -f
+	set +f
 	for f in ../processed/*; do
 		[ -f "$f" ] || continue
 		ln -s "$f" .
 	done
-	set +f
+	set -f
 
 	if [ -d ../processed/public_keys ]; then
 		set +f
