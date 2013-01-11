@@ -83,13 +83,12 @@ cirros_version_available() {
 		local agent="cirros/$CIRROS_VERSION ($(uname -m))"
 		local curlcmd="curl --location --silent --fail --max-time $max"
 
-		curlcmd="$curlcmd ${url}"
 		echo "$na" > "$af"
 		if [ "${block}" != "0" ]; then
 			local out=""
 			out=$($curlcmd --user-agent "$agent" "$url") && echo "$out" > "$af"
 		else
-			sh -c "out=$($curlcmd --user-agent '$agent' '$url') &&
+			sh -c "out=\$($curlcmd --user-agent '$agent' '$url') &&
 				echo \"\${out}\" > '$af'" &
 		fi
 	fi
