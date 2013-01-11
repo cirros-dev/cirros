@@ -74,7 +74,6 @@ cirros_status() {
 	msg="current=$cur"
 	[ "$avail" != "0.0" ] && msg="$msg latest=$avail"
 	echo "=== cirros: $msg ==="
-	echo "$msg"
 
 	if ! check_ping_gateway; then
 		echo "=== pinging gateway failed, debugging connection ==="
