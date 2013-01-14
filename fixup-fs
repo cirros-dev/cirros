@@ -12,14 +12,28 @@ rm -f "$rootd/usr/sbin/visudo"
 
 # buildroot symlinks stuff in /var to /tmp
 links="lib/pcmcia pcmcia lock cache log spool pcmcia"
-( cd "$rootd/var" && rm -f $links && mkdir -p $links ) ||
-   fail "failed to remove links in /var"
+for f in $links; do
+	p="/var/$f"
+	if [ -L "$rootd/$p" ]; then
+		rm "$rootd/$p" ||
+			fail "failed to remove file $p"
+	elif [ -d "$rootd/$p" ]; then
+		rmdir "$rootd/$p" ||
+			fail "rmdir $p failed"
+	else
+		[ -e "$rootd/$p" ] &&
+			fail "don't know what to do with $p. not dir or link"
+	fi
+done
+mkdir -p $rootd/var
+( cd "$rootd/var" && mkdir -p $links ) ||
+   fail "failed to create directories in /var"
 
-( cd "$rootd/var" && rm -f tmp run &&
+( cd "$rootd/var" && rm -Rf tmp run &&
    ln -s ../run run && ln -s ../run/var.tmp tmp ) ||
    fail "failed to make var/run and var/tmp"
 
-rm $rootd/etc/resolv.conf && 
+rm -f $rootd/etc/resolv.conf &&
    ln -sf ../run/resolv.conf "$rootd/etc/resolv.conf" ||
    fail "failed to create resolv.conf symlink"
 
