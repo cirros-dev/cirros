@@ -40,7 +40,7 @@ To use it, you would do something like:
    The kernel input to bundle must be in deb format. The ubuntu '-virtual'
    kernel is used as a starting point.
 
-   $ kver="3.2.0-35.55";
+   $ kver="3.2.0-37.58" ;
    $ burl="https://launchpad.net/ubuntu/+archive/primary/+files/linux-image"
    $ for arch in i386 x86_64 arm; do
      xarch=$arch; flav="virtual"
