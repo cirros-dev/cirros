@@ -1,4 +1,4 @@
-VER=0.3.1~pre2
+VER=0.3.1
 pre=cirros-$VER;
 
 out="$PWD/../out"
