@@ -1,3 +1,6 @@
+0.3.2
+ - Recognize failure when getting entries from ec2 metadata service,
+   especially annoying on 'ec2metadata --public-keys' (LP: #1148165)
 0.3.1
  - move to buildroot 2012.05 (busybox 1.20.1)
  - build on Ubuntu 12.04

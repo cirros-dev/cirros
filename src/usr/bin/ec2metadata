@@ -42,7 +42,7 @@ get_field_list() {
 }
 
 caturl() {
-	curl --silent --max-time "${TIMEOUT}" "$1"
+	curl --fail --silent --max-time "${TIMEOUT}" "$1"
 }
 
 mdget() {
@@ -52,6 +52,8 @@ mdget() {
 		public-keys|public-keys/)
 			out=$(caturl "$MD_URL/meta-data/$u") ||
 				fail "failed to get $MD_URL/meta-data/$u";
+			# output of public-keys is lines of 'X=keyname'
+			# so we return a carriage return list of the tokens before =
 			_RET=""
 			IFS="$CR"
 			for t1 in $out; do
