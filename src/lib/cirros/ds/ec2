@@ -64,7 +64,7 @@ search_local() {
 
 	local keys="" key=""
 	keys="public-keys instance-id ami-launch-index instance-type local-ipv4
-  		public-ipv4 public-keys hostname local-hostname user-data
+  		public-ipv4 hostname local-hostname user-data
   		block-device-mappings public-hostname availability-zone"
 	mkdir -p "${out_d}/data"
 	for key in $keys; do
