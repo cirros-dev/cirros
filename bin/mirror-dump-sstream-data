@@ -1,0 +1,97 @@
+#!/bin/bash
+set -f
+#
+# 
+# 
+Usage() {
+   cat <<EOF
+Usage: ${0##*/} mirror_dir
+
+  write tab delimited data for simple streams 'tab2streams' input.
+
+  Example:
+
+    bzr branch lp:simplestreams simplestreams
+    bzr branch lp:cirros cirros
+
+    ./cirros/bin/mirror-dump-sstream-data "$mirror_d" > mdata.txt
+    ./simplestreams/tools/tenv tab2streams mdata.txt cirros-streams.d
+
+    ./simplestreams/tools/tenv env -u GNUPGHOME \
+       SS_GPG_BATCH=1 SS_GPG_DEFAULT_KEY=A5DDB840  \
+       js2signed cirros-streams.d
+EOF
+}
+
+error() { echo "$@" 1>&2; }
+fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
+
+[ "$1" = "-h" -o "$1" = "--help" ] && { Usage; exit 0; }
+[ "$#" -eq 1 ] || { Usage 1>&2; fail "must give mirror dir"; }
+
+OIFS="$IFS"
+declare -A VERSION2SERIAL
+VERSION2SERIAL=( [0.3.0]="20111020" [0.3.1]="20130207"
+                 [0.3.1~pre1]="20120611" [0.3.1~pre3]="20120827"
+                 [0.3.1~pre4]="20130111" )
+
+#content-id product_name version_name img_name [key=value [key=value]]
+content_id_base="net.cirros-cloud:%(stream)s:download"
+
+tab="$(printf '\t')"
+
+top_d="${1:-.}"
+cd "$top_d"
+IFS=$'\n'; files=( $(find . -type f -printf "%p|%s\n") ); IFS="$OIFS"
+
+for ent in "${files[@]}"; do
+   IFS="|"; set -- $ent; IFS="$OIFS"
+   path=${1#./}
+   size=${2}
+
+   case "$path" in
+      *-uec.tar.gz|*-disk.img|*-rootfs.img|*-lxc.tar.gz) :;;
+      *) continue;;
+   esac
+   IFS="/"; set -- $path; IFS=$OIFS
+   version="$1"; fname="$2";
+   serial="${VERSION2SERIAL[$version]}"
+   [ -n "$serial" ] ||
+      fail "serial not found for $version!"
+
+   # tokenize cirros-0.3.1~pre4-x86_64-lxc.tar.gz, baseproduct gets 'cirros'
+   IFS="-"; set -- $fname; IFS="$OIFS"
+   baseproduct="$1"; _version="$2"; arch="$3"; ftype="$4"
+
+   # tokenize 0.3.1~pre1 or 0.3.0
+   extra=${version#*~}; [ "$extra" = "$version" ] && extra=""
+   tmp=${version%$extra}
+   IFS="."; set -- ${version%$extra}; IFS="$IOFS"
+   vmaj="$1"; vmin="$2"; vmic="$3"
+
+   [ -z "$extra" ] && stream="released" || stream="devel"
+
+   # productname is 'standard:0.3:arch"
+   product_name="net.cirros-cloud:standard:$vmaj.$vmin:$arch"
+   content_id="${content_id_base//%(stream)s/${stream}}"
+
+   req_out=""
+   for item in "$content_id" "$product_name" "$serial" "$ftype"; do
+      req_out="${req_out}${tab}${item}"
+   done
+   req_out=${req_out#${tab}}
+
+   md5=$(md5sum "${path}") && md5="${md5%%  ${path}}"
+   sha256=$(sha256sum "${path}") && sha256="${sha256%%  ${path}}"
+   pubname="${baseproduct}-${version}-${arch}"
+
+   out=""
+   for i in ftype path arch version size sha256 md5 pubname stream; do
+      out="${out}${tab}${i}=${!i}"
+   done
+   out=${out#${tab}}
+   printf "%s\n" "${req_out}${tab}${out}"
+   #printf "
+   #echo "$content_id
+   #echo "version=$version fname=$fname stream=$stream product_name=$product_name"
+done
