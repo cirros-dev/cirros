@@ -71,8 +71,10 @@ for ent in "${files[@]}"; do
 
    [ -z "$extra" ] && stream="released" || stream="devel"
 
-   # productname is 'standard:0.3:arch"
-   product_name="net.cirros-cloud:standard:$vmaj.$vmin:$arch"
+   # productname is "net.cirros-cloud[.devel]:standard:0.3:arch"
+   rdns="net.cirros-cloud"
+   [ "$stream" = "released" ] || rdns="${rdns}.${stream}"
+   product_name="$rdns:standard:$vmaj.$vmin:$arch"
    content_id="${content_id_base//%(stream)s/${stream}}"
 
    req_out=""
