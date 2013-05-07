@@ -31,7 +31,11 @@ fi
 read uptime cputime < /proc/uptime
 iinfo "$0: up at $uptime"
 
-mount -o remount,rw / || fail "failed mount / rw"
+if out=$(: > /.testrw 2>&1); then
+	rm -f /.test
+else
+	mount -o remount,rw / || fail "failed mount / rw"
+fi
 
 is_mounted sysfs "" /sys ||
 	mount -t sysfs sysfs /sys || fail "failed mount /sys!"
