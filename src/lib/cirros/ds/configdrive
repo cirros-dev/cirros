@@ -4,6 +4,8 @@ VERBOSITY=0
 CONFIG=/etc/cirros-init/configdrive
 NAME="${0##*/}"
 LABEL="config-2"
+SEED_PRE_D="/var/lib/cloud/seed/configdrive-pre"
+SEED_POST_D="/var/lib/cloud/seed/configdrive"
 
 . ${CIRROS_SHLIB:=/lib/cirros/shlib} ||
 	{ echo "failed to read ${CIRROS_SHLIB}" 1>&2; exit 1; }
@@ -21,10 +23,17 @@ search_local() {
 	local devlist="" num="" found="" fstree_d=""
 	local raw_d="" dev="" rdir="" mdjson="" ud="" found=""
 	find_devs_with "LABEL=$LABEL" ||
-		fail "failed to find devs"
+		{ error "failed to find devs"; return 1; }
 
 	devlist=${_RET}
 	[ -n "$devlist" ] || { debug 1 "no devices labeled $LABEL"; exit 0; }
+
+	if [ -d "${SEED_PRE_D}" ]; then
+		devlist="$SEED_PRE_D $devlist"
+	fi
+	if [ -d "${SEED_POST_D}" ]; then
+		devlist="$devlist $SEED_POST_D"
+	fi
 
 	num=0
 	for dev in ${devlist}; do num=$(($num+1)); done
@@ -40,8 +49,13 @@ search_local() {
 	for dev in ${devlist}; do
 		rdir="${raw_d}.tmp"
 		rm -Rf "$rdir"
-		mount_callback_umount "$dev" -o,ro cp -a "${rdir}" ||
-			{ debug 1 "mount callback umount $dev failed"; continue; }
+		if [ -b "$dev" ]; then
+			mount_callback_umount "$dev" -o,ro cp -a "${rdir}" ||
+				{ debug 1 "mount callback umount $dev failed"; continue; }
+		else
+			cp -a "$d" "${rdir}" ||
+				{ debug 1 "failed to copy from $d"; continue; }
+		fi
 
 		mdjson="$rdir/openstack/latest/meta_data.json"
 		if [ -f "$mdjson" ]; then

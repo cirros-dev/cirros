@@ -1,0 +1,4 @@
+# SEED_PRE_D, SEED_POST_D consider these directories
+# to have configdrive data before and after block devices
+SEED_PRE_D="/var/lib/cloud/seed/configdrive-pre"
+SEED_POST_D="/var/lib/cloud/seed/configdrive"

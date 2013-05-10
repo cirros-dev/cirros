@@ -1,7 +1,9 @@
 #!/bin/sh
 
 VERBOSITY=1
-CONFIG=/etc/cirros-init/nocloud
+CONFIG="/etc/cirros-init/ds-nocloud"
+SEED_PRE_D="/var/lib/cloud/seed/nocloud-pre"
+SEED_POST_D="/var/lib/cloud/seed/nocloud"
 NAME="${0##*/}"
 LABEL="cidata"
 
@@ -23,7 +25,15 @@ search_local() {
 		{ error "failed to find devs"; return 1; }
 
 	devlist=${_RET}
-	[ -n "$devlist" ] || { debug 2 "no devices labeled $LABEL"; exit 0; }
+
+	if [ -d "${SEED_PRE_D}" ]; then
+		devlist="$SEED_PRE_D $devlist"
+	fi
+	if [ -d "${SEED_POST_D}" ]; then
+		devlist="$devlist $SEED_POST_D"
+	fi
+
+	[ -n "$devlist" ] || { debug 2 "no devices labeled $LABEL"; return 0; }
 
 	num=0
 	for dev in ${devlist}; do num=$(($num+1)); done
@@ -37,8 +47,13 @@ search_local() {
 	data_d="${out_d}/data"
 	for dev in ${devlist}; do
 		rm -Rf "$tmpd"
-		mount_callback_umount "$dev" -o,ro cp -a "${tmpd}" ||
-			{ debug 1 "mount callback umount $dev failed"; continue; }
+		if [ -b "$dev" ]; then
+			mount_callback_umount "$dev" -o,ro cp -a "${tmpd}" ||
+				{ debug 1 "mount callback umount $dev failed"; continue; }
+		else
+			cp -a "$d" "${tmpd}" ||
+				{ debug 1 "failed to copy from $d"; continue; }
+		fi
 
 		[ -f "${tmpd}/meta-data" ] ||
 			{ debug 2 "$dev had no meta-data"; continue; }
