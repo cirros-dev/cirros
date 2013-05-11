@@ -1,0 +1,5 @@
+#!/bin/sh
+# This program is written/overwritten /etc/rc.d/rc.sysinit.
+# It simply reports whether or not this system is in an lxc container
+# This is NOT an LXC container"
+exit 1
