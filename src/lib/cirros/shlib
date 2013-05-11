@@ -250,8 +250,9 @@ mount_once() {
 is_lxc() {
 	local container=""
 
-	if [ -n "$_IS_LXC" ]; then
-		return $_IS_LXC
+	if [ -n "$_LXC_CONTAINER" ]; then
+		[ "${_LXC_CONTAINER}" != "none" ]
+		return
 	fi
 
 	[ "$0" = "/init" ] && return 1 # lxc wont use /init (not a ramdisk)
@@ -260,10 +261,11 @@ is_lxc() {
 		local x=""
 		x=$(awk -F'\0' '{
 			for(i=1;i<=NF;i++) {
-				if ($i ~ /container=./ || $i ~ /LIBVIRT_LXC_UUID=.)
+				if ($i ~ /container=./ || $i ~ /LIBVIRT_LXC_UUID=./)
 					found=$i;
 			}
-			END { sub(/container=/,"", found); print found; }'
+            }
+			END { sub(/container=/,"", found); printf("%s\n",found); }' \
 			/proc/1/environ)
 		[ -n "$x" ] && container="$x"
 	fi
@@ -281,10 +283,9 @@ is_lxc() {
 		done < /proc/self/status >/dev/null 2>&1
 	fi
 
+	_LXC_CONTAINER="${container:-none}"
 	[ -n "$container" ]
-	_IS_LXC=$?
-	
-	return _IS_LXC
+	return
 }
 is_not_lxc() { ! is_lxc; }
 
