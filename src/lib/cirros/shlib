@@ -249,6 +249,11 @@ mount_once() {
 
 is_lxc() {
 	local container=""
+
+	if [ -n "$_IS_LXC" ]; then
+		return $_IS_LXC
+	fi
+
 	[ "$0" = "/init" ] && return 1 # lxc wont use /init (not a ramdisk)
 
 	if [ -f /proc/1/environ ]; then
@@ -261,11 +266,6 @@ is_lxc() {
 			END { sub(/container=/,"", found); print found; }'
 			/proc/1/environ)
 		[ -n "$x" ] && container="$x"
-	fi
-
-	# logic copied from ubuntu's /etc/init/container-detect.conf (upstart)
-	if [ -z "$container" ]; then
-		[ -n "$LIBVIRT_LXC_UUID" ] && container=lxc-libvirt
 	fi
 
 	# Detect OpenVZ containers
@@ -282,6 +282,9 @@ is_lxc() {
 	fi
 
 	[ -n "$container" ]
+	_IS_LXC=$?
+	
+	return _IS_LXC
 }
 is_not_lxc() { ! is_lxc; }
 
