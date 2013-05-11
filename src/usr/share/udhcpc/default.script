@@ -1,0 +1,49 @@
+#!/bin/sh
+
+# udhcpc script edited by Tim Riker <Tim@Rikers.org>
+
+[ -z "$1" ] && echo "Error: should be called from udhcpc" && exit 1
+
+RESOLV_CONF="/etc/resolv.conf"
+[ -n "$broadcast" ] && BROADCAST="broadcast $broadcast"
+[ -n "$subnet" ] && NETMASK="netmask $subnet"
+
+case "$1" in
+	deconfig)
+		/sbin/ifconfig $interface 0.0.0.0
+		;;
+
+	renew|bound)
+		/sbin/ifconfig $interface $ip $BROADCAST $NETMASK
+
+		if [ -n "$router" ] ; then
+			echo "deleting routers"
+			# cirros: this loop is cirros modification to remove a message
+			# like the following going to the console:
+			#   route: SIOCDELRT: No such process		 
+			while :; do					   
+				out=$(route del default gw 0.0.0.0 dev $interfac
+				ret=$?					
+				[ $ret -eq 0 ] && break			 
+				case "$out" in				  
+					*SIOCDELRT*[Nn]o\ such\ process*) break;
+				esac					    
+				echo "deleting routes failed: $out" 1>&2	
+			done						    
+			# end cirros modification 
+
+			for i in $router ; do
+				route add default gw $i dev $interface
+			done
+		fi
+
+		echo -n > $RESOLV_CONF
+		[ -n "$domain" ] && echo search $domain >> $RESOLV_CONF
+		for i in $dns ; do
+			echo adding dns $i
+			echo nameserver $i >> $RESOLV_CONF
+		done
+		;;
+esac
+
+exit 0
