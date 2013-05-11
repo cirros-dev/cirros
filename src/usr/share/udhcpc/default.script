@@ -22,14 +22,14 @@ case "$1" in
 			# like the following going to the console:
 			#   route: SIOCDELRT: No such process		 
 			while :; do					   
-				out=$(route del default gw 0.0.0.0 dev $interfac
-				ret=$?					
-				[ $ret -eq 0 ] && break			 
-				case "$out" in				  
-					*SIOCDELRT*[Nn]o\ such\ process*) break;
-				esac					    
-				echo "deleting routes failed: $out" 1>&2	
-			done						    
+				out=$(route del default gw 0.0.0.0 dev $interface)
+				ret=$?
+				[ $ret -eq 0 ] && break
+				case "$out" in
+					*SIOCDELRT*[Nn]o\ such\ process*) break;;
+            esac
+				echo "deleting routes failed: $out" 1>&2
+			done
 			# end cirros modification 
 
 			for i in $router ; do
