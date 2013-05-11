@@ -8,6 +8,6 @@ For many things, you can quickly iterate without root by doing something like:
  * Then changes things
  * cp $initrd.dist $initrd
    (cd ../cirros/src && bzr status --versioned --short -r $frev |
-      awk '{sub("^src/","",$2); print $2}' | cpio -H newc -o ) |
-      gzip -c ) >> "$initrd"
+      awk '$2 ~ "^src/" {sub("^src/","",$2); print $2}' | cpio -H newc -o ) |
+      gzip -c >> "$initrd"
  * kvm -kernel *-vmlinuz -initrd "$initrd" -append "console=ttyS0" -nographic
