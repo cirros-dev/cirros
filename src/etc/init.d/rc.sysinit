@@ -43,6 +43,7 @@ is_mounted sysfs "" /sys ||
 if ! is_lxc; then
 	mount_once devtmpfs /dev /dev || fail "failed mount /dev"
 fi
+iinfo "container: $_LXC_CONTAINER"
 
 mkdir -p /dev/pts /dev/shm /run
 
@@ -70,10 +71,11 @@ set -f
 
 if is_lxc; then
 	grep -q "^pts/0$" /etc/securetty || echo "pts/0" >> /etc/securetty
+	lxc_console="console"
 fi
 
 s_args=""
-for tty in tty1 ttyS0 hvc0; do
+for tty in $lxc_console tty1 ttyS0 hvc0; do
 	if [ -e /dev/$tty ] && { echo "" >> "/dev/$tty" ; } 2>/dev/null ; then
 		s_args="${s_args:+${s_args} }s/^#$tty:\(.*\)/$tty:\1/;"
 	else
