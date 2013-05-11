@@ -71,7 +71,15 @@ set -f
 
 if is_lxc; then
 	grep -q "^pts/0$" /etc/securetty || echo "pts/0" >> /etc/securetty
-	lxc_console="console"
+	if ! [ /dev/tty1 -ef /dev/console ]; then
+		# on libvirt lxc, /dev/console is a symlink to /dev/pts0
+		# and /dev/tty1 is also a symlink to /dev/pts/0. So using
+		# the tty1 gets us a getty on "console"
+		#
+		# on upstream lxc, /dev/console is a character device
+		# so we run a getty there if so.
+		lxc_console="console"
+	fi
 fi
 
 s_args=""
