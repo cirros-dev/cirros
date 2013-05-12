@@ -52,6 +52,11 @@ for arch in i386 x86_64 arm; do
      cp "$out/stage/$arch/$p-disk.img" "$out/release/$p-disk.img"
 done
 
+for arch in i386 x86_64 arm; do
+  t=$out/release/buildroot_rootfs/buildroot-rootfs-$arch.tar
+  cp "$out/build/$arch/rootfs.tar" "$t" && gzip -9 "$t"
+done
+
 chmod 644 "$out/release/"*
 
 ( cd $out/release/ && md5sum $(ls * | grep -v .asc) > MD5SUMS ) 
@@ -61,4 +66,3 @@ for x in "$out/release/"*; do
    [ -e "$x.asc" ] && continue
    gpg --armor --sign --detach-sig "$x"
 done
-
