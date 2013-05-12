@@ -51,8 +51,8 @@ search_local() {
 			mount_callback_umount "$dev" -o,ro cp -a "${tmpd}" ||
 				{ debug 1 "mount callback umount $dev failed"; continue; }
 		else
-			cp -a "$d" "${tmpd}" ||
-				{ debug 1 "failed to copy from $d"; continue; }
+			cp -a "$dev" "${tmpd}" ||
+				{ debug 1 "failed to copy from $dev"; continue; }
 		fi
 
 		[ -f "${tmpd}/meta-data" ] ||
