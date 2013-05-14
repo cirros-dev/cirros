@@ -33,7 +33,8 @@ OIFS="$IFS"
 declare -A VERSION2SERIAL
 VERSION2SERIAL=( [0.3.0]="20111020" [0.3.1]="20130207"
                  [0.3.1~pre1]="20120611" [0.3.1~pre3]="20120827"
-                 [0.3.1~pre4]="20130111" )
+                 [0.3.1~pre4]="20130111" [0.3.2~pre1]="20130513"
+)
 
 #content-id product_name version_name img_name [key=value [key=value]]
 content_id_base="net.cirros-cloud:%(stream)s:download"
