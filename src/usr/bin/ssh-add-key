@@ -56,9 +56,12 @@ umask 066
 : >> .ssh/authorized_keys ||
 	fail "can't write to ~/.ssh/authorized_keys"
 
-if [ "$1" == "-" ]; then
+if [ "$1" = "-" ]; then
 	keys=""
-	while read key; do
+	key=""
+	# we check for success or non empty string.
+	# on final line with no EOF, it returns 1, but sets key
+	while read key || [ -n "$key" ]; do
 		keys="${keys}|${key}"
 	done
 	keys=${keys#|};
