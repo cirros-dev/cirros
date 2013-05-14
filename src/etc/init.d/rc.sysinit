@@ -92,3 +92,7 @@ for tty in $lxc_console tty1 ttyS0 hvc0; do
 done
 [ -z "$s_args" ] ||
 	{ sed -i "$s_args" /etc/inittab && kill -HUP 1; }
+
+if [ -f /etc/init/rc.local -a -x /etc/init/rc.local ]; then
+	/etc/init/rc.local
+fi
