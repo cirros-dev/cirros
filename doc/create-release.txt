@@ -52,14 +52,17 @@ for arch in i386 x86_64 arm; do
      cp "$out/stage/$arch/$p-disk.img" "$out/release/$p-disk.img"
 done
 
+mkdir "$out/release/buildroot_rootfs"
 for arch in i386 x86_64 arm; do
-  t=$out/release/buildroot_rootfs/buildroot-rootfs-$arch.tar
+  t="$out/release/buildroot_rootfs/buildroot-$VER-$arch.tar"
   cp "$out/build/$arch/rootfs.tar" "$t" && gzip -9 "$t"
 done
 
-chmod 644 "$out/release/"*
+chmod u+rwX,go+rX -R "$out/release/"* 
 
-( cd $out/release/ && md5sum $(ls * | grep -v .asc) > MD5SUMS ) 
+sumfiles=$(cd "$out/release" && for f in *; do
+   [ -f "$f" -a "$f" != MD5SUMS ] && echo "$f"; done)
+( cd "$out/release" && md5sum $sumfiles > MD5SUMS )
 
 for x in "$out/release/"*; do
    [ "${x%.asc}" = "$x" ] || continue
