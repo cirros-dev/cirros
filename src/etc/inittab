@@ -20,7 +20,7 @@
 #ttyS0::respawn:/sbin/getty -L 115200 ttyS0 vt100 # GENERIC_SERIAL
 #tty1::respawn:/sbin/getty 115200 tty1
 #hvc0::respawn:/sbin/getty 115200 hvc0 # xen virtual console
-#console::respawn:/sbin/getty 115200 # /dev/console
+#console::respawn:/sbin/getty 115200 console
 
 # Stuff to do for the 3-finger salute
 ::ctrlaltdel:/sbin/reboot
