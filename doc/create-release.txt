@@ -2,7 +2,8 @@ VER=0.3.2
 pre=cirros-$VER;
 
 out="$PWD/../out"
-mkdir -p $out
+export TMPDIR="$out/tmp"
+mkdir -p $out "$TMPDIR"
 
 for arch in i386 x86_64 arm; do
   echo "$(date): start $arch" >> $out/date.txt;
