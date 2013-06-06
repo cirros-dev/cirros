@@ -7,13 +7,19 @@ CONF_D = $(TOP_D)/conf
 DL_D = $(TOP_D)/download
 SKEL_D = $(OUT_D)/skeleton
 
+TMPDIR ?= "$(OUT_D)/tmp"
+export TMPDIR
+
 DISK_IMG = $(OUT_D)/disk.img
 PART_IMG = $(OUT_D)/part.img
 TAR_IMG = $(OUT_D)/rootfs.tar
 BR_TAR_IMG = $(BR_OUT_D)/images/rootfs.tar
+BR2_CCACHE_DIR = "$(OUT_D)/ccache"
 
-BR_MAKE = cd $(BR_D) && make O=$(BR_OUT_D) BR2_DL_DIR=$(DL_D) \
-   BUSYBOX_CONFIG_FILE=$(BR_OUT_D)/busybox.config
+BR_MAKE = cd $(BR_D) && mkdir -p "$(TMPDIR)" && \
+   make O=$(BR_OUT_D) BR2_DL_DIR=$(DL_D) \
+   BUSYBOX_CONFIG_FILE=$(BR_OUT_D)/busybox.config \
+   BR2_CCACHE_DIR=$(BR2_CCACHE_DIR)
 
 BR_DEPS = $(BR_D) $(BR_OUT_D)/busybox.config $(BR_OUT_D)/.config $(SKEL_D)/.dir
 
