@@ -1,2 +1,2 @@
 # must set DATASOURCE_LIST
-DATASOURCE_LIST="nocloud configdrive"
+DATASOURCE_LIST="nocloud configdrive ec2"
