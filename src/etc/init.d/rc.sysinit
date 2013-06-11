@@ -31,8 +31,8 @@ fi
 read uptime cputime < /proc/uptime
 iinfo "$0: up at $uptime"
 
-if out=$(: > /.testrw 2>&1); then
-	rm -f /.test
+if (: >/.testrw; ) >/dev/null 2>&1; then
+	rm -f /.testrw
 else
 	mount -o remount,rw / || fail "failed mount / rw"
 fi
