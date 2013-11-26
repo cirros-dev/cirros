@@ -13,8 +13,8 @@ RESOLV_CONF="/etc/resolv.conf"
 apply_static_routes() {
 	# routes are pairs of network and gateway
 	# 169.254.169.254/32 10.65.0.128
-	local i="" net="" router="" err=0
-	for i in "$@"; do
+	local net="" router="" err=0
+	while [ $# -ne 0 ]; do
 		net="$1"
 		router="$2"
 		[ -n "$net" ] || continue
@@ -23,7 +23,10 @@ apply_static_routes() {
 			echo "WARN: failed: route add -net \"$net\" gw \"$router\"" 1>&2;
 			err=$(($err+1));
 		}
-		shift 2
+		shift 2 || {
+			echo "apply_static_routes: failed shift 2. odd number of args?" 1>&2;
+			return 1;
+		}
 	done
 	return $err
 }
