@@ -11,9 +11,9 @@ KVER="3.2.0-57.87";
 set -e
 set -o pipefail
 
-out="$PWD/../out"
+out="$PWD/../build-$VER"
 export TMPDIR="$out/tmp"
-mkdir -p $out "$TMPDIR"
+mkdir -p "$out" "$TMPDIR"
 
 rm -f download
 mkdir -p ../download
@@ -44,7 +44,7 @@ for arch in ${ARCHES}; do
 done
 
 for arch in ${ARCHES}; do
-  echo "$(date): start $arch" >> $out/date.txt;
+  echo "$(date): start $arch" >> "$out/date.txt";
   time make ARCH=$arch "OUT_D=$out/build/$arch" 2>&1 |
      tee "$out/build-$arch.log";
 done;
@@ -63,16 +63,16 @@ sudo chown -R $USER:$USER "$out/stage"
 
 mkdir -p "$out/release"
 
-bzr export -r "tag:$VER" \
-   --format=tgz --root="cirros=$VER" "$out/release/cirros-$VER-source.tar.gz"
+srctgz="$out/release/cirros-$VER-source.tar.gz"
+bzr export -r "tag:$VER" --format=tgz --root="cirros=$VER" "$srctgz"
+echo "wrote source tgz: $srctgz"
 
-echo "wrote $output"
 ( srcd="$PWD" && tmpd=$(mktemp -d) && cd "$tmpd" &&
   bzr branch "$srcd" -r tag:$VER cirros-$VER &&
   rm -Rf cirros-$VER/.bzr &&
   tar cvzf - cirros-$VER ) > "$out/release/cirros-$VER-source.tar.gz"
 
-rm "$out/stage"/*/$pre*
+rm -f "$out/stage"/*/"$pre"*
 for arch in ${ARCHES}; do
   p=$pre-$arch
   ( cd "$out/stage/$arch" &&
@@ -109,4 +109,5 @@ sumfiles=$(cd "$out/release" && for f in *; do
    [ -f "$f" -a "$f" != MD5SUMS ] && echo "$f"; done)
 ( cd "$out/release" && md5sum $sumfiles > MD5SUMS )
 
+echo "output in $out/release"
 echo "entire process took $SECONDS seconds"
