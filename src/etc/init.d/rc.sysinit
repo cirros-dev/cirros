@@ -93,6 +93,6 @@ done
 [ -z "$s_args" ] ||
 	{ sed -i "$s_args" /etc/inittab && kill -HUP 1; }
 
-if [ -f /etc/init/rc.local -a -x /etc/init/rc.local ]; then
-	/etc/init/rc.local
+if [ -f /etc/rc.local -a -x /etc/rc.local ]; then
+	/etc/rc.local
 fi
