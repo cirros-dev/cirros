@@ -1,6 +1,22 @@
 0.3.2
  - Recognize failure when getting entries from ec2 metadata service,
    especially annoying on 'ec2metadata --public-keys' (LP: #1148165)
+ - fix bug on ec2 metadata service if no public keys available.
+   Problem was that 404 was not being recognized (LP: #1148165)
+ - do not mount / as rw if already mounted rw.  in lxc this generated
+   additional and irrelevant noise on console.
+ - fix 'is_lxc' to work correctly.
+ - support 'seed' data from /var/lib/cloud/seed for nocloud and
+   configdrive sources.
+ - fix random and urandom device entries to be character rather
+   than block devices.
+ - if running in lxc (not libvirt-lxc), start getty on /dev/console
+ - add usr/share/udhcpc/default.script which helps better control
+   what happens on dhcp ifup.
+ - support executing /etc/rc.local
+ - set hostname from datasource (LP: #1132686)
+ - fix bad entry for 'ftp' user in /etc/group (LP: #1222951)
+ - support static routes provided in dhcp data (LP: #1190372)
 0.3.1
  - move to buildroot 2012.05 (busybox 1.20.1)
  - build on Ubuntu 12.04
