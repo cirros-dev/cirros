@@ -1,0 +1,112 @@
+#!/bin/bash
+
+[ $# -eq 1 ] || { echo "must give version"; exit 1; }
+
+VER=$1
+pre=cirros-$VER
+BR_VER="2012.05"
+ARCHES="${ARCHES:-i386 x86_64 arm}"
+KVER="3.2.0-57.87";
+
+set -e
+set -o pipefail
+
+out="$PWD/../out"
+export TMPDIR="$out/tmp"
+mkdir -p $out "$TMPDIR"
+
+rm -f download
+mkdir -p ../download
+ln -snf ../download download
+[ -f "download/buildroot-${BR_VER}.tar.gz" ] ||
+  wget "http://buildroot.uclibc.org/downloads/buildroot-${BR_VER}.tar.gz" \
+    -O "download/buildroot-${BR_VER}.tar.gz"
+
+rm -Rf "buildroot-${BR_VER}"
+rm -f buildroot
+tar -xvf download/buildroot-${BR_VER}.tar.gz
+ln -snf buildroot-${BR_VER} buildroot
+
+./bin/mkcabundle > src/etc/ssl/certs/ca-certificates.crt
+
+( cd buildroot && QUILT_PATCHES="$PWD/../patches-buildroot" quilt push -a )
+
+make ARCH=i386 br-source
+
+burl="https://launchpad.net/ubuntu/+archive/primary/+files/linux-image"
+for arch in ${ARCHES}; do
+     xarch=$arch; flav="virtual"
+     [ "$arch" = "x86_64" ] && xarch="amd64";
+     [ "$arch" = "arm" ] && xarch="armel" && flav="omap"
+     url="$burl-${KVER%.*}-${flav}_${KVER}_${xarch}.deb"
+     wget "$url" -O download/${url##*/}
+     ln -sf ${url##*/} download/kernel-${arch}.deb
+done
+
+for arch in ${ARCHES}; do
+  echo "$(date): start $arch" >> $out/date.txt;
+  time make ARCH=$arch "OUT_D=$out/build/$arch" 2>&1 |
+     tee "$out/build-$arch.log";
+done;
+echo "$(date): finish" >> "$out/date.txt"
+
+for arch in ${ARCHES}; do
+  mkdir -p "$out/stage/$arch"
+done
+
+for arch in ${ARCHES}; do
+  sudo ./bin/bundle -v "$out/build/$arch/rootfs.tar" \
+     ./download/kernel-$arch.deb "$out/stage/$arch";
+done
+
+sudo chown -R $USER:$USER "$out/stage"
+
+mkdir -p "$out/release"
+
+bzr export -r "tag:$VER" \
+   --format=tgz --root="cirros=$VER" "$out/release/cirros-$VER-source.tar.gz"
+
+echo "wrote $output"
+( srcd="$PWD" && tmpd=$(mktemp -d) && cd "$tmpd" &&
+  bzr branch "$srcd" -r tag:$VER cirros-$VER &&
+  rm -Rf cirros-$VER/.bzr &&
+  tar cvzf - cirros-$VER ) > "$out/release/cirros-$VER-source.tar.gz"
+
+rm "$out/stage"/*/$pre*
+for arch in ${ARCHES}; do
+  p=$pre-$arch
+  ( cd "$out/stage/$arch" &&
+    ln kernel $p-vmlinuz && ln kernel $p-kernel &&
+    ln initramfs $p-initrd && ln initramfs $p-initramfs &&
+    ln part.img $p-rootfs.img &&
+    ln blank.img $p-blank.img &&
+    ln disk.img $p-disk.img &&
+    ln filesys.tar.gz $p-lxc.tar.gz &&
+    true
+  ); done
+
+for arch in ${ARCHES}; do
+  p=$pre-$arch
+  ( cd "$out/stage/$arch" &&
+    cp $p-kernel $p-initramfs $p-lxc.tar.gz "$out/release/" &&
+    gzip -9 -c $p-rootfs.img > $out/release/$p-rootfs.img.gz ) &&
+  ( cd "$out/stage/$arch" &&
+    tar cvzf - $p-blank.img $p-vmlinuz $p-initrd ) > \
+    "$out/release/$p-uec.tar.gz"
+  [ "$arch" = "arm" ] ||
+     cp "$out/stage/$arch/$p-disk.img" "$out/release/$p-disk.img"
+done
+
+mkdir "$out/release/buildroot_rootfs"
+for arch in ${ARCHES}; do
+  t="$out/release/buildroot_rootfs/buildroot-$VER-$arch.tar"
+  cp "$out/build/$arch/rootfs.tar" "$t" && gzip -9 "$t"
+done
+
+chmod u+rwX,go+rX -R "$out/release/"* 
+
+sumfiles=$(cd "$out/release" && for f in *; do
+   [ -f "$f" -a "$f" != MD5SUMS ] && echo "$f"; done)
+( cd "$out/release" && md5sum $sumfiles > MD5SUMS )
+
+echo "entire process took $SECONDS seconds"

@@ -1,70 +1,20 @@
-VER=0.3.2
-pre=cirros-$VER;
+# set version to build
+VER=0.3.2~pre2
 
-out="$PWD/../out"
-export TMPDIR="$out/tmp"
-mkdir -p $out "$TMPDIR"
+# get some build dependencies:
+sudo apt-get update
+sudo apt-get -qy install bison flex texinfo build-essential gettext ncurses-dev unzip bzr qemu-kvm cvs quilt
 
-for arch in i386 x86_64 arm; do
-  echo "$(date): start $arch" >> $out/date.txt;
-  time make ARCH=$arch "OUT_D=$out/build/$arch" 2>&1 |
-     tee "$out/build-$arch.log";
-done;
-echo "$(date): finish" >> $out/date.txt
+bzr init-repo cirros
+cd cirros
+bzr branch lp:cirros trunk
 
-mkdir -p $out/stage/{i386,arm,x86_64}
+bzr branch -r $VER trunk cirros-$VER
+cd cirros-$VER
 
-for arch in i386 x86_64 arm; do
-  sudo ./bin/bundle -v $out/build/$arch/rootfs.tar \
-     ./download/kernel-$arch.deb $out/stage/$arch;
-done
+./bin/build-release $VER 2>&1 | tee build-$VER.log
 
-sudo chown -R $USER:$USER $out/stage
-
-mkdir -p $out/release
-
-( srcd=$PWD && tmpd=$(mktemp -d) && cd $tmpd &&
-  bzr branch "$srcd" -r tag:$VER cirros-$VER &&
-  rm -Rf cirros-$VER/.bzr &&
-  tar cvzf - cirros-$VER ) > $out/release/cirros-$VER-source.tar.gz
-
-rm $out/stage/*/$pre*
-for arch in i386 x86_64 arm; do
-  p=$pre-$arch
-  ( cd "$out/stage/$arch" &&
-    ln kernel $p-vmlinuz && ln kernel $p-kernel &&
-    ln initramfs $p-initrd && ln initramfs $p-initramfs &&
-    ln part.img $p-rootfs.img &&
-    ln blank.img $p-blank.img &&
-    ln disk.img $p-disk.img &&
-    ln filesys.tar.gz $p-lxc.tar.gz &&
-    true
-  ); done
-
-for arch in i386 x86_64 arm; do
-  p=$pre-$arch
-  ( cd "$out/stage/$arch" &&
-    cp $p-kernel $p-initramfs $p-lxc.tar.gz $out/release/ &&
-    gzip -9 -c $p-rootfs.img > $out/release/$p-rootfs.img.gz ) &&
-  ( cd "$out/stage/$arch" &&
-    tar cvzf - $p-blank.img $p-vmlinuz $p-initrd ) > \
-    $out/release/$p-uec.tar.gz
-  [ "$arch" = "arm" ] ||
-     cp "$out/stage/$arch/$p-disk.img" "$out/release/$p-disk.img"
-done
-
-mkdir "$out/release/buildroot_rootfs"
-for arch in i386 x86_64 arm; do
-  t="$out/release/buildroot_rootfs/buildroot-$VER-$arch.tar"
-  cp "$out/build/$arch/rootfs.tar" "$t" && gzip -9 "$t"
-done
-
-chmod u+rwX,go+rX -R "$out/release/"* 
-
-sumfiles=$(cd "$out/release" && for f in *; do
-   [ -f "$f" -a "$f" != MD5SUMS ] && echo "$f"; done)
-( cd "$out/release" && md5sum $sumfiles > MD5SUMS )
-
+# then to sign things
 for x in "$out/release/"*; do
    [ "${x%.asc}" = "$x" ] || continue
    [ -e "$x.asc" ] && continue
