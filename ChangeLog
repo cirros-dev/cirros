@@ -17,6 +17,7 @@
  - set hostname from datasource (LP: #1132686)
  - fix bad entry for 'ftp' user in /etc/group (LP: #1222951)
  - support static routes provided in dhcp data (LP: #1190372)
+ - correctly resize root filesystem (LP: #1261710)
 0.3.1
  - move to buildroot 2012.05 (busybox 1.20.1)
  - build on Ubuntu 12.04

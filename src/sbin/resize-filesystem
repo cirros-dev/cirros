@@ -1,0 +1,45 @@
+#!/bin/sh
+. ${CIRROS_LIB:=/lib/cirros/shlib_cirros} ||
+	{ echo "failed to read ${CIRROS_LIB}" 1>&2; exit 1; }
+
+Usage() {
+	cat <<EOF
+${0##*/} device [log] [summary]
+  resize the device with log sent to 'log'.
+
+  if log is provided, stderr and stdout are redirected to that file
+  if summary is provided, a summary (success/fail) will be written there
+EOF
+}
+
+dev=${1:-/dev/root}
+log="$2"
+sumfile="$3"
+
+[ $# -eq 1 -o $# -eq 2 -o $# -eq 3 ] ||
+	{ Usage 1>&2; exit 1; }
+[ "$1" = "-h" -o "$1" = "--help" ] && { Usage; exit 0; }
+
+if [ -n "$log" -o "$log" = "-" ]; then
+	time_call resize2fs "$dev" >"$log" 2>&1
+else
+	time_call resize2fs "$dev"
+fi
+ret=$?
+delta=$_RET_TIME
+[ $ret -eq 0 ] &&
+	summary="$dev resized successfully [took ${delta}s]" ||
+	summary="$dev resize failed ($ret) [took ${delta}s]"
+
+if [ "$log" = "-" ]; then
+	echo "$summary"
+elif [ -n "$log" ]; then
+	echo "$summary" >> "$log"
+fi
+if [ -n "$sumfile" ]; then
+	[ "$sumfile" = "-" ] && echo "$summary" || echo "$summary" >> "$sumfile"
+fi
+
+exit $ret
+
+# vi: ts=4 noexpandtab

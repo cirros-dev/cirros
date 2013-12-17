@@ -13,6 +13,21 @@ read_uptime() {
 	{ read _RET idle </proc/uptime; } >/dev/null 2>&1 || _RET=""
 }
 
+time_call() {
+	local start="$1" end="$2" ret="" delta=""
+	read_uptime
+	start="${_RET%.*}${_RET#*.}"
+	"$@"
+	ret=$?
+	read_uptime
+	end="${_RET%.*}${_RET#*.}"
+	delta=$(($end-$start))
+	t=${delta%??}
+	_RET_TIME="$t.${delta#${t}}"
+	return $ret
+}
+
+
 debug() {
 	local level=${1}; shift;
 	[ "${level}" -gt "${VERBOSITY}" ] && return

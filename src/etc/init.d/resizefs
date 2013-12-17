@@ -5,12 +5,12 @@ case "$1" in
 	start)
 		lxc-is-container && exit 0
 		[ -e /dev/root ] || exit 0
-		cirros-per once resizefs -- \
-			sh -c 'o=/tmp/resize.out;
-				resize2fs /dev/root >$o 2>&1 &&
-				rm -f $o && exit 0 ||
-				echo "resize failed!" 1>&2;
-				cat $o 1>&2; exit 1;' resizefs &
+		# here we have to use start-stop-daemon or the resize
+		# process gets killed when rc.sysinit ends (LP: #1261710)
+		cirros-per once resize-rootfs -- \
+			start-stop-daemon --start --background \
+				--exec=/sbin/resize-filesystem -- \
+				/dev/root /run/resize.rootfs /dev/console
 		;;
 	stop|restart|reload) : ;;
 	*)
