@@ -1,0 +1,2 @@
+# RESIZE_MODE can be one of 'disabled', 'foreground' or 'background'
+RESIZE_MODE='disabled'

@@ -1,16 +1,35 @@
 #!/bin/sh
 # vi: ts=4 noexpandtab
 
+RESIZE_MODE="disabled"
+if [ -f /etc/default/resizefs ]; then
+	. /etc/default/resizefs
+fi
+
 case "$1" in
 	start)
 		lxc-is-container && exit 0
 		[ -e /dev/root ] || exit 0
 		# here we have to use start-stop-daemon or the resize
 		# process gets killed when rc.sysinit ends (LP: #1261710)
-		cirros-per once resize-rootfs -- \
-			start-stop-daemon --start --background \
-				--exec=/sbin/resize-filesystem -- \
-				/dev/root /run/resize.rootfs /dev/console
+		case "$RESIZE_MODE" in
+			background)
+				cirros-per once resize-rootfs -- \
+					start-stop-daemon --start --background \
+						--exec=/sbin/resize-filesystem -- \
+						/dev/root /run/resize.rootfs /dev/console
+				;;
+			foreground)
+				cirros-per once resize-rootfs -- \
+						/sbin/resize-filesystem -- \
+						/dev/root /run/resize.rootfs /dev/console
+				;;
+			disabled) : ;;
+			*)
+				echo "resizefs: unknown RESIZE_MODE='$RESIZE_MODE'." \
+					"Doing nothing." 1>&2
+				;;
+		esac
 		;;
 	stop|restart|reload) : ;;
 	*)
