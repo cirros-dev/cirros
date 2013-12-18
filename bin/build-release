@@ -15,6 +15,9 @@ out="$PWD/../build-$VER"
 export TMPDIR="$out/tmp"
 mkdir -p "$out" "$TMPDIR"
 
+echo "$(date): begin" >> "$out/date.txt";
+echo "$(date): start download" >> "$out/date.txt";
+
 rm -f download
 mkdir -p ../download
 ln -snf ../download download
@@ -31,8 +34,12 @@ ln -snf buildroot-${BR_VER} buildroot
 
 ( cd buildroot && QUILT_PATCHES="$PWD/../patches-buildroot" quilt push -a )
 
+echo "$(date): end download" >> "$out/date.txt";
+echo "$(date): start br-source" >> "$out/date.txt";
 make ARCH=i386 br-source
+echo "$(date): end br-source" >> "$out/date.txt";
 
+echo "$(date): start kernel download" >> "$out/date.txt";
 burl="https://launchpad.net/ubuntu/+archive/primary/+files/linux-image"
 for arch in ${ARCHES}; do
      xarch=$arch; flav="virtual"
@@ -42,6 +49,7 @@ for arch in ${ARCHES}; do
      wget "$url" -O download/${url##*/}
      ln -sf ${url##*/} download/kernel-${arch}.deb
 done
+echo "$(date): end kernel download" >> "$out/date.txt";
 
 for arch in ${ARCHES}; do
   echo "$(date): start $arch" >> "$out/date.txt";
@@ -111,3 +119,4 @@ sumfiles=$(cd "$out/release" && for f in *; do
 
 echo "output in $out/release"
 echo "entire process took $SECONDS seconds"
+echo "$(date): finished [$SECONDS]" >> "$out/date.txt";
