@@ -47,6 +47,12 @@ cirros_status() {
 		{ error "failed to make tempdir"; return 1; }
 	trap cleanup EXIT
 
+	echo "=== sshd host keys ==="
+	echo "-----BEGIN SSH HOST KEY KEYS-----"
+	dropbearkey -f /etc/dropbear/dropbear_rsa_host_key -y | grep ^ssh-rsa
+	dropbearkey -f /etc/dropbear/dropbear_dss_host_key -y | grep ^ssh-dss
+	echo "-----END SSH HOST KEY KEYS-----"
+
 	local oifs="$IFS" x="" val=""
 	echo "=== network info ==="
 	ip addr show > "$TEMP_D/ip-addr-show"
