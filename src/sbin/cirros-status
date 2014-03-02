@@ -47,6 +47,13 @@ cirros_status() {
 		{ error "failed to make tempdir"; return 1; }
 	trap cleanup EXIT
 
+	echo "=== system information ==="
+	for i in `awk -F: '/^(model name|cpu MHz|cache size|bogomips)/ { gsub(/( +|\t+)/, "", $1); gsub(/(^ | $)/, "", $2); gsub(/ +/, "_", $2); print $1"="$2}' /proc/cpuinfo`; do export $i; done
+	echo "CPU Model name: $modelname"
+	echo "CPU Speed: $cpuMHz"
+	echo "CPU Cache: $cachesize"
+	echo "CPU Bogomips: $bogomips"
+
 	echo "=== sshd host keys ==="
 	echo "-----BEGIN SSH HOST KEY KEYS-----"
 	dropbearkey -f /etc/dropbear/dropbear_rsa_host_key -y | grep ^ssh-rsa
