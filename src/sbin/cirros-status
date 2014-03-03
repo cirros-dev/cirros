@@ -48,9 +48,12 @@ cirros_status() {
 	trap cleanup EXIT
 
 	echo "=== system information ==="
-	for i in `awk -F: '/^(model name|cpu MHz|cache size|bogomips)/ { gsub(/( +|\t+)/, "", $1); gsub(/(^ | $)/, "", $2); gsub(/ +/, "_", $2); print $1"="$2}' /proc/cpuinfo`; do export $i; done
+	cores=0
+	for i in `awk -F: '/^(model name|cpu MHz|cache size|bogomips)/ { gsub(/( +|\t+)/, "", $1); gsub(/(^ | $)/, "", $2); gsub(/ +/, "_", $2); print $1"="$2}' /proc/cpuinfo`; do export cores=$((cores+1)); export $i; done
+	cores=$((cores/4))
 	echo "CPU Model name: $modelname"
 	echo "CPU Speed: $cpuMHz"
+	echo "CPU Cores: $cores"
 	echo "CPU Cache: $cachesize"
 	echo "CPU Bogomips: $bogomips"
 
