@@ -52,7 +52,7 @@ cirros_status() {
 	for i in `awk -F: '/^(model name|cpu MHz|cache size|bogomips)/ { gsub(/( +|\t+)/, "", $1); gsub(/(^ | $)/, "", $2); gsub(/ +/, "_", $2); print $1"="$2}' /proc/cpuinfo`; do export cores=$((cores+1)); export $i; done
 	cores=$((cores/4))
 	echo "CPU Model name: $modelname"
-	echo "CPU Speed: $cpuMHz"
+	echo "CPU Speed: ${cpuMHz}MHz"
 	echo "CPU Cores: $cores"
 	echo "CPU Cache: $cachesize"
 	echo "CPU Bogomips: $bogomips"
