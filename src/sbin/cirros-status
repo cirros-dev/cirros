@@ -64,7 +64,7 @@ cirros_status() {
 	echo "RAM Size: ${ramsize}MB"
 
 	echo "Disks:"
-	sudo sfdisk -s | awk -F: '/dev/ { print $1": "$2/1024/1024"GB" }'
+	lsblk -d -o NAME,SIZE,LABEL
 
 	echo "=== sshd host keys ==="
 	echo "-----BEGIN SSH HOST KEY KEYS-----"
