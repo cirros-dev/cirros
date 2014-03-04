@@ -68,8 +68,8 @@ cirros_status() {
 
 	echo "=== sshd host keys ==="
 	echo "-----BEGIN SSH HOST KEY KEYS-----"
-	dropbearkey -f /etc/dropbear/dropbear_rsa_host_key -y | grep ^ssh-rsa
-	dropbearkey -f /etc/dropbear/dropbear_dss_host_key -y | grep ^ssh-dss
+	sudo dropbearkey -f /etc/dropbear/dropbear_rsa_host_key -y | grep ^ssh-rsa
+	sudo dropbearkey -f /etc/dropbear/dropbear_dss_host_key -y | grep ^ssh-dss
 	echo "-----END SSH HOST KEY KEYS-----"
 
 	local oifs="$IFS" x="" val=""
