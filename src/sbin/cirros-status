@@ -48,6 +48,10 @@ cirros_status() {
 	trap cleanup EXIT
 
 	echo "=== system information ==="
+	# Example: Red Hat Inc. OpenStack Nova
+	echo -n "Platform: "
+	grep DMI: /var/log/messages | sed -n 's/.*[ ]\+DMI:[ ]*\(.\+\), BIOS.*/\1/p'
+
 	lscpu | awk '$1 == "Architecture:" { arch=$2 };
 		$1 == "Socket(s):" { sockets=$2 };
 		$0 ~ /^Core.*per socket:/ { cores=$4 };
