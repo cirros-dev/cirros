@@ -48,14 +48,19 @@ cirros_status() {
 	trap cleanup EXIT
 
 	echo "=== system information ==="
-	cores=0
-	for i in `awk -F: '/^(model name|cpu MHz|cache size|bogomips)/ { gsub(/( +|\t+)/, "", $1); gsub(/(^ | $)/, "", $2); gsub(/ +/, "_", $2); print $1"="$2}' /proc/cpuinfo`; do export cores=$((cores+1)); export $i; done
-	cores=$((cores/4))
-	echo "CPU Model name: $modelname"
-	echo "CPU Speed: ${cpuMHz}MHz"
-	echo "CPU Cores: $cores"
-	echo "CPU Cache: $cachesize"
-	echo "CPU Bogomips: $bogomips"
+	lscpu | awk '$1 == "Architecture:" { arch=$2 };
+		$1 == "Socket(s):" { sockets=$2 };
+		$0 ~ /^Core.*per socket:/ { cores=$4 };
+		$0 ~ /^Thread.*core:/ { threads=$4 };
+		$1 == "CPU(s):" { cpus=$2; } ;
+		$1" "$2 == "CPU MHz:" { mhz=$3 };
+		$1 == "Virtualization:" { virt=$2 };
+		{ hypervisor=unknown };
+		END {
+			printf("Arch: %s\nCPU(s): %s @ %s MHz\nCores/Sockets/Threads: %s/%s/%s\n", arch, cpus, mhz, cores, sockets, threads); 
+			printf("Virt-type: %s\n", virt);
+		}' \
+		arch="na" cpus="na" mhz="na" cores="na" sockets="na" threads="na"
 
 	ramsize=$(grep -o "MemTotal: \+[0-9]\+" /proc/meminfo)
 	ramsize=${ramsize//MemTotal: /}                       
