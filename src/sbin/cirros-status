@@ -65,11 +65,7 @@ cirros_status() {
 		}' \
 		arch="na" cpus="na" mhz="na" cores="na" sockets="na" threads="na"
 
-	ramsize=$(grep -o "MemTotal: \+[0-9]\+" /proc/meminfo)
-	ramsize=${ramsize//MemTotal: /}                       
-	ramsize=${ramsize// /}                                             
-	ramsize=$((ramsize/1024))                             
-	echo "RAM Size: ${ramsize}MB"
+	awk '$1 == "MemTotal:" { printf("RAM Size: %dMB\n", $2/1024)}' /proc/meminfo
 
 	echo "Disks:"
 	sudo lsblk --ascii --list --bytes --output NAME,MAJ:MIN,SIZE,LABEL,MOUNTPOINT
