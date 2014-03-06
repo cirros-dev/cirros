@@ -59,7 +59,6 @@ cirros_status() {
 		$1 == "CPU(s):" { cpus=$2; } ;
 		$1" "$2 == "CPU MHz:" { mhz=$3 };
 		$1 == "Virtualization:" { virt=$2 };
-		{ hypervisor=unknown };
 		END {
 			printf("Arch: %s\nCPU(s): %s @ %s MHz\nCores/Sockets/Threads: %s/%s/%s\n", arch, cpus, mhz, cores, sockets, threads); 
 			printf("Virt-type: %s\n", virt);
