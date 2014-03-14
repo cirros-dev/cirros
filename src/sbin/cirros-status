@@ -47,10 +47,13 @@ cirros_status() {
 		{ error "failed to make tempdir"; return 1; }
 	trap cleanup EXIT
 
+	local container=""
+	container=$(lxc-is-container -v) || container="none"
 	echo "=== system information ==="
 	# Example: Red Hat Inc. OpenStack Nova
 	echo -n "Platform: "
 	dmesg | grep DMI: | sed -n 's/.*[ ]\+DMI:[ ]*\(.\+\), BIOS.*/\1/p'
+	echo "Container: ${container}"
 
 	lscpu | awk '$1 == "Architecture:" { arch=$2 };
 		$1 == "Socket(s):" { sockets=$2 };
@@ -67,13 +70,15 @@ cirros_status() {
 
 	awk '$1 == "MemTotal:" { printf("RAM Size: %dMB\n", $2/1024)}' /proc/meminfo
 
-	echo "Disks:"
-	sudo lsblk --ascii --list --bytes --output NAME,MAJ:MIN,SIZE,LABEL,MOUNTPOINT
+	if [ "$container" != "none" ]; then
+		echo "Disks:"
+		asroot lsblk --ascii --list --bytes --output NAME,MAJ:MIN,SIZE,LABEL,MOUNTPOINT
+	fi
 
 	echo "=== sshd host keys ==="
 	echo "-----BEGIN SSH HOST KEY KEYS-----"
-	sudo dropbearkey -f /etc/dropbear/dropbear_rsa_host_key -y | grep ^ssh-rsa
-	sudo dropbearkey -f /etc/dropbear/dropbear_dss_host_key -y | grep ^ssh-dss
+	asroot dropbearkey -f /etc/dropbear/dropbear_rsa_host_key -y | grep ^ssh-rsa
+	asroot dropbearkey -f /etc/dropbear/dropbear_dss_host_key -y | grep ^ssh-dss
 	echo "-----END SSH HOST KEY KEYS-----"
 
 	local oifs="$IFS" x="" val=""

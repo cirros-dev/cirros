@@ -12,9 +12,11 @@ write_lxc_is_container() {
 EOF
 	if is_lxc; then
 		echo "# This is an LXC container"
+		echo '[ "$1" = "-v" ] && echo '"$_LXC_CONTAINER"
 		echo "exit 0"
 	else
 		echo "# This is NOT an LXC container"
+		echo '[ "$1" = "-v" ] && echo none'
 		echo "exit 1"
 	fi
 }

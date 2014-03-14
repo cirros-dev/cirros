@@ -304,4 +304,14 @@ is_lxc() {
 }
 is_not_lxc() { ! is_lxc; }
 
+iamroot() {
+	[ -n "$UID" ] || UID=$(id -u) || error "unable to determine UID!"
+	[ "$UID" = "0" ]
+}
+asroot() {
+	local sudo=""
+	iamroot || sudo="sudo"
+	$sudo "$@"
+}
+
 # vi: ts=4 noexpandtab syntax=sh
