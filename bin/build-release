@@ -55,8 +55,8 @@ for arch in ${ARCHES}; do
   echo "$(date): start $arch" >> "$out/date.txt";
   time make ARCH=$arch "OUT_D=$out/build/$arch" 2>&1 |
      tee "$out/build-$arch.log";
+  echo "$(date): finish $arch" >> "$out/date.txt";
 done;
-echo "$(date): finish" >> "$out/date.txt"
 
 for arch in ${ARCHES}; do
   mkdir -p "$out/stage/$arch"
