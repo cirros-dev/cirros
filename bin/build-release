@@ -6,7 +6,7 @@ VER=$1
 pre=cirros-$VER
 BR_VER="2012.05"
 ARCHES="${ARCHES:-i386 x86_64 arm}"
-KVER="3.2.0-57.87";
+KVER="3.2.0-60.91";
 
 set -e
 set -o pipefail
