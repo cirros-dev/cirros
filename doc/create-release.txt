@@ -14,7 +14,21 @@ cd cirros-$VER
 
 ./bin/build-release $VER 2>&1 | tee build-$VER.log
 
-# then to sign things
+# pull that release content into an existing mirror dir
+rsync -av --progress $USER@$HOST:/path/to/build-$VER/release $VER
+
+## now create simplestreams data ##
+# to create simplestream data with mirror at $mirror_d
+( cd .. && bzr branch lp:simplestreams simplestreams )
+bzr branch lp:cirros cirros
+
+./bin/mirror-dump-sstream-data "$mirror_d" > mdata.txt
+../simplestreams/tools/tenv tab2streams mdata.txt cirros-streams.d
+../simplestreams/tools/tenv env -u GNUPGHOME   \
+    SS_GPG_BATCH=1 SS_GPG_DEFAULT_KEY=A5DDB840 js2signed cirros-streams.d
+##
+
+# to sign individual things
 for x in "$out/release/"*; do
    [ "${x%.asc}" = "$x" ] || continue
    [ -e "$x.asc" ] && continue
