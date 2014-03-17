@@ -71,7 +71,7 @@ cirros_status() {
 
 	awk '$1 == "MemTotal:" { printf("RAM Size: %dMB\n", $2/1024)}' /proc/meminfo
 
-	if [ "$container" != "none" ]; then
+	if [ "$container" = "none" ]; then
 		echo "Disks:"
 		asroot lsblk --ascii --list --bytes --output NAME,MAJ:MIN,SIZE,LABEL,MOUNTPOINT
 	fi
