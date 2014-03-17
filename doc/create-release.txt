@@ -1,5 +1,5 @@
 # set version to build
-VER=0.3.2~pre2
+VER=0.3.2
 
 # get some build dependencies:
 sudo apt-get update
