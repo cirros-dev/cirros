@@ -4,7 +4,7 @@
 
 TEMP_D=""
 UMOUNT=""
-DEF_SIZE=24M
+DEF_SIZE=${DEF_SIZE:-24M}
 DEBUG=0
 DEF_MODULES="acpiphp e1000 ne2k-pci 8139cp pcnet32 ip_tables"
 
@@ -168,8 +168,8 @@ for x in ${MODULES}; do
 	}' mat="/${x}.ko$" p="lib/modules/${kver}" "${mdep}"
 done > "${kern_modules}"
 sort -u "${kern_modules}" > "${kern_files}"
-vmlinuz=$( cd "${kernel_d}" && [ -f boot/vmlinuz-* ] &&
-	echo boot/vmlinuz-* ) && echo "${vmlinuz}" >> "${kern_files}" &&
+vmlinuz=$( cd "${kernel_d}" && [ -f boot/vmlinu?-* ] &&
+	echo boot/vmlinu?-* ) && echo "${vmlinuz}" >> "${kern_files}" &&
 	ln -sf "$vmlinuz" "$kernel_d/vmlinuz" && echo "vmlinuz" >> "$kern_files" ||
 	fail "no kernel (boot/vmlinuz-*) found in ${kpkg_in}"
 echo "boot/config-$kver" >> "$kern_files"

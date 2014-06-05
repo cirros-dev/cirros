@@ -42,10 +42,11 @@ To use it, you would do something like:
 
    $ kver="3.2.0-60.91";
    $ burl="https://launchpad.net/ubuntu/+archive/primary/+files/linux-image"
-   $ for arch in i386 x86_64 arm; do
+   $ for arch in i386 x86_64 arm powerpc; do
      xarch=$arch; flav="virtual"
      [ "$arch" = "x86_64" ] && xarch="amd64";
      [ "$arch" = "arm" ] && xarch="armel" && flav="omap"
+     [ "$arch" = "powerpc" ] && flav="powerpc64-smp"
      url="$burl-${kver%.*}-${flav}_${kver}_${xarch}.deb"
      wget "$url" -O download/${url##*/}
      ln -sf ${url##*/} download/kernel-${arch}.deb

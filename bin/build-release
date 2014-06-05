@@ -5,7 +5,7 @@
 VER=$1
 pre=cirros-$VER
 BR_VER="2012.05"
-ARCHES="${ARCHES:-i386 x86_64 arm}"
+ARCHES="${ARCHES:-i386 x86_64 arm powerpc}"
 KVER="3.2.0-60.91";
 
 set -e
@@ -45,6 +45,7 @@ for arch in ${ARCHES}; do
      xarch=$arch; flav="virtual"
      [ "$arch" = "x86_64" ] && xarch="amd64";
      [ "$arch" = "arm" ] && xarch="armel" && flav="omap"
+     [ "$arch" = "powerpc" ] && flav="powerpc64-smp"
      url="$burl-${KVER%.*}-${flav}_${KVER}_${xarch}.deb"
      wget "$url" -O download/${url##*/}
      ln -sf ${url##*/} download/kernel-${arch}.deb
@@ -63,7 +64,9 @@ for arch in ${ARCHES}; do
 done
 
 for arch in ${ARCHES}; do
-  sudo ./bin/bundle -v "$out/build/$arch/rootfs.tar" \
+  [ "$arch" = "powerpc" ] && size="50M" || size=""
+  sudo ${size:+DEF_SIZE=${DEF_SIZE:-50M}} \
+     ./bin/bundle -v "$out/build/$arch/rootfs.tar" \
      ./download/kernel-$arch.deb "$out/stage/$arch";
 done
 
