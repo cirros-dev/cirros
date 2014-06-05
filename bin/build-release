@@ -65,8 +65,8 @@ done
 
 for arch in ${ARCHES}; do
   [ "$arch" = "powerpc" ] && size="50M" || size=""
-  sudo ${size:+DEF_SIZE=${DEF_SIZE:-50M}} \
-     ./bin/bundle -v "$out/build/$arch/rootfs.tar" \
+  sudo ./bin/bundle -v ${size:+--size=$size} --arch="$arch" \
+     "$out/build/$arch/rootfs.tar" \
      ./download/kernel-$arch.deb "$out/stage/$arch";
 done
 
