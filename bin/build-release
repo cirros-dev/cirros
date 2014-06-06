@@ -30,7 +30,10 @@ rm -f buildroot
 tar -xvf download/buildroot-${BR_VER}.tar.gz
 ln -snf buildroot-${BR_VER} buildroot
 
-./bin/mkcabundle > src/etc/ssl/certs/ca-certificates.crt
+# we do not do this here, so that we're not dependent on the
+# cvs working (which wont work through http_proxy) and also
+# to have revision controlled information in that file.
+#./bin/mkcabundle > src/etc/ssl/certs/ca-certificates.crt
 
 ( cd buildroot && QUILT_PATCHES="$PWD/../patches-buildroot" quilt push -a )
 
