@@ -3,7 +3,7 @@
 
 set -f
 
-[ -f ../etc/default/udhcpc ] && . ../etc/default/udhcpc
+[ -f /etc/default/udhcpc ] && . /etc/default/udhcpc
 
 # Exit if there is no need to ask for an address.
 [ "$DISABLED" = "yes" ] && exit 0
