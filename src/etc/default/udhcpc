@@ -1,0 +1,5 @@
+OPTIONS="staticroutes mtu"
+DISABLED="no"
+INTERFACE="eth0"
+TIMEOUT="60"
+MTU="1500"

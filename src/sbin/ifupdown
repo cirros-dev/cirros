@@ -1,14 +1,17 @@
-#!/bin/sh
-
-# udhcpc script edited by Tim Riker <Tim@Rikers.org>
+# A simple wrapper around udhcpc so that we are able to dynamically specify
+# which options it should ask for. It only configures eth0.
 
 set -f
 
-[ -z "$1" ] && echo "Error: should be called from udhcpc" && exit 1
+[ -f ../etc/default/udhcpc ] && . ../etc/default/udhcpc
+
+# Exit if there is no need to ask for an address.
+[ "$DISABLED" = "yes" ] && exit 0
 
 RESOLV_CONF="/etc/resolv.conf"
 [ -n "$broadcast" ] && BROADCAST="broadcast $broadcast"
 [ -n "$subnet" ] && NETMASK="netmask $subnet"
+[ -n "$mtu" ] && MTU="$mtu"
 
 apply_static_routes() {
 	# routes are pairs of network and gateway
@@ -32,12 +35,24 @@ apply_static_routes() {
 }
 
 case "$1" in
+	up)
+		# Gather all options and start udhcpc.
+		opts=""
+		for opt in $OPTIONS; do
+			opts="-O $opt $opts"
+		done
+		/sbin/udhcpc -R -n -T $TIMEOUT -i $INTERFACE -s "/sbin/ifupdown" $opts
+		;;
+	down)
+		kill `cat /var/run/udhcpc.${INTERFACE}.pid` 2>/dev/null
+		exit 0
+		;;
 	deconfig)
 		/sbin/ifconfig $interface 0.0.0.0
 		;;
 
 	renew|bound)
-		/sbin/ifconfig $interface $ip $BROADCAST $NETMASK
+		/sbin/ifconfig $interface $ip $BROADCAST $NETMASK mtu $MTU
 
 		if [ -n "$router" ] ; then
 			echo "deleting routers"
@@ -68,6 +83,9 @@ case "$1" in
 		done
 
 		apply_static_routes $staticroutes
+		;;
+	*)
+		echo "Usage: $0 <up|down>"
 		;;
 esac
 
