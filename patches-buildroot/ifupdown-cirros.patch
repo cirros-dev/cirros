@@ -12,9 +12,9 @@
 + };
 + 
 + static const struct dhcp_client_t ext_dhcp_clients[] = {
-++	{ "cirros",
-++		"/sbin/ifupdown up",
-++		"/sbin/ifupdown down",
+++	{ "cirros-dhcpc",
+++		"cirros-dhcpc up",
+++		"cirros-dhcpc down",
 ++	},
 + 	{ "dhcpcd",
 + 		"dhcpcd[[ -h %hostname%]][[ -i %vendor%]][[ -I %client%]][[ -l %leasetime%]] %iface%",
