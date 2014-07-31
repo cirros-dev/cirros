@@ -4,6 +4,7 @@
 +Busybox tries several dhcpclients in a specific order, if one is found as
 +executable it gets the honor of asking for an address. By adding cirros as the
 +first option we make sure the /sbin/ifupdown script is used.
++This depends heavily on CONFIG_FEATURE_IFUPDOWN_EXTERNAL_DHCP=y.
 +
 +--- a/networking/ifupdown.c	2014-07-30 11:38:03.708210386 +0200
 ++++ b/networking/ifupdown.c	2014-07-30 11:38:24.106941433 +0200
