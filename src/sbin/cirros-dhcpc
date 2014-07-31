@@ -42,7 +42,7 @@ case "$1" in
 		for opt in $OPTIONS; do
 			opts="-O $opt $opts"
 		done
-		/sbin/udhcpc -R -n -T $TIMEOUT -i $INTERFACE -s "/sbin/ifupdown" $opts
+		/sbin/udhcpc -R -n -T $TIMEOUT -i $INTERFACE -s "/sbin/cirros-dhcpc" $opts
 		;;
 	down)
 		kill `cat /var/run/udhcpc.${INTERFACE}.pid` 2>/dev/null
