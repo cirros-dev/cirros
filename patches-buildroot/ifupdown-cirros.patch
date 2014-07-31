@@ -1,5 +1,5 @@
---- a/package/busybox/ifupdown-cirros.patch	1970-01-01 01:00:00.000000000 +0100
-+++ b/package/busybox/ifupdown-cirros.patch	2014-07-30 11:49:02.213528074 +0200
+--- a/package/busybox/1.20.1/busybox-ifupdown-cirros.patch	1970-01-01 01:00:00.000000000 +0100
++++ b/package/busybox/1.20.1/busybox-ifupdown-cirros.patch	2014-07-30 11:49:02.213528074 +0200
 @@ -0,0 +1,17 @@
 +Busybox tries several dhcpclients in a specific order, if one is found as
 +executable it gets the honor of asking for an address. By adding cirros as the
