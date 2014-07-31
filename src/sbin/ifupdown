@@ -1,3 +1,4 @@
+#!/bin/sh
 # A simple wrapper around udhcpc so that we are able to dynamically specify
 # which options it should ask for. It only configures eth0.
 
