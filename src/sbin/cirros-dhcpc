@@ -42,6 +42,7 @@ case "$1" in
 		for opt in $OPTIONS; do
 			opts="-O $opt $opts"
 		done
+		echo "Starting udhcpc on $INTERFACE, asking for options {$OPTIONS}"
 		/sbin/udhcpc -R -n -T $TIMEOUT -i $INTERFACE -s "/sbin/cirros-dhcpc" $opts
 		;;
 	down)
