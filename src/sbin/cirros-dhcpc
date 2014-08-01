@@ -1,19 +1,14 @@
 #!/bin/sh
 # A simple wrapper around udhcpc so that we are able to dynamically specify
-# which options it should ask for. It only configures eth0.
+# which options it should ask for.
 
 . ${CIRROS_SHLIB:=/lib/cirros/shlib} ||
 	{ echo "failed to read ${CIRROS_SHLIB}" 1>&2; exit 1; }
 
 set -f
 
-[ -f /etc/default/udhcpc ] && . /etc/default/udhcpc
-
-IFACE=$2
+OPTS_FILE="/etc/default/udhcpc"
 RESOLV_CONF="/etc/resolv.conf"
-[ -n "$broadcast" ] && BROADCAST="broadcast $broadcast"
-[ -n "$subnet" ] && NETMASK="netmask $subnet"
-[ -n "$mtu" ] && MTU="$mtu"
 
 apply_static_routes() {
 	# routes are pairs of network and gateway
@@ -23,77 +18,129 @@ apply_static_routes() {
 		net="$1"
 		router="$2"
 		[ -n "$net" ] || continue
-		echo "adding net $net with router $router" 1>&2
+		debug 1 "adding net $net with router $router"
 		route add -net "$net" gw "$router" || {
-			echo "WARN: failed: route add -net \"$net\" gw \"$router\"" 1>&2;
+			error "WARN: failed: route add -net \"$net\" gw \"$router\""
 			err=$(($err+1));
 		}
 		shift 2 || {
-			echo "apply_static_routes: failed shift 2. odd number of args?" 1>&2;
+			error "apply_static_routes: failed shift 2. odd number of args?"
 			return 1;
 		}
 	done
 	return $err
 }
 
+
+readconfig() {
+	[ ! -f "$OPTS_FILE" ] || . "$OPTS_FILE" ||
+		{ error "failed to read $OPTS_FILE"; return 1; }
+	# these are expected to be set.
+	OPTIONS=${OPTIONS:-staticroutes mtu}
+	TIMEOUT=${TIMEOUT:-60}
+	MTU=${MTU:-1500}
+}
+
+up() {
+	[ $# -ge 1 ] || { error "$0 up: must provide interface"; return 1; }
+	local iface="$1" opts="" hostname=""
+
+	readconfig || return
+	hostname=$(hostname 2>/dev/null)
+
+	# Gather all options and start udhcpc.
+	for opt in $OPTIONS; do
+		opts="-O $opt $opts"
+	done
+
+	debug 1 "Starting udhcpc on $iface, asking for options {$OPTIONS}"
+	/sbin/udhcpc -p "/var/run/udhcpc.${iface}.pid" -R -n \
+		${TIMEOUT:+"-T ${TIMEOUT}"} -i "$iface" -s "$0" \
+		$opts ${hostname:+-x "hostname:${hostname}"}
+}
+
+down() {
+	local iface="$1" pidfile="" pid=""
+	[ $# -ge 1 ] || { error "$0 down: must provide interface"; return 1; }
+	pidfile="/var/run/udchpc.$iface.pid"
+	[ -f "$pidfile" ] ||
+		{ error "$iface: no pidfile"; return 1; }
+	read pid < "$pidfile" ||
+		{ error "failed to read pid from '$pidfile' for '$iface'"; return 1; }
+	kill $pid >/dev/null
+	return
+}
+
+renew_bound() {
+	local flags="" mode="$1" i=""
+	shift;
+	[ -n "$interface" ] ||
+		{ error "$0 $mode: 'interface' not provided"; return 1; }
+
+	readconfig || return
+
+	[ -n "$broadcast" ] && flags="$flags broadcast $broadcast"
+	[ -n "$subnet" ] && flags="$flags netmask $subnet"
+	flags="$flags mtu ${mtu:-${MTU}}"
+
+	debug 1 "/sbin/ifconfig $interface $flags"
+	/sbin/ifconfig $interface $flags
+
+	if [ -n "$router" ] ; then
+		local out="" ret=""
+		debug 1 "deleting routers"
+		# cirros: this loop is cirros modification to remove a message
+		# like the following going to the console:
+		#   route: SIOCDELRT: No such process		 
+		while :; do					   
+			out=$(route del default gw 0.0.0.0 dev $interface 2>&1)
+			ret=$?
+			[ $ret -eq 0 ] && break
+			case "$out" in
+				*SIOCDELRT*[Nn]o\ such\ process*) break;;
+			esac
+			error "deleting routes failed: $out" 1>&2
+		done
+		# end cirros modification 
+
+		for i in $router; do
+			route add default gw $i dev $interface
+		done
+	fi
+
+	local msg="configuring $RESOLV_CONF for $interface. domain=$domain"
+	msg="$msg nameservers: $dns"
+	debug 1 "$msg"
+	{
+		[ -n "$domain" ] && echo "search $domain"
+		for i in $dns ; do
+			echo nameserver $i
+		done
+	} > "$RESOLV_CONF"
+
+	apply_static_routes $staticroutes
+}
+
 case "$1" in
 	up)
-		[ -z "$IFACE" ] && echo "Missing interface to start." && exit 0
-		# Gather all options and start udhcpc.
-		opts=""
-		for opt in $OPTIONS; do
-			opts="-O $opt $opts"
-		done
-		echo "Starting udhcpc on $IFACE, asking for options {$OPTIONS}"
-		/sbin/udhcpc -p /var/run/udhcpc.${IFACE}.pid -R -n -T $TIMEOUT -i $IFACE -s "/sbin/cirros-dhcpc" $opts -x hostname:`hostname`
+		shift
+		up "$@"
 		;;
 	down)
-		[ -z "$IFACE" ] && echo "Missing interface to shutdown." && exit 0
-		kill `cat /var/run/udhcpc.${IFACE}.pid` 2>/dev/null
-		exit 0
+		shift;
+		down "$@"
 		;;
 	deconfig)
 		/sbin/ifconfig $interface 0.0.0.0
 		;;
-
 	renew|bound)
-		/sbin/ifconfig $interface $ip $BROADCAST $NETMASK mtu $MTU
-
-		if [ -n "$router" ] ; then
-			echo "deleting routers"
-			# cirros: this loop is cirros modification to remove a message
-			# like the following going to the console:
-			#   route: SIOCDELRT: No such process		 
-			while :; do					   
-				out=$(route del default gw 0.0.0.0 dev $interface 2>&1)
-				ret=$?
-				[ $ret -eq 0 ] && break
-				case "$out" in
-					*SIOCDELRT*[Nn]o\ such\ process*) break;;
-				esac
-				echo "deleting routes failed: $out" 1>&2
-			done
-			# end cirros modification 
-
-			for i in $router ; do
-				route add default gw $i dev $interface
-			done
-		fi
-
-		echo -n > $RESOLV_CONF
-		[ -n "$domain" ] && echo search $domain >> $RESOLV_CONF
-		for i in $dns ; do
-			echo adding dns $i
-			echo nameserver $i >> $RESOLV_CONF
-		done
-
-		apply_static_routes $staticroutes
+		renew_bound "$@";
 		;;
 	*)
-		echo "Usage: $0 <up|down>"
+		error "Usage: $0 <up|down>"
+		exit 1
 		;;
 esac
 
-exit 0
-
+exit
 # vi: ts=4 noexpandtab syntax=sh
