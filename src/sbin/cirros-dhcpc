@@ -43,7 +43,7 @@ case "$1" in
 			opts="-O $opt $opts"
 		done
 		echo "Starting udhcpc on $INTERFACE, asking for options {$OPTIONS}"
-		/sbin/udhcpc -R -n -T $TIMEOUT -i $INTERFACE -s "/sbin/cirros-dhcpc" $opts
+		/sbin/udhcpc -p /var/run/udhcpc.${INTERFACE}.pid -R -n -T $TIMEOUT -i $INTERFACE -s "/sbin/cirros-dhcpc" $opts
 		;;
 	down)
 		kill `cat /var/run/udhcpc.${INTERFACE}.pid` 2>/dev/null
