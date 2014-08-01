@@ -4,8 +4,6 @@
 
 set -f
 
-[ -z "$2" ] && echo "Usage: $0 <up|down> <interface>" && exit 0
-
 [ -f /etc/default/udhcpc ] && . /etc/default/udhcpc
 
 INTERFACE=$2
@@ -37,6 +35,7 @@ apply_static_routes() {
 
 case "$1" in
 	up)
+		[ -z "$2" ] && echo "Missing interface to start." && exit 0
 		# Gather all options and start udhcpc.
 		opts=""
 		for opt in $OPTIONS; do
@@ -46,6 +45,7 @@ case "$1" in
 		/sbin/udhcpc -p /var/run/udhcpc.${INTERFACE}.pid -R -n -T $TIMEOUT -i $INTERFACE -s "/sbin/cirros-dhcpc" $opts -x hostname:`hostname`
 		;;
 	down)
+		[ -z "$2" ] && echo "Missing interface to shutdown." && exit 0
 		kill `cat /var/run/udhcpc.${INTERFACE}.pid` 2>/dev/null
 		exit 0
 		;;
