@@ -1,0 +1,3 @@
+OPTIONS="staticroutes mtu"
+TIMEOUT="60"
+MTU="1500"
