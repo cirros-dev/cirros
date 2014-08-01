@@ -1,2 +1,5 @@
 sudo-install-sudoers-so.patch
-ifupdown-cirros.patch
+## currently disabled as it depends on busybox and buildroot
+## version numbers (in the patch paths).
+## note, that without this the cirros-udhcpc is inert, but unoffensive
+#ifupdown-cirros.patch
