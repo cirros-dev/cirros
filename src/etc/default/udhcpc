@@ -1,4 +1,3 @@
 OPTIONS="staticroutes mtu"
-INTERFACE="eth0"
 TIMEOUT="60"
 MTU="1500"

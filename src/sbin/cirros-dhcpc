@@ -4,8 +4,11 @@
 
 set -f
 
+[ -z "$2" ] && echo "Usage: $0 <up|down> <interface>" && exit 0
+
 [ -f /etc/default/udhcpc ] && . /etc/default/udhcpc
 
+INTERFACE=$2
 RESOLV_CONF="/etc/resolv.conf"
 [ -n "$broadcast" ] && BROADCAST="broadcast $broadcast"
 [ -n "$subnet" ] && NETMASK="netmask $subnet"
