@@ -6,7 +6,7 @@ set -f
 
 [ -f /etc/default/udhcpc ] && . /etc/default/udhcpc
 
-INTERFACE=$2
+IFACE=$2
 RESOLV_CONF="/etc/resolv.conf"
 [ -n "$broadcast" ] && BROADCAST="broadcast $broadcast"
 [ -n "$subnet" ] && NETMASK="netmask $subnet"
@@ -41,12 +41,12 @@ case "$1" in
 		for opt in $OPTIONS; do
 			opts="-O $opt $opts"
 		done
-		echo "Starting udhcpc on $INTERFACE, asking for options {$OPTIONS}"
-		/sbin/udhcpc -p /var/run/udhcpc.${INTERFACE}.pid -R -n -T $TIMEOUT -i $INTERFACE -s "/sbin/cirros-dhcpc" $opts -x hostname:`hostname`
+		echo "Starting udhcpc on $IFACE, asking for options {$OPTIONS}"
+		/sbin/udhcpc -p /var/run/udhcpc.${IFACE}.pid -R -n -T $TIMEOUT -i $IFACE -s "/sbin/cirros-dhcpc" $opts -x hostname:`hostname`
 		;;
 	down)
 		[ -z "$2" ] && echo "Missing interface to shutdown." && exit 0
-		kill `cat /var/run/udhcpc.${INTERFACE}.pid` 2>/dev/null
+		kill `cat /var/run/udhcpc.${IFACE}.pid` 2>/dev/null
 		exit 0
 		;;
 	deconfig)
