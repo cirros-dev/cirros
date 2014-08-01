@@ -92,3 +92,5 @@ case "$1" in
 esac
 
 exit 0
+
+# vi: ts=4 noexpandtab syntax=sh
