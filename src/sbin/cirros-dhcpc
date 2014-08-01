@@ -35,7 +35,7 @@ apply_static_routes() {
 
 case "$1" in
 	up)
-		[ -z "$2" ] && echo "Missing interface to start." && exit 0
+		[ -z "$IFACE" ] && echo "Missing interface to start." && exit 0
 		# Gather all options and start udhcpc.
 		opts=""
 		for opt in $OPTIONS; do
@@ -45,7 +45,7 @@ case "$1" in
 		/sbin/udhcpc -p /var/run/udhcpc.${IFACE}.pid -R -n -T $TIMEOUT -i $IFACE -s "/sbin/cirros-dhcpc" $opts -x hostname:`hostname`
 		;;
 	down)
-		[ -z "$2" ] && echo "Missing interface to shutdown." && exit 0
+		[ -z "$IFACE" ] && echo "Missing interface to shutdown." && exit 0
 		kill `cat /var/run/udhcpc.${IFACE}.pid` 2>/dev/null
 		exit 0
 		;;
