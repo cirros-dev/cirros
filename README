@@ -5,7 +5,7 @@ The following works on Ubuntu 10.04 or 12.04 LTS.
 
 To use it, you would do something like:
  * get some build dependencies:
-   $ sudo apt-get -y install bison flex texinfo build-essential gettext ncurses-dev unzip bzr qemu-kvm cvs quilt
+   $ sudo apt-get -y install bison flex texinfo build-essential gettext ncurses-dev unzip bzr qemu-kvm cvs quilt wget rsync
 
  * bzr branch lp:cirros
  * cd cirros
