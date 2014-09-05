@@ -63,7 +63,7 @@ up() {
 down() {
 	local iface="$1" pidfile="" pid=""
 	[ $# -ge 1 ] || { error "$0 down: must provide interface"; return 1; }
-	pidfile="/var/run/udchpc.$iface.pid"
+	pidfile="/var/run/udhcpc.$iface.pid"
 	[ -f "$pidfile" ] ||
 		{ error "$iface: no pidfile"; return 1; }
 	read pid < "$pidfile" ||
@@ -78,14 +78,20 @@ renew_bound() {
 	[ -n "$interface" ] ||
 		{ error "$0 $mode: 'interface' not provided"; return 1; }
 
+	[ -n "$ip" ] ||
+		{ error "$0 $mode: 'ip' not set in environment"; return 1; }
+
 	readconfig || return
 
 	[ -n "$broadcast" ] && flags="$flags broadcast $broadcast"
 	[ -n "$subnet" ] && flags="$flags netmask $subnet"
 	flags="$flags mtu ${mtu:-${MTU}}"
 
-	debug 1 "/sbin/ifconfig $interface $flags"
-	/sbin/ifconfig $interface $flags
+	debug 1 "/sbin/ifconfig $interface $ip $flags"
+	/sbin/ifconfig $interface $ip $flags || {
+		error "$0 $mode: failed: 'ifconfig $interface $ip $flags'";
+		return 1;
+	}
 
 	if [ -n "$router" ] ; then
 		local out="" ret=""
