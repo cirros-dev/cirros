@@ -65,6 +65,8 @@ ds_cat_item() {
 }
 
 cirros_version() {
+	[ -r /etc/cirros/version ] ||
+		{ _RET="unreleased"; return 0; }
 	{ read _RET < /etc/cirros/version; } >/dev/null 2>&1
 }
 

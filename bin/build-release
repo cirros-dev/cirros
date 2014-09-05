@@ -8,6 +8,16 @@ BR_VER="2012.05"
 ARCHES="${ARCHES:-i386 x86_64 arm}"
 KVER="3.2.0-60.91";
 
+dl() {
+   local url="$1" target="$2" tfile="" t=""
+   [ -f "$target" ] && return
+   t=$(dirname "$target")
+   tfile=$(mktemp "$t/.${0##*/}.XXXXXX") || return
+   wget "$url" -O "$tfile" &&
+      mv "$tfile" "$target" ||
+      { t=$?; rm -f "$tfile"; return $t; }
+}
+
 set -e
 set -o pipefail
 
@@ -21,9 +31,9 @@ echo "$(date): start download" >> "$out/date.txt";
 rm -f download
 mkdir -p ../download
 ln -snf ../download download
-[ -f "download/buildroot-${BR_VER}.tar.gz" ] ||
-  wget "http://buildroot.uclibc.org/downloads/buildroot-${BR_VER}.tar.gz" \
-    -O "download/buildroot-${BR_VER}.tar.gz"
+brtgz="buildroot-${BR_VER}.tar.gz"
+dl "http://buildroot.uclibc.org/downloads/$brtgz" "download/$brtgz"
+   "download/buildroot-${BR_VER}.tar.gz"
 
 rm -Rf "buildroot-${BR_VER}"
 rm -f buildroot
@@ -37,6 +47,8 @@ ln -snf buildroot-${BR_VER} buildroot
 
 ( cd buildroot && QUILT_PATCHES="$PWD/../patches-buildroot" quilt push -a )
 
+echo "$VER" > "src/etc/cirros/version"
+
 echo "$(date): end download" >> "$out/date.txt";
 echo "$(date): start br-source" >> "$out/date.txt";
 make ARCH=i386 br-source
@@ -49,8 +61,9 @@ for arch in ${ARCHES}; do
      [ "$arch" = "x86_64" ] && xarch="amd64";
      [ "$arch" = "arm" ] && xarch="armel" && flav="omap"
      url="$burl-${KVER%.*}-${flav}_${KVER}_${xarch}.deb"
-     wget "$url" -O download/${url##*/}
-     ln -sf ${url##*/} download/kernel-${arch}.deb
+     tfile="download/${url##*/}"
+     dl "$url" "$tfile"
+     ln -sf "${tfile##*/}" download/kernel-${arch}.deb
 done
 echo "$(date): end kernel download" >> "$out/date.txt";
 
@@ -74,13 +87,14 @@ sudo chown -R $USER:$USER "$out/stage"
 
 mkdir -p "$out/release"
 
-srctgz="$out/release/cirros-$VER-source.tar.gz"
-bzr export -r "tag:$VER" --format=tgz --root="cirros=$VER" "$srctgz"
-echo "wrote source tgz: $srctgz"
+#srctgz="$out/release/cirros-$VER-source.tar.gz"
+#bzr export -r "tag:$VER" --format=tgz --root="cirros-$VER" "$srctgz"
+#echo "wrote source tgz: $srctgz"
 
 ( srcd="$PWD" && tmpd=$(mktemp -d) && cd "$tmpd" &&
   bzr branch "$srcd" -r tag:$VER cirros-$VER &&
   rm -Rf cirros-$VER/.bzr &&
+  echo "$VER" > "cirros-$VER/src/etc/cirros/version" &&
   tar cvzf - cirros-$VER ) > "$out/release/cirros-$VER-source.tar.gz"
 
 rm -f "$out/stage"/*/"$pre"*
@@ -108,10 +122,10 @@ for arch in ${ARCHES}; do
      cp "$out/stage/$arch/$p-disk.img" "$out/release/$p-disk.img"
 done
 
-mkdir "$out/release/buildroot_rootfs"
+mkdir -p "$out/release/buildroot_rootfs"
 for arch in ${ARCHES}; do
   t="$out/release/buildroot_rootfs/buildroot-$VER-$arch.tar"
-  cp "$out/build/$arch/rootfs.tar" "$t" && gzip -9 "$t"
+  cp "$out/build/$arch/rootfs.tar" "$t" && gzip --force -9 "$t"
 done
 
 chmod u+rwX,go+rX -R "$out/release/"* 
