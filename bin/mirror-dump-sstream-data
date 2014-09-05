@@ -23,11 +23,30 @@ Usage: ${0##*/} mirror_dir
 EOF
 }
 
+datefortag() {
+   local loginfo ts out repo="${CIRROS_BZR:-.}"
+   local spec="$1" fmt="${2:-+%Y%m%d}"
+   loginfo=$(bzr log "$repo" --log-format=long --revision "$spec") ||
+      { error "couldn't bzr log tag:$i"; return 1; }
+   ts=$(echo "$loginfo" | sed -n '/^timestamp:/s,.*: ,,p') &&
+      [ -n "$ts" ] || {
+         error "failed to get timestamp from log for $spec";
+         return 1;
+   }
+   out=$(date --date="$ts" "$fmt") ||
+      { error "failed convert of '$ts' to format=$fmt"; return 1; }
+   _RET="$out"
+}
+
 error() { echo "$@" 1>&2; }
 fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
 
 [ "$1" = "-h" -o "$1" = "--help" ] && { Usage; exit 0; }
 [ "$#" -eq 1 ] || { Usage 1>&2; fail "must give mirror dir"; }
+
+if [ -z "$CIRROS_BZR" ]; then
+   CIRROS_BZR=$(t=$(readlink -f "$0") && cd "${t%/*}/.." && pwd)
+fi
 
 OIFS="$IFS"
 declare -A VERSION2SERIAL
@@ -59,8 +78,12 @@ for ent in "${files[@]}"; do
    IFS="/"; set -- $path; IFS=$OIFS
    version="$1"; fname="$2";
    serial="${VERSION2SERIAL[$version]}"
-   [ -n "$serial" ] ||
-      fail "serial not found for $version!"
+   if [ -z "$serial" ]; then
+      datefortag "tag:$version" ||
+         fail "serial not found for $version!"
+      serial="$_RET"
+      VERSION2SERIAL[$version]="$serial"
+   fi
 
    # tokenize cirros-0.3.1~pre4-x86_64-lxc.tar.gz, baseproduct gets 'cirros'
    IFS="-"; set -- $fname; IFS="$OIFS"
