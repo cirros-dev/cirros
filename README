@@ -5,7 +5,7 @@ The following works on Ubuntu 10.04 or 12.04 LTS.
 
 To use it, you would do something like:
  * get some build dependencies:
-   $ sudo apt-get -y install bison flex texinfo build-essential gettext ncurses-dev unzip bzr qemu-kvm cvs quilt wget rsync
+   $ sudo apt-get -y install bison flex texinfo build-essential gettext ncurses-dev unzip bzr qemu-kvm quilt wget rsync
 
  * bzr branch lp:cirros
  * cd cirros
@@ -18,8 +18,10 @@ To use it, you would do something like:
    $ tar -xvf download/buildroot-${br_ver}.tar.gz
    $ ln -snf buildroot-${br_ver} buildroot
 
- * update ./bin/mkcabundle > src/etc/ssl/certs/ca-certificates.crt
-   $ ./bin/mkcabundle > src/etc/ssl/certs/ca-certificates.crt
+ * optionally update src/etc/ssl/certs/ca-certificates.crt
+   This is not required, but can be done to make sure its up to date.
+   Doing so requires cvs.
+   # ./bin/mkcabundle > src/etc/ssl/certs/ca-certificates.crt
 
  * apply any local cirros patches to buildroot
    ( cd buildroot && QUILT_PATCHES=$PWD/../patches-buildroot quilt push -a )
