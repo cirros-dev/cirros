@@ -33,7 +33,6 @@ mkdir -p ../download
 ln -snf ../download download
 brtgz="buildroot-${BR_VER}.tar.gz"
 dl "http://buildroot.uclibc.org/downloads/$brtgz" "download/$brtgz"
-   "download/buildroot-${BR_VER}.tar.gz"
 
 rm -Rf "buildroot-${BR_VER}"
 rm -f buildroot
