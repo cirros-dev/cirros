@@ -2,7 +2,8 @@
 # A simple wrapper around udhcpc so that we are able to dynamically specify
 # which options it should ask for.
 
-VERBOSITY="${VERBOSITY:-1}"
+# note: ifupdown does not allow VERBOSITY through. can be set in OPTS_FILE.
+VERBOSITY="${VERBOSITY:-0}"
 
 . ${CIRROS_SHLIB:=/lib/cirros/shlib} ||
 	{ echo "failed to read ${CIRROS_SHLIB}" 1>&2; exit 1; }
