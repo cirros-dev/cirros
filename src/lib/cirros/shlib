@@ -30,7 +30,7 @@ time_call() {
 
 debug() {
 	local level=${1}; shift;
-	[ "${level}" -gt "${VERBOSITY}" ] && return
+	[ "${level}" -gt "${VERBOSITY:-0}" ] && return
 	error "${@}"
 }
 
@@ -312,6 +312,14 @@ asroot() {
 	local sudo=""
 	iamroot || sudo="sudo"
 	$sudo "$@"
+}
+
+path_has() {
+	# path_has(tok, [string=$PATH], [delim=:])
+	local tok="${1%/}" del="${3:-:}" p="${2:-${PATH}}"
+	p="${del}$p${del}"
+	[ "${p#*${del}${tok}${del}}" != "$p" ] ||
+		[ "${p#*${del}${tok}/${del}}" != "$p" ]
 }
 
 # vi: ts=4 noexpandtab syntax=sh

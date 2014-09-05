@@ -2,10 +2,16 @@
 # A simple wrapper around udhcpc so that we are able to dynamically specify
 # which options it should ask for.
 
+# note: ifupdown does not allow VERBOSITY through. can be set in OPTS_FILE.
+VERBOSITY="${VERBOSITY:-0}"
+
 . ${CIRROS_SHLIB:=/lib/cirros/shlib} ||
 	{ echo "failed to read ${CIRROS_SHLIB}" 1>&2; exit 1; }
 
 set -f
+
+# ensure PATH has /sbin in it.
+path_has /sbin || PATH="$PATH:/sbin"
 
 OPTS_FILE="/etc/default/udhcpc"
 RESOLV_CONF="/etc/resolv.conf"
@@ -54,15 +60,15 @@ up() {
 	done
 
 	debug 1 "Starting udhcpc on $iface, asking for options {$OPTIONS}"
-	/sbin/udhcpc -p "/var/run/udhcpc.${iface}.pid" -R -n \
-		${TIMEOUT:+"-T ${TIMEOUT}"} -i "$iface" -s "$0" \
+	udhcpc -p "/var/run/udhcpc.${iface}.pid" -R -n \
+		${TIMEOUT:+-T "${TIMEOUT}"} -i "$iface" -s "$0" \
 		$opts ${hostname:+-x "hostname:${hostname}"}
 }
 
 down() {
 	local iface="$1" pidfile="" pid=""
 	[ $# -ge 1 ] || { error "$0 down: must provide interface"; return 1; }
-	pidfile="/var/run/udchpc.$iface.pid"
+	pidfile="/var/run/udhcpc.$iface.pid"
 	[ -f "$pidfile" ] ||
 		{ error "$iface: no pidfile"; return 1; }
 	read pid < "$pidfile" ||
@@ -77,22 +83,26 @@ renew_bound() {
 	[ -n "$interface" ] ||
 		{ error "$0 $mode: 'interface' not provided"; return 1; }
 
+	[ -n "$ip" ] ||
+		{ error "$0 $mode: 'ip' not set in environment"; return 1; }
+
 	readconfig || return
 
-	[ -n "$broadcast" ] && flags="$flags broadcast $broadcast"
-	[ -n "$subnet" ] && flags="$flags netmask $subnet"
-	flags="$flags mtu ${mtu:-${MTU}}"
+	[ -n "$broadcast" ] && flags="${flags}broadcast $broadcast "
+	[ -n "$subnet" ] && flags="${flags}netmask $subnet "
+	flags="${flags}mtu ${mtu:-${MTU}} "
+	flags=${flags% }
 
-	debug 1 "/sbin/ifconfig $interface $flags"
-	/sbin/ifconfig $interface $flags
+	debug 1 "ifconfig $interface $ip $flags"
+	ifconfig $interface $ip $flags || {
+		error "$0 $mode: failed: 'ifconfig $interface $ip $flags'";
+		return 1;
+	}
 
 	if [ -n "$router" ] ; then
 		local out="" ret=""
-		debug 1 "deleting routers"
-		# cirros: this loop is cirros modification to remove a message
-		# like the following going to the console:
-		#   route: SIOCDELRT: No such process		 
-		while :; do					   
+		debug 2 "deleting routers"
+		while :; do
 			out=$(route del default gw 0.0.0.0 dev $interface 2>&1)
 			ret=$?
 			[ $ret -eq 0 ] && break
@@ -101,9 +111,9 @@ renew_bound() {
 			esac
 			error "deleting routes failed: $out" 1>&2
 		done
-		# end cirros modification 
 
 		for i in $router; do
+			debug 1 "route add default gw $i dev $interface"
 			route add default gw $i dev $interface
 		done
 	fi
@@ -131,7 +141,7 @@ case "$1" in
 		down "$@"
 		;;
 	deconfig)
-		/sbin/ifconfig $interface 0.0.0.0
+		ifconfig $interface 0.0.0.0
 		;;
 	renew|bound)
 		renew_bound "$@";
