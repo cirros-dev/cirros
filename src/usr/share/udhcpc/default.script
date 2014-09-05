@@ -1,0 +1,3 @@
+#!/bin/sh
+echo "WARN: '$0' should not be used in cirros. Replaced by cirros-dhcpc."
+exit 1
