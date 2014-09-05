@@ -2,6 +2,8 @@
 # A simple wrapper around udhcpc so that we are able to dynamically specify
 # which options it should ask for.
 
+VERBOSITY="${VERBOSITY:-1}"
+
 . ${CIRROS_SHLIB:=/lib/cirros/shlib} ||
 	{ echo "failed to read ${CIRROS_SHLIB}" 1>&2; exit 1; }
 
@@ -9,7 +11,6 @@ set -f
 
 OPTS_FILE="/etc/default/udhcpc"
 RESOLV_CONF="/etc/resolv.conf"
-VERBOSITY="${VERBOSITY:-1}"
 
 apply_static_routes() {
 	# routes are pairs of network and gateway
@@ -83,9 +84,10 @@ renew_bound() {
 
 	readconfig || return
 
-	[ -n "$broadcast" ] && flags="$flags broadcast $broadcast"
-	[ -n "$subnet" ] && flags="$flags netmask $subnet"
-	flags="$flags mtu ${mtu:-${MTU}}"
+	[ -n "$broadcast" ] && flags="${flags}broadcast $broadcast "
+	[ -n "$subnet" ] && flags="${flags}netmask $subnet "
+	flags="${flags}mtu ${mtu:-${MTU}} "
+	flags=${flags% }
 
 	debug 1 "/sbin/ifconfig $interface $ip $flags"
 	/sbin/ifconfig $interface $ip $flags || {
@@ -95,10 +97,7 @@ renew_bound() {
 
 	if [ -n "$router" ] ; then
 		local out="" ret=""
-		debug 1 "deleting routers"
-		# cirros: this loop is cirros modification to remove a message
-		# like the following going to the console:
-		#   route: SIOCDELRT: No such process		 
+		debug 2 "deleting routers"
 		while :; do					   
 			out=$(route del default gw 0.0.0.0 dev $interface 2>&1)
 			ret=$?
@@ -108,9 +107,9 @@ renew_bound() {
 			esac
 			error "deleting routes failed: $out" 1>&2
 		done
-		# end cirros modification 
 
 		for i in $router; do
+			debug 1 "route add default gw $i dev $interface"
 			route add default gw $i dev $interface
 		done
 	fi
