@@ -37,6 +37,8 @@ ln -snf buildroot-${BR_VER} buildroot
 
 ( cd buildroot && QUILT_PATCHES="$PWD/../patches-buildroot" quilt push -a )
 
+echo "$VER" > "src/etc/cirros/version"
+
 echo "$(date): end download" >> "$out/date.txt";
 echo "$(date): start br-source" >> "$out/date.txt";
 make ARCH=i386 br-source
@@ -74,13 +76,14 @@ sudo chown -R $USER:$USER "$out/stage"
 
 mkdir -p "$out/release"
 
-srctgz="$out/release/cirros-$VER-source.tar.gz"
-bzr export -r "tag:$VER" --format=tgz --root="cirros=$VER" "$srctgz"
-echo "wrote source tgz: $srctgz"
+#srctgz="$out/release/cirros-$VER-source.tar.gz"
+#bzr export -r "tag:$VER" --format=tgz --root="cirros-$VER" "$srctgz"
+#echo "wrote source tgz: $srctgz"
 
 ( srcd="$PWD" && tmpd=$(mktemp -d) && cd "$tmpd" &&
   bzr branch "$srcd" -r tag:$VER cirros-$VER &&
   rm -Rf cirros-$VER/.bzr &&
+  echo "$VER" > "cirros-$VER/src/etc/cirros/version" &&
   tar cvzf - cirros-$VER ) > "$out/release/cirros-$VER-source.tar.gz"
 
 rm -f "$out/stage"/*/"$pre"*
