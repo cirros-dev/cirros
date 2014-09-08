@@ -1,6 +1,7 @@
 0.3.3
  - Wrap udhcpc to provide for easier passing of options including
    those required to get MTU set properly.  [Harm Weites] (LP: #1301958)
+ - Busybox: enable nc flags '-s ADDR', '-n', '-u', '-o FILE', -z.
 0.3.2
  - Recognize failure when getting entries from ec2 metadata service,
    especially annoying on 'ec2metadata --public-keys' (LP: #1148165)
