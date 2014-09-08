@@ -17,6 +17,8 @@ dl() {
       mv "$tfile" "$target" ||
       { t=$?; rm -f "$tfile"; return $t; }
 }
+error() { echo "$@" 1>&2; }
+fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
 
 set -e
 set -o pipefail
@@ -24,6 +26,11 @@ set -o pipefail
 out="$PWD/../build-$VER"
 export TMPDIR="$out/tmp"
 mkdir -p "$out" "$TMPDIR"
+
+# really just here to check that VER is a tag
+# or source code checkout would fail
+revno=$(bzr tags -r "tag:$VER") || fail "$VER: not a tag in $PWD."
+revno=$(echo "$revno" | awk '{print $2}')
 
 echo "$(date): begin" >> "$out/date.txt";
 echo "$(date): start download" >> "$out/date.txt";
