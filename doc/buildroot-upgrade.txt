@@ -4,6 +4,9 @@ This documents what I did to change from
 - update README and bin/build-release
   README: change 'br_ver'
   bin/build-release: BR_VER="2012.05"
+- update patches to make sure they apply
+   ( cd buildroot && QUILT_PATCHES=$PWD/../patches-buildroot quilt push -a )
+   remove obsolete patches from series and delete .patch files.
 - update default config for all arches
   there has to be a better way to do this, but for now:
    arches=$(for f in conf/buildr-*.conf; do a=${f##*-}; echo ${a%.conf}; done)
