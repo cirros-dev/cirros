@@ -44,17 +44,19 @@ To use it, you would do something like:
 
    $ kver="3.2.0.68.81";
    $ burl="https://launchpad.net/ubuntu/+archive/primary/+files/linux-image"
-   $ for arch in i386 x86_64 arm; do
+   $ for arch in i386 x86_64 arm powerpc; do
      xarch=$arch; flav="virtual"
      [ "$arch" = "x86_64" ] && xarch="amd64";
      [ "$arch" = "arm" ] && xarch="armel" && flav="omap"
+     [ "$arch" = "powerpc" ] && flav="powerpc64-smp"
      url="$burl-${kver%.*}-${flav}_${kver}_${xarch}.deb"
      wget "$url" -O download/${url##*/}
      ln -sf ${url##*/} download/kernel-${arch}.deb
    done
 
  * build disk images using bin/bundle
-   $ sudo ./bin/bundle -v output/$ARCH/rootfs.tar download/kernel-$ARCH.deb output/$ARCH/images
+   $ sudo ./bin/bundle -v --arch=$ARCH output/$ARCH/rootfs.tar \
+      download/kernel-$ARCH.deb output/$ARCH/images
 
  * Then, test using the images
    $ kvm -drive file=disk.img,if=virtio -curses
