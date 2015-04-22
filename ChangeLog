@@ -2,6 +2,7 @@
  - Improve tooling for IPv6 and network debugging [Jens Rosenboom]
  - make 'nc -ll' work again. [Jens Rosenboom]
  - set default timezone to UTC
+ - powerpc builds
 0.3.3
  - Wrap udhcpc to provide for easier passing of options including
    those required to get MTU set properly.  [Harm Weites] (LP: #1301958)
