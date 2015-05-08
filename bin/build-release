@@ -6,7 +6,10 @@ VER=$1
 pre=cirros-$VER
 BR_VER="2015.05-rc1"
 ARCHES="${ARCHES:-i386 x86_64 arm powerpc}"
-KVER="3.2.0-80.116";
+KVER="3.13.0-52.86";
+ME=$(readlink -f "$0")
+MY_D=${ME%/*}
+PATH=${MY_D}:$PATH
 
 dl() {
    local url="$1" target="$2" tfile="" t=""
@@ -61,17 +64,7 @@ make ARCH=i386 br-source
 echo "$(date): end br-source" >> "$out/date.txt";
 
 echo "$(date): start kernel download" >> "$out/date.txt";
-burl="https://launchpad.net/ubuntu/+archive/primary/+files/linux-image"
-for arch in ${ARCHES}; do
-     xarch=$arch; flav="virtual"
-     [ "$arch" = "x86_64" ] && xarch="amd64";
-     [ "$arch" = "arm" ] && xarch="armel" && flav="omap"
-     [ "$arch" = "powerpc" ] && flav="powerpc64-smp"
-     url="$burl-${KVER%.*}-${flav}_${KVER}_${xarch}.deb"
-     tfile="download/${url##*/}"
-     dl "$url" "$tfile"
-     ln -sf "${tfile##*/}" download/kernel-${arch}.deb
-done
+grab-kernels "$KVER"
 echo "$(date): end kernel download" >> "$out/date.txt";
 
 for arch in ${ARCHES}; do

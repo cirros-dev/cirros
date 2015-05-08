@@ -42,17 +42,9 @@ To use it, you would do something like:
    The kernel input to bundle must be in deb format. The ubuntu '-virtual'
    kernel is used as a starting point.
 
-   $ kver="3.2.0-80.116"
-   $ burl="https://launchpad.net/ubuntu/+archive/primary/+files/linux-image"
-   $ for arch in i386 x86_64 arm powerpc; do
-     xarch=$arch; flav="virtual"
-     [ "$arch" = "x86_64" ] && xarch="amd64";
-     [ "$arch" = "arm" ] && xarch="armel" && flav="omap"
-     [ "$arch" = "powerpc" ] && flav="powerpc64-smp"
-     url="$burl-${kver%.*}-${flav}_${kver}_${xarch}.deb"
-     wget "$url" -O download/${url##*/}
-     ln -sf ${url##*/} download/kernel-${arch}.deb
-   done
+   # kver is newest -updates kernel from https://launchpad.net/ubuntu/+source/linux
+   $ kver="3.13.0-52.86"
+   $ ./bin/grab-kernels "$kver"
 
  * build disk images using bin/bundle
    $ sudo ./bin/bundle -v --arch=$ARCH output/$ARCH/rootfs.tar \
