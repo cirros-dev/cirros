@@ -1,0 +1,64 @@
+#!/bin/sh
+
+burl="https://launchpad.net/ubuntu/+archive/primary/+files/linux-image"
+outdir="./download"
+def_arches="i386 x86_64 arm powerpc"
+
+error() { echo "$@" 1>&2; }
+fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
+dl() {
+   local url="$1" target="$2" tfile="" t=""
+   [ -f "$target" ] && return
+   t=$(dirname "$target")
+   tfile=$(mktemp "$t/.${0##*/}.XXXXXX") || return
+   wget "$url" -O "$tfile" &&
+      mv "$tfile" "$target" ||
+      { t=$?; rm -f "$tfile"; return $t; }
+}
+
+[ "$1" = "--outdir" ] && { outdir="$1" && shift; }
+kver="$1"
+shift
+
+if [ $# -eq 0 ]; then
+   set -- ${def_arches}
+fi
+
+[ -d "$outdir" ] || mkdir -p "$outdir" ||
+   fail "failed mkdir $outdir"
+
+
+[ -n "$kver" ] || fail "must give kernel version"
+
+# version like 3.13.0-52.86
+kpart=${kver%-*}
+kmajor=${kpart%%.*}
+kminor=${kpart#*.}; kminor=${kminor%.*}
+kmicro=${kpart#.*.*}
+
+for arch in "$@"; do
+    xarch=$arch;
+    [ "$arch" = "x86_64" ] && xarch="amd64";
+    if [ "$kmajor.$kminor" = "3.2" ]; then
+        case "$arch" in
+            x86_64|i386) flav="virtual";;
+            arm) flav="omap"; xarch="armel";;
+            powerpc) flav="powerpc64-smp";;
+            *) fail "unknown kernel:arch for $kver:$arch"
+        esac
+    elif [ "$kmajor.$kminor" = "3.13" ]; then
+        case "$arch" in
+            x86_64|i386|arm64|ppc64el) flav="generic";;
+            arm) xarch="armhf"; flav="generic";;
+            powerpc) flav="powerpc64-smp";;
+            *) fail "unknown kernel:arch for $kver:$arch"
+        esac
+    else
+        fail "unknown kernel $kver ($kmajor.$kminor)"
+    fi
+    url="$burl-${kver%.*}-${flav}_${kver}_${xarch}.deb"
+    dl "$url" "$outdir/${url##*/}" || fail "failed dl $url"
+    ln -sf ${url##*/} "$outdir/kernel-${arch}.deb" ||
+      fail "failed symlink for $outdir/kernel-$arch.deb"
+done
+
