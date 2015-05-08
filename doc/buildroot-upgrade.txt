@@ -23,8 +23,9 @@ This documents what I did to change from
   vi conf/buildroot-*.config
 
   Also changed Makefile to address this
-- update path to device_table.txt
 - update Makefile for change in location of 'skeleton' in buildroot tree
+  Hopefully one time
+- update path to device_table.txt
   Hopefully one time.
   f="target/generic/device_table.txt"; t="system/device_table.txt"
   sed -i -e "s,$f,$t,p" conf/buildroot-*.config
