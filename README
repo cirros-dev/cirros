@@ -11,7 +11,7 @@ To use it, you would do something like:
  * cd cirros
 
  * download buildroot and setup environment
-   $ br_ver="2014.08"
+   $ br_ver="2015.05-rc1"
    $ mkdir -p ../download
    $ ln -snf ../download download
    $ ( cd download && wget http://buildroot.uclibc.org/downloads/buildroot-${br_ver}.tar.gz )
