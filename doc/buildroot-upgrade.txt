@@ -9,7 +9,7 @@ This documents what I did to change from
    remove obsolete patches from series and delete .patch files.
 - update default config for all arches
   there has to be a better way to do this, but for now:
-   arches=$(for f in conf/buildr-*.conf; do a=${f##*-}; echo ${a%.conf}; done)
+   arches=$(for f in conf/buildr*.config; do a=${f##*-}; echo ${a%.*}; done)
    for arch in $arches; do
      make br-config ARCH=$arch
    done
