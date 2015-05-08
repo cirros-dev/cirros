@@ -1,0 +1,38 @@
+This documents what I did to change from
+  buildroot version 2012.05 to 2014.08
+
+- update README and bin/build-release
+  README: change 'br_ver'
+  bin/build-release: BR_VER="2012.05"
+- update patches to make sure they apply
+   ( cd buildroot && QUILT_PATCHES=$PWD/../patches-buildroot quilt push -a )
+   remove obsolete patches from series and delete .patch files.
+- update default config for all arches
+  there has to be a better way to do this, but for now:
+   arches=$(for f in conf/buildr-*.conf; do a=${f##*-}; echo ${a%.conf}; done)
+   for arch in $arches; do
+     make br-config ARCH=$arch
+   done
+- update path to uclibc config referenced in buildroot-*.conf
+   f=".*/uClibc-.*.config"; t="package/uclibc/uClibc-0.9.33.config"
+   sed -i -e "s,$f,$t" conf/buildroot-*.config
+- update path to busybox config
+  Hopefully this was only a one time thing, as i took out the version
+  in the path.
+  # manually changed to package/busybox/busybox-cirros.config
+  vi conf/buildroot-*.config
+
+  Also changed Makefile to address this
+- update path to device_table.txt
+- update Makefile for change in location of 'skeleton' in buildroot tree
+  Hopefully one time.
+  f="target/generic/device_table.txt"; t="system/device_table.txt"
+  sed -i -e "s,$f,$t,p" conf/buildroot-*.config
+
+- update Makefile for determining busybox version
+  Hopefully one time
+  now this works: make ARCH=i386 br-busybox-menuconfig
+
+- update busybox config
+  make ARCH=i386 br-busybox-menuconfig
+  save

@@ -25,7 +25,9 @@ BR_DEPS = $(BR_D) $(BR_OUT_D)/busybox.config $(BR_OUT_D)/.config $(SKEL_D)/.dir
 
 BR_CONFIG = $(CONF_D)/buildroot-$(ARCH).config
 
-BUSYBOX_VERSION := $(shell sed -n -e s/BR2_BUSYBOX_VERSION="\(.*\)"/\\1/p < $(BR_CONFIG))
+BUSYBOX_VERSION := $(shell sed -n \
+   "s,^BUSYBOX_VERSION\s*=\s*\([^\s]*\).*,\1,p" \
+   $(BR_D)/package/busybox/busybox.mk)
 BUSYBOX_BUILD_DIR = $(BR_OUT_D)/build/busybox-$(BUSYBOX_VERSION)
 BUSYBOX_BUILD_CONFIG = $(BUSYBOX_BUILD_DIR)/.config
 
@@ -38,6 +40,7 @@ debug:
 	@echo "BR_MAKE: $(BR_MAKE)"
 	@echo "BR_OUT_D: $(BR_OUT_D)"
 	@echo "BUSYBOX_BUILD_CONFIG: $(BUSYBOX_BUILD_CONFIG)"
+	@echo "BUSYBOX_VERSION: $(BUSYBOX_VERSION)"
 
 source: br_source minicloud_source
 
@@ -70,7 +73,7 @@ $(SKEL_D)/.dir:
 	# top of that.
 	# depends on $(BR_D)/fs/skeleton (somehow)
 	[ -d $(SKEL_D) ] || mkdir -p $(SKEL_D)
-	rsync -a $(BR_D)/fs/skeleton/ $(SKEL_D)/ --delete
+	rsync -a $(BR_D)/system/skeleton/ $(SKEL_D)/ --delete
 	rsync -a $(TOP_D)/src/ $(SKEL_D)/
 	touch $(SKEL_D)/.dir
 

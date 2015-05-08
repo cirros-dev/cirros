@@ -4,7 +4,7 @@
 
 VER=$1
 pre=cirros-$VER
-BR_VER="2012.05"
+BR_VER="2014.08"
 ARCHES="${ARCHES:-i386 x86_64 arm powerpc}"
 KVER="3.2.0-80.116";
 
