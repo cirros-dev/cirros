@@ -50,7 +50,7 @@ for arch in "$@"; do
         case "$arch" in
             x86_64|i386|arm64|ppc64el) flav="generic";;
             arm) xarch="armhf"; flav="generic";;
-            powerpc) flav="powerpc64-smp";;
+            powerpc|ppc64) flav="powerpc64-smp";;
             *) fail "unknown kernel:arch for $kver:$arch"
         esac
     else
