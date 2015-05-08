@@ -1,3 +1,2 @@
 ifupdown-cirros.patch
-busybox-nc-ll.patch
 dropbear-init-generate-keys.patch
