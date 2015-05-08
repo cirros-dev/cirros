@@ -57,7 +57,7 @@ $(OUT_D)/.source.$(ARCH):
 
 $(BR_OUT_D)/busybox.config: $(CONF_D)/busybox.config $(BR_OUT_D)/.dir
 	cp $(CONF_D)/busybox.config $@
-	for s in configured built target_installed; do rm -f $(BR_OUT_D)/build/busybox-1.18.5/.stamp_$$s; done
+	for s in configured built target_installed; do rm -f $(BR_OUT_D)/build/busybox-*/.stamp_$$s; done
 
 $(BR_OUT_D)/.config: $(BR_CONFIG) $(BR_OUT_D)/.dir
 	cp $(BR_CONFIG) $@
@@ -80,9 +80,6 @@ $(SKEL_D)/.dir:
 br-menuconfig: $(BR_OUT_D)/.config
 	$(BR_MAKE) $* menuconfig
 	cp $(BR_OUT_D)/.config $(CONF_D)/buildroot-$(ARCH).config
-
-$(BR_OUT_D)/busybox.config: $(CONF_D)/busybox.config
-	cp $(CONF_D)/busybox.config $(BR_OUT_D)/busybox.config
 
 br-busybox-menuconfig: $(BR_OUT_D)/busybox.config
 	$(BR_MAKE) $* busybox-menuconfig
