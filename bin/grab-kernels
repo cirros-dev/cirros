@@ -2,6 +2,7 @@
 
 burl="https://launchpad.net/ubuntu/+archive/primary/+files/linux-image"
 outdir="./download"
+def_arches="i386 x86_64 arm powerpc"
 
 error() { echo "$@" 1>&2; }
 fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
@@ -17,8 +18,15 @@ dl() {
 
 [ "$1" = "--outdir" ] && { outdir="$1" && shift; }
 kver="$1"
+shift
+
+if [ $# -eq 0 ]; then
+   set -- ${def_arches}
+fi
+
 [ -d "$outdir" ] || mkdir -p "$outdir" ||
    fail "failed mkdir $outdir"
+
 
 [ -n "$kver" ] || fail "must give kernel version"
 
@@ -28,7 +36,7 @@ kmajor=${kpart%%.*}
 kminor=${kpart#*.}; kminor=${kminor%.*}
 kmicro=${kpart#.*.*}
 
-for arch in i386 x86_64 arm powerpc; do
+for arch in "$@"; do
     xarch=$arch;
     [ "$arch" = "x86_64" ] && xarch="amd64";
     if [ "$kmajor.$kminor" = "3.2" ]; then

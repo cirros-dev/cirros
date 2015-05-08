@@ -64,7 +64,7 @@ make ARCH=i386 br-source
 echo "$(date): end br-source" >> "$out/date.txt";
 
 echo "$(date): start kernel download" >> "$out/date.txt";
-grab-kernels "$KVER"
+grab-kernels "$KVER" ${ARCHES}
 echo "$(date): end kernel download" >> "$out/date.txt";
 
 for arch in ${ARCHES}; do
