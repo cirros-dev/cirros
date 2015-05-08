@@ -81,10 +81,10 @@ br-menuconfig: $(BR_OUT_D)/.config
 	$(BR_MAKE) $* menuconfig
 	cp $(BR_OUT_D)/.config $(CONF_D)/buildroot-$(ARCH).config
 
-$(BUSYBOX_BUILD_CONFIG): $(CONF_D)/busybox.config
-	cp $(CONF_D)/busybox.config $(BUSYBOX_BUILD_CONFIG)
+$(BR_OUT_D)/busybox.config: $(CONF_D)/busybox.config
+	cp $(CONF_D)/busybox.config $(BR_OUT_D)/busybox.config
 
-br-busybox-menuconfig: $(BUSYBOX_BUILD_CONFIG)
+br-busybox-menuconfig: $(BR_OUT_D)/busybox.config
 	$(BR_MAKE) $* busybox-menuconfig
 	cp $(BUSYBOX_BUILD_CONFIG) $(CONF_D)/busybox.config
 
