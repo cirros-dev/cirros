@@ -1,3 +1,6 @@
+0.4.0
+ - move to buildroot 2015.05 adjusting makefile and build appropriately.
+ - use Ubuntu 14.04 kernels (3.13)
 0.3.4
  - Improve tooling for IPv6 and network debugging [Jens Rosenboom]
  - make 'nc -ll' work again. [Jens Rosenboom]
