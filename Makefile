@@ -18,6 +18,7 @@ BR2_CCACHE_DIR = $(OUT_D)/ccache
 
 BR_MAKE = cd $(BR_D) && mkdir -p "$(TMPDIR)" && \
    make O=$(BR_OUT_D) BR2_DL_DIR=$(DL_D) \
+   BR2_CONFIG=$(BR_OUT_D)/.config \
    BUSYBOX_CONFIG_FILE=$(BR_OUT_D)/busybox.config \
    BR2_CCACHE_DIR=$(BR2_CCACHE_DIR)
 
