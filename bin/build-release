@@ -3,6 +3,11 @@
 [ $# -eq 1 ] || { echo "must give version"; exit 1; }
 
 VER=$1
+daily=false
+if [ "$1" = "daily" ]; then
+   VER="d$(date +%y%m%d)"
+   daily=true
+fi
 pre=cirros-$VER
 BR_VER="2015.05-rc1"
 ARCHES="${ARCHES:-i386 x86_64 arm powerpc}"
@@ -32,8 +37,10 @@ mkdir -p "$out" "$TMPDIR"
 
 # really just here to check that VER is a tag
 # or source code checkout would fail
-revno=$(bzr tags -r "tag:$VER") || fail "$VER: not a tag in $PWD."
-revno=$(echo "$revno" | awk '{print $2}')
+if ! $daily; then
+    revno=$(bzr tags -r "tag:$VER") || fail "$VER: not a tag in $PWD."
+    revno=$(echo "$revno" | awk '{print $2}')
+fi
 
 echo "$(date): begin" >> "$out/date.txt";
 echo "$(date): start download" >> "$out/date.txt";
@@ -92,12 +99,13 @@ mkdir -p "$out/release"
 #srctgz="$out/release/cirros-$VER-source.tar.gz"
 #bzr export -r "tag:$VER" --format=tgz --root="cirros-$VER" "$srctgz"
 #echo "wrote source tgz: $srctgz"
-
-( srcd="$PWD" && tmpd=$(mktemp -d) && cd "$tmpd" &&
-  bzr branch "$srcd" -r tag:$VER cirros-$VER &&
-  rm -Rf cirros-$VER/.bzr &&
-  echo "$VER" > "cirros-$VER/src/etc/cirros/version" &&
-  tar cvzf - cirros-$VER ) > "$out/release/cirros-$VER-source.tar.gz"
+if ! $daily; then
+  ( srcd="$PWD" && tmpd=$(mktemp -d) && cd "$tmpd" &&
+    bzr branch "$srcd" -r tag:$VER cirros-$VER &&
+    rm -Rf cirros-$VER/.bzr &&
+    echo "$VER" > "cirros-$VER/src/etc/cirros/version" &&
+    tar cvzf - cirros-$VER ) > "$out/release/cirros-$VER-source.tar.gz"
+fi
 
 rm -f "$out/stage"/*/"$pre"*
 for arch in ${ARCHES}; do
