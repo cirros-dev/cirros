@@ -10,7 +10,7 @@ if [ "$1" = "daily" ]; then
 fi
 pre=cirros-$VER
 BR_VER="2015.05-rc1"
-ARCHES="${ARCHES:-i386 x86_64 arm powerpc}"
+ARCHES="${ARCHES:-i386 x86_64 arm powerpc aarch64 ppc64 ppc64le}"
 KVER="3.13.0-52.86";
 ME=$(readlink -f "$0")
 MY_D=${ME%/*}
