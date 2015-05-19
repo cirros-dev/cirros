@@ -51,7 +51,8 @@ for arch in "$@"; do
             arm) xarch="armhf"; flav="generic";;
             aarch64) xarch=arm64; flav="generic";;
             powerpc|ppc64) xarch=powerpc; flav="powerpc64-smp";;
-            x86_64|i386|arm64|ppc64el) flav="generic";;
+            ppc64le) xarch="ppc64el"; flav="generic";;
+            x86_64|i386|arm64) flav="generic";;
             *) fail "unknown kernel:arch for $kver:$arch"
         esac
     else
