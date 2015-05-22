@@ -45,7 +45,7 @@ getopt_out=$(getopt --name "${0##*/}" \
 	bad_Usage
 
 topdir=$(cd "${0%/*}/.." && pwd)
-size=${DEF_SIZE}
+size=
 FS_LABEL="cirros-rootfs"
 fs_type="ext3"
 arch=""
@@ -66,6 +66,13 @@ done
 rootfs_in=${1}
 kpkg_in=${2}
 out_d_in=${3}
+
+if [ -z "$size" ]; then
+   case "$arch" in
+      aarch64|ppc*) size=64M;;
+      *) size=$DEF_SIZE;;
+   esac
+fi
 
 PATH="$topdir/bin:$PATH"
 src_dir="${topdir}/src"
