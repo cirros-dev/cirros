@@ -83,7 +83,7 @@ if [ -n "$ROOT" ]; then
 	mount -o move /dev ./dev
 	umount /proc
 	iinfo "initramfs loading root from $ROOT"
-	exec switch_root /newroot /sbin/init "$@"
+	exec switch_root /newroot "$KC_INIT" "$@"
 else
 	while read maj min blk name other; do
 		[ -n "${maj}" -a "${maj}" != "major" ] || continue
@@ -97,6 +97,6 @@ else
 	[ "$KC_RAMDISK_ROOT" = "0" ] &&
 		iinfo "initramfs did not find root, running as ramdisk" ||
 		iinfo "running in ramdisk mode as requested"
-	exec /sbin/init "$@"
+	exec "$KC_INIT" "$@"
 fi
 failure "badness occurred in ramdisk"
