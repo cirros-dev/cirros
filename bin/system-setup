@@ -73,8 +73,8 @@ ver=$(lsb_release --short --release)
 me=$(readlink -f "$0")
 myd=$(dirname "$me")
 
-if [ -f "$myd/fixup-fs" ]; then
-    CIRROS_D="$myd"
+if [ -f "$myd/../fixup-fs" ]; then
+    CIRROS_D=$(cd "$myd/.." && pwd)
 elif [ -f "$PWD/cirros/fixup-fs" ]; then
     CIRROS_D="$PWD/cirros"
 fi
