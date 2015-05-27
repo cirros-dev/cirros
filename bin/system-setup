@@ -4,6 +4,7 @@ _APT_UPDATED=false
 CIRROS_BRANCH="lp:cirros"
 CIRROS_D=""
 DEPS=(
+  bc
   bison
   build-essential
   bzr
