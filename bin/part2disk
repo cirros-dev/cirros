@@ -17,7 +17,6 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-DEF_CYLINDER_SIZE=16065
 DEF_SECTOR_SIZE=512
 DEBUG=0
 base_d=$(dirname $(readlink -f "${0}"))
@@ -36,11 +35,6 @@ Usage: ${0##*/} [options] partition-image disk-image
    inside it.
 
    options:
-      -b | --bootcode F write "bootcode" from file 'F' to the at the beginning
-                        of the disk
-      -c | --cylinder-size C
-                        size of cylinders for the disk in 512 byte units
-                        default is ${DEF_CYLINDER_SIZE}
       -G | --grub       install grub to disk image mbr
          | --grub1      install grub1 to disk image mbr
       -s | --size  S    create the disk image of size 'S'.
@@ -66,24 +60,20 @@ human2bytes() {
 }
 
 short_opts="b:c:Ghs:v"
-long_opts="bootcode:,grub1,grub,help,cylinder-size:,size:,verbose"
+long_opts="grub1,grub,help,size:,verbose"
 getopt_out=$(getopt --name "${0##*/}" \
 	--options "${short_opts}" --long "${long_opts}" -- "$@") &&
 	eval set -- "${getopt_out}" ||
 	bad_Usage
 
-csize=${DEF_CYLINDER_SIZE}
 ssize=${DEF_SECTOR_SIZE}
 size_in=""
-bootcode=""
 grub_ptnum=1
 grub=0
 grub1=0
 while [ $# -ne 0 ]; do
 	cur=${1}; next=${2};
 	case "$cur" in
-		-b|--boot-code) bootcode="$2"; shift;;
-		-c|--cylinder-size) csize=$2; shift;;
 		-G|--grub) grub=1;;
 		-G|--grub1) grub1=1;;
 		-h|--help) Usage; exit 0;;
@@ -116,57 +106,51 @@ else
 		fail "failed to get size of ${pimg}"
 fi
 
+padding=$((1024*1024*2))  # 1MB front and end
 if [ -n "${size_in}" ]; then
 	human2bytes "${size_in}" 1 || fail "failed to convert ${size_in} to bytes"
 	size=${_RET}
-	cylinders=$((${size}/(${csize}*${ssize})))
 else
-	# no size specified, get enough cylinders to fit part_img
-	# get 1 full cylinder + any remainder
-	cylinders=$((${pimg_s}/(${csize}*${ssize}) + 1))
-	[ "${pimg_s}" = "$((${csize}*${ssize}))" ] || cylinders=$((${cylinders}+1))
-	size=$((${cylinders}*${ssize}*${csize}))
-fi
-
-debug 1 "using ${cylinders} cylinders of ${csize} * ${ssize} = $((${cylinders}*${ssize}*${csize})) bytes"
-
-if [ -n "${bootcode}" ]; then
-	[ -f "${bootcode}" ] || fail "${bootcode}: not a file"
-	debug 1 "writing bootcode from ${bootcode}"
-	zcat --force "${bootcode}" | dd of="${dimg}" 2>/dev/null ||
-		fail "failed to write from ${bootcode}"
-fi
-
-if [ ! -b "${dimg}" ]; then
-	# truncate 1 cylinder of zeros
-	debug 2 "truncating ${dimg} to 1 cylinder"
-	dd if=/dev/zero of="${dimg}" \
-		seek="$((${csize}))" bs="${ssize}" count=0 2>/dev/null ||
-	fail "failed to write to ${dimg}"
-fi
-
-# copy partition image
-debug 1 "copying ${pimg} to partition in ${dimg}"
-dd if="${pimg}" conv=notrunc oflag=append of="${dimg}" 2>/dev/null ||
-	fail "failed to write ${pimg} into ${dimg}"
-
-# pad the output to round cylinder size.
-# we do this as a separate step from the copy so that the copy
-# can use whatever ibs or obs that dd thinks is appropriate
-if [ ! -b "${dimg}" ]; then
-	debug 2 "padding size of ${pimg} to round cylinders"
-	dd if="${pimg}" seek="$((${cylinders}*${csize}))" bs="${ssize}" \
-		count=0 of="${dimg}" 2>/dev/null ||
-		fail "failed to size ${dimg} to even cylinders"
-	if [ $size -ne $((${cylinders}*${ssize}*${csize})) ]; then
-		truncate --size "${size}" "${dimg}" ||
-			fail "failed to truncate ${dimg} to ${size}"
+	# no size specified, get enough to fit part_img, 1M header and 1M end.
+	size=$((${pimg_s}+$padding))
+	if [ $((${pimg_s}%$ssize)) -ne 0 ]; then
+		size=$((($pimg_s/$ssize)*($ssize)))
 	fi
 fi
 
+if [ ${size} -lt $((${pimg_s}+${padding})) ]; then
+	fail "size $size not large enough to fit $pimg_s+$padding"
+fi
+
+debug 1 "using $size bytes sector size $ssize"
+
+debug 2 "zeroing first 1M of $dimg"
+dd if=/dev/zero of="${dimg}" bs=1M count=1 2>/dev/null ||
+    fail "failed to write to ${dimg}"
+
+# copy partition image. this writes $pimg bytes even if that is
+# not divivisble by $ssize
+debug 1 "copying ${pimg} to partition in ${dimg}"
+dd if="$pimg" seek=$(((1024*1024)/$ssize)) bs=$ssize conv=notrunc \
+	of="$dimg" 2>/dev/null ||
+	fail "failed to write ${pimg} into ${dimg}"
+
+# zero any unwritten portion of the final sector
+leftover=$(($ssize-(${pimg_s}%$ssize)))
+if [ $leftover -ne $ssize ]; then
+	dd if=/dev/zero of="$dimg" bs=1 seek=$((${pimg_s}+1024*1024)) \
+		conv=notrunc count=$leftover 2>/dev/null ||
+	fail "failed to finish final sector of $pimg"
+fi
+
+# we've now written 1M front + round-sectors. now write one more MB at end.
+dd if=/dev/zero "of=$dimg" bs=512 seek=$((($size/512)-2048)) count=2048 \
+	conv=notrunc ||
+	fail "failed to write final 1M to $pimg"
+
 debug 1 "writing partition table to ${dimg}"
-sfdisk_out=$(sfdisk -C "${cylinders}" "${dimg}" 2>&1 <<EOF
-1,,L,*
+sfdisk_out=$(sfdisk --force --unit=S "${dimg}" 2>&1 <<EOF
+2048,,L,*
 EOF
 )
 
@@ -185,7 +169,6 @@ if [ $grub1 -ne 0 ]; then
 	debug 1 "installing grub"
 	grub --no-floppy --batch <<EOF
 device (hd0) $dimg
-geometry (hd0) $cylinders 255 63
 root (hd0,0)
 setup (hd0)
 quit
