@@ -21,7 +21,7 @@ case "$1" in
 				;;
 			foreground)
 				cirros-per once resize-rootfs -- \
-						/sbin/resize-filesystem -- \
+						/sbin/resize-filesystem \
 						/dev/root /run/resize.rootfs /dev/console
 				;;
 			disabled) : ;;
