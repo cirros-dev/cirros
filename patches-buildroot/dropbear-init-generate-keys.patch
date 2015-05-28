@@ -18,7 +18,7 @@ Index: buildroot/package/dropbear/S50dropbear
 +	local ktype file
 +	for ktype in rsa dss ecdsa; do
 +		file="/etc/dropbear/dropbear_${ktype}_host_key"
-+		cirros-per instance dropbear-keygen-$ktype \
++		cirros-per instance dropbear-keygen-$ktype -- \
 +			dropbearkey -t "$ktype" -f "$file" >/dev/null 2>&1 ||
 +		echo "WARN: generating key of type $ktype failed!"
 +	done
