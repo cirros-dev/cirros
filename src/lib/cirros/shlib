@@ -14,7 +14,7 @@ read_uptime() {
 }
 
 time_call() {
-	local start="$1" end="$2" ret="" delta=""
+	local start="$1" end="$2" ret="" delta="" t=""
 	read_uptime
 	start="${_RET%.*}${_RET#*.}"
 	"$@"
@@ -22,8 +22,14 @@ time_call() {
 	read_uptime
 	end="${_RET%.*}${_RET#*.}"
 	delta=$(($end-$start))
-	t=${delta%??}
-	_RET_TIME="$t.${delta#${t}}"
+	case $delta in
+		?)  _RET_TIME=0.0$delta;;
+		??) _RET_TIME=0.$delta;;
+		*)
+			t=${delta%??}
+			_RET_TIME="$t.${delta#${t}}"
+			;;
+	esac
 	return $ret
 }
 
