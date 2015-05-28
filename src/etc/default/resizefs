@@ -1,2 +1,4 @@
 # RESIZE_MODE can be one of 'disabled', 'foreground' or 'background'
-RESIZE_MODE='foreground'
+RESIZE_MODE='background'
+# GROWROOT can be 'enabled' or 'disabled'
+GROWROOT='enabled'

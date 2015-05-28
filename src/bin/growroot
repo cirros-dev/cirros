@@ -1,8 +1,8 @@
 #!/bin/sh
 
-ROOT=$1
+ROOT=${1:-/dev/root}
 
-fail() { echo "growroot: FAIL:" "$@"; }
+fail() { echo "growroot: FAIL:" "$@" 1>&2; exit 1; }
 msg() { echo "$@"; }
 
 # figure out what disk ROOT is on
@@ -30,48 +30,19 @@ partnum=${rootdev#${rootdisk}}
 
 # if growpart fails, exit. its failure messages should go
 # to stderr, so they'll get to the console
-out=$(growpart "${rootdisk}" "${partnum}" ) ||
-	{ msg "${out}"; exit 1; }
+out=$(growpart "${rootdisk}" "${partnum}")
+ret=$?
 
 # if growpart output starts with 'CHANGED:' then it did something.
 # anything else, exit
-case "${out}" in
-	CHANGED:*) echo "GROWROOT: $out";;
+case "$ret" in
+	0|1) echo "GROWROOT: $out";;
 	*)
 		echo "$out";
-		exit 0;;
+		exit $ret;;
 esac
 
-was_mounted=false
-while read src mp fstype opts o p; do
-	if [ "$src" = "$ROOT" ]; then
-		FS=$fstype;
-		OPTS=$opts;
-		MP=$mp
-		was_mounted=true
-	fi
-done < /proc/mounts
-
-if $was_mounted; then
-	umount "${ROOT}" || fail "failed to umount ${ROOT}";
-fi
-
-sfdisk -R "${rootdisk}" ||
-	msg "failed to re-read partition for ${rootdisk}"
-
-if $was_mounted; then
-	# this is taken from 'mountroot' function
-	#   see /usr/share/initramfs-tools/scripts/local
-	i=0
-	while [ $i -lt 50 ]; do
-		mount -o "$OPTS" "$ROOT" "$MP" >/dev/null 2>&1 && exit 0
-		i=$(($i+1))
-		sleep .2
-	done
-	[ $i -eq 50 ] && fail "unable to remount, that is bad"
-fi
-
-# write to /etc/grownroot-grown. most likely this wont work (readonly)
+# write to /etc/grownroot-grown.
 { date --utc > "${rootmnt}/etc/growroot-grown" ; } >/dev/null 2>&1 || :
 
 # vi: ts=4 noexpandtab

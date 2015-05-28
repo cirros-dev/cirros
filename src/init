@@ -70,15 +70,6 @@ if [ -z "$ROOT" -a "$KC_RAMDISK_ROOT" != "1" ] &&
 fi
 
 if [ -n "$ROOT" ]; then
-	if [ "${ROOT%[0-9]}" != "${ROOT}" -a -e "${ROOT%[0-9]}" ]; then
-		# only bother with growroot if root is a partition (sda1, not sda)
-		# and there exists a /dev/sda (xen will give xvda1 without xvda)
-		idebug "Growing root partition $ROOT"
-		umount /newroot
-		growroot "$ROOT"
-		mount -o ro "$ROOT" "/newroot" ||
-			failure "uh-oh, $ROOT was there, but not after growroot" 1>&2
-	fi
 	cd /newroot
 	mount -o move /dev ./dev
 	umount /proc

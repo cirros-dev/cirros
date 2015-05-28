@@ -1,7 +1,8 @@
 #!/bin/sh
 # vi: ts=4 noexpandtab
 
-RESIZE_MODE="disabled"
+RESIZE_MODE="background"
+GROWROOT="enabled"
 if [ -f /etc/default/resizefs ]; then
 	. /etc/default/resizefs
 fi
@@ -10,6 +11,12 @@ case "$1" in
 	start)
 		lxc-is-container && exit 0
 		[ -e /dev/root ] || exit 0
+		case "$GROWROOT" in
+			disabled|off|0) :;;
+			*)
+				growroot /dev/root ||
+					{ echo "failed growing /dev/root"; exit 1; }
+		esac
 		# here we have to use start-stop-daemon or the resize
 		# process gets killed when rc.sysinit ends (LP: #1261710)
 		case "$RESIZE_MODE" in
