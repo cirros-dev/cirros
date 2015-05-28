@@ -27,6 +27,25 @@ debug() {
 	error "$@";
 }
 fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
+getsize() {
+	local fname="$1" kname="" size=""
+	if [ -b "${fname}" ]; then
+		kname=$(readlink -f "${fname}") &&
+			size=$(awk '$4 == kn { print $3 * 1024 }' \
+		             	"kn=${kname##*/}" /proc/partitions) &&
+			[ -n "${size}" ] || {
+				error "failed to read size of ${fname} from /proc/partitions";
+				return 1;
+			}
+	else
+		size=$(stat --format "%s" "${fname}") || {
+			error "failed to get size of ${fname}"
+			return 1;
+		}
+	fi
+	_RET="$size"
+}
+
 Usage() {
 	cat <<EOF
 Usage: ${0##*/} [options] partition-image disk-image
@@ -95,64 +114,81 @@ dimg=${2}
 
 [ -f "${pimg}" -o -b "${pimg}" ] || fail "${pimg}: not a file or block device"
 
-if [ -b "${pimg}" ]; then
-	kname=$(readlink -f "${pimg}") &&
-		pimg_s=$(awk '$4 == kn { print $3 * 1024 }' \
-		             "kn=${kname##*/}" /proc/partitions) &&
-		[ -n "${pimg_s}" ] ||
-		fail "failed to read size of ${pimg} from /proc/partitions"
-else
-	pimg_s=$(stat --format "%s" "${pimg}") ||
-		fail "failed to get size of ${pimg}"
-fi
+getsize "$pimg" ||
+	fail "failed to get size of $pimg"
+pimg_s="$_RET"
 
-padding=$((1024*1024*2))  # 1MB front and end
+# end_pad_sectors: room for secondary gpt
+end_pad_sectors=33
+end_pad=$(($end_pad_sectors*$ssize))
+front_pad=$((1024*1024))
+front_pad_sectors=$(($front_pad/$ssize))
+padding=$(($front_pad+$end_pad))
+pt_sector_pad=$(($ssize-(${pimg_s}%$ssize)))
+if [ $pt_sector_pad -eq $ssize ]; then
+	pt_sector_pad=0
+fi
+pt_size=$(($pimg_s+$pt_sector_pad))
+pt_sectors=$(($pt_size/$ssize))
+tot_size=$(($front_pad+$pt_size+$end_pad))
+tot_size_sectors=$(($tot_size/$ssize))
+
 if [ -n "${size_in}" ]; then
 	human2bytes "${size_in}" 1 || fail "failed to convert ${size_in} to bytes"
 	size=${_RET}
 else
 	# no size specified, get enough to fit part_img, 1M header and 1M end.
-	size=$((${pimg_s}+$padding))
-	if [ $((${pimg_s}%$ssize)) -ne 0 ]; then
-		size=$((($pimg_s/$ssize)*($ssize)))
-	fi
+	size=$((${pimg_s}+$padding+$pt_sector_pad))
 fi
 
-if [ ${size} -lt $((${pimg_s}+${padding})) ]; then
-	fail "size $size not large enough to fit $pimg_s+$padding"
+if [ -e "$dimg" ]; then
+	getsize "$dimg" ||
+		fail "failed to get size of $dimg"
+	dimg_s="$_RET"
+else
+	dimg_s="$size"
 fi
 
-debug 1 "using $size bytes sector size $ssize"
+if [ "${dimg_s}" -lt "$size" ]; then
+	fail "size of $dimg ($dimg_s) not large enough to fit $size"
+fi
 
-debug 2 "zeroing first 1M of $dimg"
-dd if=/dev/zero of="${dimg}" bs=1M count=1 2>/dev/null ||
+debug 1 "input is ${pimg_s} bytes ($pt_sectors sectors of $ssize)."
+debug 1 "target is ${tot_size} bytes ($tot_size_sectors sectors)."
+debug 1 "padding $front_pad_sectors sectors at front," \
+        "$end_pad_sectors sectors at end."
+
+debug 2 "zeroing first $front_pad_sectors sectors $dimg"
+dd if=/dev/zero of="${dimg}" bs=$ssize "count=${front_pad_sectors}" \
+	2>/dev/null ||
     fail "failed to write to ${dimg}"
 
 # copy partition image. this writes $pimg bytes even if that is
 # not divivisble by $ssize
-debug 1 "copying ${pimg} to partition in ${dimg}"
-dd if="$pimg" seek=$(((1024*1024)/$ssize)) bs=$ssize conv=notrunc \
-	of="$dimg" 2>/dev/null ||
+debug 2 "copying ${pimg} to partition in ${dimg}"
+dd if="$pimg" of="$dimg" seek=${front_pad_sectors} bs=$ssize conv=notrunc \
+	2>/dev/null ||
 	fail "failed to write ${pimg} into ${dimg}"
 
 # zero any unwritten portion of the final sector
 leftover=$(($ssize-(${pimg_s}%$ssize)))
-if [ $leftover -ne $ssize ]; then
-	dd if=/dev/zero of="$dimg" bs=1 seek=$((${pimg_s}+1024*1024)) \
-		conv=notrunc count=$leftover 2>/dev/null ||
+if [ $pt_sector_pad -ne 0 ]; then
+	debug 2 "finishing final sector with zeros"
+	dd if=/dev/zero of="$dimg" bs=1 seek=$((${pimg_s}+${front_pad})) \
+		conv=notrunc count=$pt_sector_pad 2>/dev/null ||
 	fail "failed to finish final sector of $pimg"
 fi
 
-# we've now written 1M front + round-sectors. now write one more MB at end.
-dd if=/dev/zero "of=$dimg" bs=512 seek=$((($size/512)-2048)) count=2048 \
-	conv=notrunc ||
+# we've now written front pad + round-sectors. now write end_pad
+debug 2 "writing final $end_pad_sectors sectors"
+dd if=/dev/zero "of=$dimg" bs=$ssize \
+	seek=$((($size/$ssize)-${end_pad_sectors})) count=${end_pad_sectors} \
+	conv=notrunc 2>/dev/null ||
 	fail "failed to write final 1M to $pimg"
 
-debug 1 "writing partition table to ${dimg}"
-sfdisk_out=$(sfdisk --force --unit=S "${dimg}" 2>&1 <<EOF
-2048,,L,*
-EOF
-)
+sfdisk_in="${front_pad_sectors},$pt_sectors,L,*"
+debug 2 "writing partition table to ${dimg} ($sfdisk_in)"
+sfdisk_out=$(echo "$sfdisk_in" | sfdisk --force --unit=S "${dimg}" 2>&1)
 
 [ $? -eq 0 ] || {
 	error "${sfdisk_out}";
@@ -160,13 +196,13 @@ EOF
 }
 
 if [ ${grub} -ne 0 ]; then
-	debug 1 "invoking part2disk-grubhelper ${dimg}"
+	debug 2 "invoking part2disk-grubhelper ${dimg}"
 	sudo "${phelper}" "${dimg}" ||
 		fail "part2disk-grubhelper ${dimg} failed"
 fi
 
 if [ $grub1 -ne 0 ]; then
-	debug 1 "installing grub"
+	debug 2 "installing grub"
 	grub --no-floppy --batch <<EOF
 device (hd0) $dimg
 root (hd0,0)
