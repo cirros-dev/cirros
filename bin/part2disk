@@ -173,7 +173,7 @@ dd if="$pimg" of="$dimg" seek=${front_pad_sectors} bs=$ssize conv=notrunc \
 # zero any unwritten portion of the final sector
 leftover=$(($ssize-(${pimg_s}%$ssize)))
 if [ $pt_sector_pad -ne 0 ]; then
-	debug 2 "finishing final sector with zeros"
+	debug 2 "finishing final sector with $pt_sector_pad bytes of zeros"
 	dd if=/dev/zero of="$dimg" bs=1 seek=$((${pimg_s}+${front_pad})) \
 		conv=notrunc count=$pt_sector_pad 2>/dev/null ||
 	fail "failed to finish final sector of $pimg"
