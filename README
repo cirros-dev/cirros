@@ -11,7 +11,7 @@ To use it, you would do something like:
  * cd cirros
 
  * download buildroot and setup environment
-   $ br_ver="2015.05-rc3"
+   $ br_ver="2015.05"
    $ mkdir -p ../download
    $ ln -snf ../download download
    $ ( cd download && wget http://buildroot.uclibc.org/downloads/buildroot-${br_ver}.tar.gz )
@@ -43,7 +43,7 @@ To use it, you would do something like:
    kernel is used as a starting point.
 
    # kver is newest -updates kernel from https://launchpad.net/ubuntu/+source/linux
-   $ kver="3.13.0-52.86"
+   $ kver="3.19.0-20.20~14.04.1"
    $ ./bin/grab-kernels "$kver"
 
  * build disk images using bin/bundle

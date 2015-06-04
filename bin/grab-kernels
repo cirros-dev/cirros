@@ -2,7 +2,7 @@
 
 burl="https://launchpad.net/ubuntu/+archive/primary/+files/linux-image"
 outdir="./download"
-def_arches="i386 x86_64 arm powerpc ppc64 ppc64el aarch64"
+def_arches="i386 x86_64 arm powerpc ppc64 ppc64le aarch64"
 
 error() { echo "$@" 1>&2; }
 fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
@@ -31,10 +31,14 @@ fi
 [ -n "$kver" ] || fail "must give kernel version"
 
 # version like 3.13.0-52.86
+#              3.19.0-20.20~14.04.1
+
 kpart=${kver%-*}
+upart=${kver#*-}
+abi=${upart%%.*}
 kmajor=${kpart%%.*}
 kminor=${kpart#*.}; kminor=${kminor%.*}
-kmicro=${kpart#.*.*}
+kmicro=${kpart#*.*.}
 
 for arch in "$@"; do
     xarch=$arch;
@@ -46,7 +50,7 @@ for arch in "$@"; do
             powerpc) flav="powerpc64-smp";;
             *) fail "unknown kernel:arch for $kver:$arch"
         esac
-    elif [ "$kmajor.$kminor" = "3.13" ]; then
+    elif [ "$kmajor.$kminor" = "3.13" -o "$kmajor.$kminor" = "3.19" ]; then
         case "$arch" in
             arm) xarch="armhf"; flav="generic";;
             aarch64) xarch=arm64; flav="generic";;
@@ -58,7 +62,7 @@ for arch in "$@"; do
     else
         fail "unknown kernel $kver ($kmajor.$kminor)"
     fi
-    url="$burl-${kver%.*}-${flav}_${kver}_${xarch}.deb"
+    url="$burl-${kmajor}.${kminor}.${kmicro}-${abi}-${flav}_${kver}_${xarch}.deb"
     dl "$url" "$outdir/${url##*/}" || fail "failed dl $url"
     ln -sf ${url##*/} "$outdir/kernel-${arch}.deb" ||
       fail "failed symlink for $outdir/kernel-$arch.deb"
