@@ -1,9 +1,8 @@
 # set version to build
 VER=0.3.2
 
-# get some build dependencies:
-sudo apt-get update
-sudo apt-get -qy install bison flex texinfo build-essential gettext ncurses-dev unzip bzr qemu-kvm quilt wget rsync
+# set up the system / install any deps
+./bin/system-setup
 
 bzr init-repo cirros
 cd cirros

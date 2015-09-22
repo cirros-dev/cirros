@@ -4,8 +4,8 @@ function for debugging or developing cloud infrastructure.
 The following works on Ubuntu 14.04 LTS.
 
 To use it, you would do something like:
- * get some build dependencies:
-   $ sudo apt-get -y install bison flex texinfo build-essential gettext ncurses-dev unzip bzr qemu-kvm quilt wget rsync
+ * get the build dependencies:
+   $ ./bin/system-setup
 
  * bzr branch lp:cirros
  * cd cirros
