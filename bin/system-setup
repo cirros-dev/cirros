@@ -10,7 +10,7 @@ DEPS=(
   bzr
   flex
   gettext
-  ncurses-dev
+  libncurses5-dev
   qemu-kvm
   quilt
   rsync
