@@ -1,7 +1,8 @@
 #!/bin/sh
 # vi: ts=4 noexpandtab
 
-RESIZE_MODE="background"
+echo "Top of resize init script"
+RESIZE_MODE="foreground"
 GROWROOT="enabled"
 if [ -f /etc/default/resizefs ]; then
 	. /etc/default/resizefs
