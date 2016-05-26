@@ -40,6 +40,11 @@ kmajor=${kpart%%.*}
 kminor=${kpart#*.}; kminor=${kminor%.*}
 kmicro=${kpart#*.*.}
 
+case "$kmajor.$kminor" in
+   3.2|3.13|3.19|4.4) :;;
+   *) error "WARN: possibly unknown kernel version $kmajor.$kminor.";;
+esac
+
 for arch in "$@"; do
     xarch=$arch;
     [ "$arch" = "x86_64" ] && xarch="amd64";
@@ -50,7 +55,7 @@ for arch in "$@"; do
             powerpc) flav="powerpc64-smp";;
             *) fail "unknown kernel:arch for $kver:$arch"
         esac
-    elif [ "$kmajor.$kminor" = "3.13" -o "$kmajor.$kminor" = "3.19" ]; then
+    else
         case "$arch" in
             arm) xarch="armhf"; flav="generic";;
             aarch64) xarch=arm64; flav="generic";;
@@ -59,12 +64,9 @@ for arch in "$@"; do
             x86_64|i386|arm64) flav="generic";;
             *) fail "unknown kernel:arch for $kver:$arch"
         esac
-    else
-        fail "unknown kernel $kver ($kmajor.$kminor)"
     fi
     url="$burl-${kmajor}.${kminor}.${kmicro}-${abi}-${flav}_${kver}_${xarch}.deb"
     dl "$url" "$outdir/${url##*/}" || fail "failed dl $url"
     ln -sf ${url##*/} "$outdir/kernel-${arch}.deb" ||
       fail "failed symlink for $outdir/kernel-$arch.deb"
 done
-
