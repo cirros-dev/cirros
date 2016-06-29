@@ -3,17 +3,48 @@
 burl="https://launchpad.net/ubuntu/+archive/primary/+files/linux-image"
 outdir="./download"
 def_arches="i386 x86_64 arm powerpc ppc64 ppc64le aarch64"
+DEBUG=0
 
+debug() {
+	[ "${DEBUG}" -ge "${1}" ] || return 0;
+	shift;
+	error "$@"
+}
 error() { echo "$@" 1>&2; }
 fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
 dl() {
-   local url="$1" target="$2" tfile="" t=""
-   [ -f "$target" ] && return
-   t=$(dirname "$target")
-   tfile=$(mktemp "$t/.${0##*/}.XXXXXX") || return
-   wget "$url" -O "$tfile" &&
-      mv "$tfile" "$target" ||
-      { t=$?; rm -f "$tfile"; return $t; }
+    local url="$1" target="$2" tfile="" t=""
+    [ -f "$target" ] && return
+    t=$(dirname "$target")
+    tfile=$(mktemp "$t/.${0##*/}.XXXXXX") || return
+    wget "$url" -O "$tfile" &&
+        mv "$tfile" "$target" ||
+        { t=$?; rm -f "$tfile"; return $t; }
+}
+
+debs2tar() {
+    local out="$1" t="" deb=""
+    shift
+    t=$(dirname "$out")
+    tdir=$(mktemp -d "$t/.${0##*/}.XXXXXX") || return
+    debug 1 "creating $out in tempdir at $tdir from $*"
+    mkdir "$tdir/ex"
+    for deb in "$@"; do
+        debug 2 "extracting $deb"
+        dpkg -x "$deb" "$tdir/ex" || {
+            error "failed dpkg -x $deb";
+            rm -Rf "$tdir";
+            return 1;
+        }
+    done
+    debug 2 "creating kernel.tar.gz"
+    tar -C "$tdir/ex" -czf "$tdir/kernel.tar.gz" . &&
+        mv "$tdir/kernel.tar.gz" "$out" || {
+            error "failed creating tarball from $*";
+            rm -Rf "$tdir"
+            return 1;
+        }
+    return 0
 }
 
 [ "$1" = "--outdir" ] && { outdir="$1" && shift; }
@@ -65,8 +96,27 @@ for arch in "$@"; do
             *) fail "unknown kernel:arch for $kver:$arch"
         esac
     fi
-    url="$burl-${kmajor}.${kminor}.${kmicro}-${abi}-${flav}_${kver}_${xarch}.deb"
-    dl "$url" "$outdir/${url##*/}" || fail "failed dl $url"
-    ln -sf ${url##*/} "$outdir/kernel-${arch}.deb" ||
-      fail "failed symlink for $outdir/kernel-$arch.deb"
+    case $xarch in
+        amd64|i386|ppc64el|s390x) extra="-extra";;
+        *) extra="";
+    esac
+    debs=""
+    for epkg in "" $extra; do
+        url="$burl${epkg}-${kmajor}.${kminor}.${kmicro}-${abi}-${flav}_${kver}_${xarch}.deb"
+        dl "$url" "$outdir/${url##*/}" || fail "failed dl $url"
+        ln -sf ${url##*/} "$outdir/kernel-${arch}${epkg}.deb" ||
+            fail "failed symlink for $outdir/kernel-$arch${epkg}.deb"
+        debs="${debs} ${outdir}/${url##*/}"
+    done
+    tar="linux-image-${kver}-${flav}-${xarch}.tar.gz"
+    if [ -f "$outdir/${tar}" ]; then
+        error "re-used existing $outdir/${tar}"
+    else
+        debs2tar "$outdir/${tar}" ${debs} ||
+            fail "failed debs2tar to $tar on $debs"
+        error "wrote $outdir/${tar}"
+    fi
+    ln -sf "${tar}" "$outdir/kernel-${arch}.tar.gz" ||
+        fail "failed symlink for $outdir/kernel-$arch${epkg}.deb"
 done
+# vi: ts=4 expandtab

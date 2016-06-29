@@ -11,7 +11,7 @@ fi
 pre=cirros-$VER
 BR_VER="2015.05"
 ARCHES="${ARCHES:-i386 x86_64 arm powerpc aarch64 ppc64 ppc64le}"
-KVER="3.19.0-20.20~14.04.1"
+KVER="4.4.0-28.47"
 ME=$(readlink -f "$0")
 MY_D=${ME%/*}
 PATH=${MY_D}:$PATH
@@ -116,12 +116,12 @@ done
 logevent "start bundling" -
 for arch in ${ARCHES}; do
   case "$arch" in
-     powerpc|ppc*|aarch64) size=64M;;
+     powerpc|ppc*|aarch64) size=96M;;
      *) size="";;
   esac
   sudo ./bin/bundle -v ${size:+--size=$size} --arch="$arch" \
      "$out/build/$arch/rootfs.tar" \
-     ./download/kernel-$arch.deb "$out/stage/$arch";
+     ./download/kernel-$arch.tar.gz "$out/stage/$arch";
 done
 logevent "finish bundling"
 
