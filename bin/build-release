@@ -1,6 +1,6 @@
 #!/bin/bash
 
-[ $# -eq 1 ] || { echo "must give version"; exit 1; }
+[ $# -ge 1 ] || { echo "must give version"; exit 1; }
 
 VER=$1
 daily=false
@@ -8,6 +8,7 @@ if [ "$1" = "daily" ]; then
    VER="d$(date +%y%m%d)"
    daily=true
 fi
+shift
 pre=cirros-$VER
 BR_VER="2015.05"
 ARCHES="${ARCHES:-i386 x86_64 arm powerpc aarch64 ppc64 ppc64le}"
@@ -15,6 +16,14 @@ KVER="4.4.0-28.47"
 ME=$(readlink -f "$0")
 MY_D=${ME%/*}
 PATH=${MY_D}:$PATH
+
+set -e
+set -o pipefail
+
+OUT="$PWD/../build-$VER"
+LOGFILE="$OUT/date.txt"
+export TMPDIR="$OUT/tmp"
+mkdir -p "$OUT" "$TMPDIR"
 
 dl() {
    local url="$1" target="$2" tfile="" t=""
@@ -50,13 +59,36 @@ logevent() {
 error() { echo "$@" 1>&2; }
 fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
 
-set -e
-set -o pipefail
+build_arch() {
+      local arch="" quiet=false cmd="" log=""
+      if [ "$1" = "quiet" ]; then
+          quiet=true
+          shift
+      fi
+      arch="$1"
+      log="${OUT}/build-$arch.log"
+      cmd=( make ARCH=$arch "OUT_D=$OUT/build/$arch" \
+        ${CCACHE_D:+"BR2_CCACHE_DIR=${CCACHE_D}/$arch"} )
 
-out="$PWD/../build-$VER"
-LOGFILE="$out/date.txt"
-export TMPDIR="$out/tmp"
-mkdir -p "$out" "$TMPDIR"
+      logevent "start $arch" -
+      if $quiet; then
+          error "building $arch into $log"
+          time "${cmd[@]}" > "$log" 2>&1
+      else
+          time "${cmd[@]}" 2>&1 | tee "$log"
+      fi
+      ret=$?
+      logevent "finish $arch [ret=$ret]"
+      return $ret
+}
+
+if [ "$1" = "build_arch" ]; then
+    shift
+    build_arch "$@"
+    exit
+elif [ $# -gt 1 ]; then
+    fail "confused by $# arguments: $*"
+fi
 
 # really just here to check that VER is a tag
 # or source code checkout would fail
@@ -100,17 +132,22 @@ logevent "start kernel download" -
 grab-kernels "$KVER" ${ARCHES}
 logevent "end kernel download"
 
-for arch in ${ARCHES}; do
-  logevent "start $arch" -
-  time make ARCH=$arch "OUT_D=$out/build/$arch" \
-    ${CCACHE_D:+"BR2_CCACHE_DIR=${CCACHE_D}/$arch"} 2>&1 |
-     tee "$out/build-$arch.log";
-  ret=$?
-  logevent "finish $arch [ret=$ret]"
-done;
+parallel=true
+if [ -n "$parallel" ]; then
+    case "$parallel" in
+        0|true) jobs_flag="";;
+        *) jobs_flag="--jobs=$parallel";;
+    esac
+    parallel --ungroup ${jobs_flag} "$0" "$VER" build_arch \
+        quiet {} ::: ${ARCHES}
+else
+    for arch in ${ARCHES}; do
+      build_arch "$arch"
+    done;
+fi
 
 for arch in ${ARCHES}; do
-  mkdir -p "$out/stage/$arch"
+  mkdir -p "$OUT/stage/$arch"
 done
 
 logevent "start bundling" -
@@ -120,16 +157,16 @@ for arch in ${ARCHES}; do
      *) size="";;
   esac
   sudo ./bin/bundle -v ${size:+--size=$size} --arch="$arch" \
-     "$out/build/$arch/rootfs.tar" \
-     ./download/kernel-$arch.tar.gz "$out/stage/$arch";
+     "$OUT/build/$arch/rootfs.tar" \
+     ./download/kernel-$arch.tar.gz "$OUT/stage/$arch";
 done
 logevent "finish bundling"
 
-sudo chown -R $USER:$USER "$out/stage"
+sudo chown -R $USER:$USER "$OUT/stage"
 
-mkdir -p "$out/release"
+mkdir -p "$OUT/release"
 
-#srctgz="$out/release/cirros-$VER-source.tar.gz"
+#srctgz="$OUT/release/cirros-$VER-source.tar.gz"
 #bzr export -r "tag:$VER" --format=tgz --root="cirros-$VER" "$srctgz"
 #echo "wrote source tgz: $srctgz"
 if ! $daily; then
@@ -137,13 +174,13 @@ if ! $daily; then
     bzr branch "$srcd" -r tag:$VER cirros-$VER &&
     rm -Rf cirros-$VER/.bzr &&
     echo "$VER" > "cirros-$VER/src/etc/cirros/version" &&
-    tar cvzf - cirros-$VER ) > "$out/release/cirros-$VER-source.tar.gz"
+    tar cvzf - cirros-$VER ) > "$OUT/release/cirros-$VER-source.tar.gz"
 fi
 
-rm -f "$out/stage"/*/"$pre"*
+rm -f "$OUT/stage"/*/"$pre"*
 for arch in ${ARCHES}; do
   p=$pre-$arch
-  ( cd "$out/stage/$arch" &&
+  ( cd "$OUT/stage/$arch" &&
     ln kernel $p-vmlinuz && ln kernel $p-kernel &&
     ln initramfs $p-initrd && ln initramfs $p-initramfs &&
     ln part.img $p-rootfs.img &&
@@ -156,29 +193,29 @@ for arch in ${ARCHES}; do
 logevent "start populating release" -
 for arch in ${ARCHES}; do
   p=$pre-$arch
-  ( cd "$out/stage/$arch" &&
-    cp $p-kernel $p-initramfs $p-lxc.tar.gz "$out/release/" &&
-    gzip -9 -c $p-rootfs.img > $out/release/$p-rootfs.img.gz ) &&
-  ( cd "$out/stage/$arch" &&
+  ( cd "$OUT/stage/$arch" &&
+    cp $p-kernel $p-initramfs $p-lxc.tar.gz "$OUT/release/" &&
+    gzip -9 -c $p-rootfs.img > $OUT/release/$p-rootfs.img.gz ) &&
+  ( cd "$OUT/stage/$arch" &&
     tar cvzf - $p-blank.img $p-vmlinuz $p-initrd ) > \
-    "$out/release/$p-uec.tar.gz"
+    "$OUT/release/$p-uec.tar.gz"
   [ "$arch" = "arm" ] ||
-     cp "$out/stage/$arch/$p-disk.img" "$out/release/$p-disk.img"
+     cp "$OUT/stage/$arch/$p-disk.img" "$OUT/release/$p-disk.img"
 done
 
-mkdir -p "$out/release/buildroot_rootfs"
+mkdir -p "$OUT/release/buildroot_rootfs"
 for arch in ${ARCHES}; do
-  t="$out/release/buildroot_rootfs/buildroot-$VER-$arch.tar"
-  cp "$out/build/$arch/rootfs.tar" "$t" && gzip --force -9 "$t"
+  t="$OUT/release/buildroot_rootfs/buildroot-$VER-$arch.tar"
+  cp "$OUT/build/$arch/rootfs.tar" "$t" && gzip --force -9 "$t"
 done
 
-chmod u+rwX,go+rX -R "$out/release/"* 
+chmod u+rwX,go+rX -R "$OUT/release/"* 
 
-sumfiles=$(cd "$out/release" && for f in *; do
+sumfiles=$(cd "$OUT/release" && for f in *; do
    [ -f "$f" -a "$f" != MD5SUMS ] && echo "$f"; done)
-( cd "$out/release" && md5sum $sumfiles > MD5SUMS )
+( cd "$OUT/release" && md5sum $sumfiles > MD5SUMS )
 
 logevent "finish populate release" -
-msg "output in $out/release"
+msg "output in $OUT/release"
 msg "entire process took $SECONDS seconds"
 logevent "finished" "$tstart"
