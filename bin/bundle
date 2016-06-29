@@ -4,7 +4,7 @@
 
 TEMP_D=""
 UMOUNT=""
-DEF_SIZE=${DEF_SIZE:-24M}
+DEF_SIZE=${DEF_SIZE:-32M}
 DEBUG=0
 DEF_MODULES="acpiphp e1000 ne2k-pci 8139cp pcnet32 ip_tables"
 
