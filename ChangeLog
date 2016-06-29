@@ -1,6 +1,6 @@
 0.4.0
  - move to buildroot 2015.05 adjusting makefile and build appropriately.
- - use Ubuntu 14.04 kernels (3.13)
+ - use Ubuntu 16.04 kernels (4.4.0)
  - enable architectures ppc64, ppc64le, aarch64
  - respect init= parameter
  - growpart/growroot: resize partition while mounted with newer growpart.
