@@ -11,6 +11,7 @@ DEPS=(
   flex
   gettext
   libncurses5-dev
+  parallel
   qemu-kvm
   quilt
   rsync

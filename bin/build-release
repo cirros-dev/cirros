@@ -132,14 +132,19 @@ logevent "start kernel download" -
 grab-kernels "$KVER" ${ARCHES}
 logevent "end kernel download"
 
+jobs_flag=""
 parallel=true
-if [ -n "$parallel" ]; then
-    case "$parallel" in
-        0|true) jobs_flag="";;
-        *) jobs_flag="--jobs=$parallel";;
-    esac
-    parallel --ungroup ${jobs_flag} "$0" "$VER" build_arch \
-        quiet {} ::: ${ARCHES}
+case "${CIRROS_PARALLEL:-none}" in
+    none) parallel=false;;
+    0|true) :;;
+    [0-9]|[0-9][0-9]) jobs_flag="--jobs=${CIRROS_PARALLEL}";;
+    auto) command -v parallel >/dev/null || parallel=false;;
+    *) fail "unknown value for CIRROS_PARALLEL=$CIRROS_PARALLEL";;
+esac
+
+if $parallel; then
+    parallel --ungroup ${jobs_flag} \
+        "$0" "$VER" build_arch quiet {} ::: ${ARCHES}
 else
     for arch in ${ARCHES}; do
       build_arch "$arch"
