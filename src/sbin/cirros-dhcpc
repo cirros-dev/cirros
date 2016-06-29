@@ -19,14 +19,21 @@ RESOLV_CONF="/etc/resolv.conf"
 apply_static_routes() {
 	# routes are pairs of network and gateway
 	# 169.254.169.254/32 10.65.0.128
-	local net="" router="" err=0
+	local net="" err=0 modeop="" target="" interface="$1"
+	shift
 	while [ $# -ne 0 ]; do
 		net="$1"
-		router="$2"
-		[ -n "$net" ] || continue
-		debug 1 "adding net $net with router $router"
-		route add -net "$net" gw "$router" || {
-			error "WARN: failed: route add -net \"$net\" gw \"$router\""
+		target="$2"
+		modeop="gw"
+		[ -n "$net" ] || 
+			{ debug 2 "skipping empty net=$net through $target"; continue; }
+		if [ "$target" = "0.0.0.0" ]; then
+			modeop="dev"
+			target="$interface"
+		fi
+		debug 1 "adding net $net via $modeop $target"
+		route add -net "$net" "$modeop" "$target" || {
+			error "WARN: failed: route add -net \"$net\" $modeop \"$target\""
 			err=$(($err+1));
 		}
 		shift 2 || {
@@ -128,7 +135,7 @@ renew_bound() {
 		done
 	} > "$RESOLV_CONF"
 
-	apply_static_routes $staticroutes
+	apply_static_routes "$interface" $staticroutes
 }
 
 case "$1" in

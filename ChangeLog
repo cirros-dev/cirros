@@ -5,6 +5,7 @@
  - respect init= parameter
  - growpart/growroot: resize partition while mounted with newer growpart.
    default to background resizing of root filesystem.
+ - handle local subnet routes correctly (LP: #1369367)
 0.3.4
  - Improve tooling for IPv6 and network debugging [Jens Rosenboom]
  - make 'nc -ll' work again. [Jens Rosenboom]
