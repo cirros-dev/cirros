@@ -30,6 +30,7 @@ DRY_RUN=0
 
 SFDISK_VERSION=""
 SFDISK_2_26="22600"
+SFDISK_V_WORKING_GPT="22603"
 MBR_BACKUP=""
 GPT_BACKUP=""
 _capture=""
@@ -623,7 +624,7 @@ pt_update() {
 	fi
 	# partx only works on block devices (do not run on file)
 	[ -b "$dev" ] || return 0
-	partx --update "$part" "$dev"
+	partx --update --nr "$part" "$dev"
 }
 
 has_cmd() {
@@ -655,7 +656,7 @@ get_table_format() {
 	fi
 	_RET="dos"
 	if [ ${SFDISK_VERSION} -lt ${SFDISK_2_26} ] &&
-		out=$(sfdisk --id --force "$disk" 1); then
+		out=$(sfdisk --id --force "$disk" 1 2>/dev/null); then
 		if [ "$out" = "ee" ]; then
 			_RET="gpt"
 		else
@@ -686,7 +687,8 @@ get_resizer() {
 		return 0
 	fi
 
-	if [ "${SFDISK_VERSION}" -ge ${SFDISK_2_26} ]; then
+	if [ "${SFDISK_VERSION}" -ge ${SFDISK_V_WORKING_GPT} ]; then
+		# sfdisk 2.26.2 works for resize but loses type (LP: #1474090)
 		_RET="resize_sfdisk_gpt"
 	elif has_cmd sgdisk; then
 		_RET="resize_sgdisk_$format"
@@ -769,7 +771,7 @@ trap cleanup 0 # EXIT - some shells may not like 'EXIT' but are ok with 0
 get_table_format "$DISK" || fail
 format=$_RET
 get_resizer "$format" "$resizer" ||
-    fail "failed to get a resizer for id '$id'"
+	fail "failed to get a resizer for id '$id'"
 resizer=$_RET
 
 debug 1 "resizing $PART on $DISK using $resizer"

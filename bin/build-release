@@ -158,7 +158,7 @@ done
 logevent "start bundling" -
 for arch in ${ARCHES}; do
   case "$arch" in
-     powerpc|ppc*|aarch64) size=64M;;
+     powerpc|ppc*|aarch64) size=96M;;
      *) size="";;
   esac
   sudo ./bin/bundle -v ${size:+--size=$size} --arch="$arch" \
