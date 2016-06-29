@@ -141,8 +141,19 @@ cp "$out_partimg" "$out_blankimg" ||
 
 debug 1 "preparing kernel overlay"
 # creating kernel tarball
-dpkg -x "${kpkg_in}" "${kernel_d}" &&
-	( cd "${kernel_d}" && find * -type f ) > "${kern_list_full}" ||
+case "$kpkg_in" in
+	*.deb)
+		dpkg -x "${kpkg_in}" "${kernel_d}" ||
+			fail "failed extracting kernel deb package in ${kpkg_in}"
+		;;
+	*.tar*)
+		tar -C "$kernel_d" -xf "$kpkg_in" ||
+			fail "failed extracting kernel tarball in ${kpkg_in}"
+		;;
+	*) fail "unknown file format for $kpkg_in";;
+esac
+
+( cd "${kernel_d}" && find * -type f ) > "${kern_list_full}" ||
 	fail "failed to extract kernel to ${kernel_d}"
 
 kver=""

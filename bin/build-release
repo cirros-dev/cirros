@@ -121,7 +121,7 @@ for arch in ${ARCHES}; do
   esac
   sudo ./bin/bundle -v ${size:+--size=$size} --arch="$arch" \
      "$out/build/$arch/rootfs.tar" \
-     ./download/kernel-$arch.deb "$out/stage/$arch";
+     ./download/kernel-$arch.tar.gz "$out/stage/$arch";
 done
 logevent "finish bundling"
 
