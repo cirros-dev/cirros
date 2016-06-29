@@ -109,9 +109,13 @@ for arch in "$@"; do
         debs="${debs} ${outdir}/${url##*/}"
     done
     tar="linux-image-${kver}-${flav}-${xarch}.tar.gz"
-    debs2tar "$outdir/${tar}" ${debs} ||
-        fail "failed debs2tar to $tar on $debs"
-    error "wrote $outdir/${tar}"
+    if [ -f "$outdir/${tar}" ]; then
+        error "re-used existing $outdir/${tar}"
+    else
+        debs2tar "$outdir/${tar}" ${debs} ||
+            fail "failed debs2tar to $tar on $debs"
+        error "wrote $outdir/${tar}"
+    fi
     ln -sf "${tar}" "$outdir/kernel-${arch}.tar.gz" ||
         fail "failed symlink for $outdir/kernel-$arch${epkg}.deb"
 done
