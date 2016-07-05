@@ -62,10 +62,11 @@ while [ $# -ne 0 ]; do
 	shift;
 done
 
-[ $# -eq 3 ] || bad_Usage "must give rootfs.tar, kernel pkg, out_dir"
+[ $# -eq 4 ] || bad_Usage "must give rootfs.tar, kernel pkg, grub-efi.tar, out_dir"
 rootfs_in=${1}
 kpkg_in=${2}
-out_d_in=${3}
+grub_efi_in=${3}
+out_d_in=${4}
 
 PATH="$topdir/bin:$PATH"
 src_dir="${topdir}/src"
@@ -293,8 +294,15 @@ sed -i 's/(hd0)/(hd0,0)/' "$mp/boot/grub/menu.lst" ||
 umount "$mp" && UMOUNT="" ||
 	fail "failed to unmount partimg"
 
+case $arch in
+	i386) grub_options="--grub1";;
+	x86_64) grub_options="--grub1 --grub-efi";; # CentOS does not provide i386 EFI grub
+	aarch64) grub_options="--grub-efi";;
+	*) grub_options=;;
+esac
+
 debug 1 "creating disk image"
-out=$(PATH=$xgrubd:$PATH part2disk --grub1 "$tmp_part" "$out_diskimg.raw" 2>&1) ||
+out=$(PATH=$xgrubd:$PATH part2disk $grub_options "$tmp_part" "$grub_efi_in" $arch "$out_diskimg.raw" 2>&1) ||
 	fail "failed to create disk image: $out"
 qemu-img convert -O qcow2 -c "$out_diskimg.raw" "$out_diskimg" ||
 	fail "failed to convert disk image"

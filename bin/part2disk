@@ -79,7 +79,7 @@ human2bytes() {
 }
 
 short_opts="b:c:Ghs:v"
-long_opts="grub1,grub,help,size:,verbose"
+long_opts="grub-efi,grub1,grub,help,size:,verbose"
 getopt_out=$(getopt --name "${0##*/}" \
 	--options "${short_opts}" --long "${long_opts}" -- "$@") &&
 	eval set -- "${getopt_out}" ||
@@ -90,11 +90,13 @@ size_in=""
 grub_ptnum=1
 grub=0
 grub1=0
+grub_efi=0
 while [ $# -ne 0 ]; do
 	cur=${1}; next=${2};
 	case "$cur" in
 		-G|--grub) grub=1;;
 		-G|--grub1) grub1=1;;
+		--grub-efi) grub_efi=1;;
 		-h|--help) Usage; exit 0;;
 		-s|--size) size_in=$2; shift;;
 		-v|--verbose) DEBUG=$((${DEBUG}+1));;
@@ -103,10 +105,12 @@ while [ $# -ne 0 ]; do
 	shift;
 done
 
-[ $# -eq 2 ] || bad_Usage "must supply partition image and output file"
+[ $# -eq 4 ] || bad_Usage "must supply partition image and output file"
 
 pimg=${1}
-dimg=${2}
+grub_efi_in=${2}
+arch=${3}
+dimg=${4}
 
 { [ ${grub} -eq 0 ] || phelper=$(command -v part2disk-grubhelper); } ||
 	fail "no part2disk-grubhelper in PATH"
@@ -176,6 +180,36 @@ quit
 EOF
 fi
 
+if [ $grub_efi -ne 0 ]; then
+	case $arch in
+		x86_64)  efiarch=x64;eficmd='efi';;
+		aarch64) efiarch=aa64;eficmd='';;
+		*) fail "arch $arch without EFI grub"
+	esac
+	TMP=$(mktemp -d)
+	install -d $TMP/tar $TMP/efi $TMP/rootfs
+	tar -xf $grub_efi_in -C $TMP/tar
+
+	mkfs.vfat /dev/mapper/loop${loop_nr}p15
+	mount /dev/mapper/loop${loop_nr}p15 $TMP/efi
+	install -d $TMP/efi/EFI/BOOT
+	install $TMP/tar/boot/efi/EFI/centos/grub${efiarch}.efi \
+	$TMP/efi/EFI/BOOT/BOOT${efiarch}.efi
+
+	mount /dev/mapper/loop${loop_nr}p1 $TMP/rootfs
+	kernelfile=$(cd $TMP/rootfs/boot; ls vmlinu* | head -n1)
+	initrdfile=$(cd $TMP/rootfs/boot; ls initrd.img-* | head -n1)
+
+	echo "set default=0" >>$TMP/efi/EFI/BOOT/grub.cfg
+	echo "set timeout=1" >>$TMP/efi/EFI/BOOT/grub.cfg
+	echo "menuentry 'CirrOS' {" >>$TMP/efi/EFI/BOOT/grub.cfg
+	echo "linux${eficmd}  (hd0,gpt1)/boot/${kernelfile} ip=dhcp LABEL=cirros-rootfs"  >>$TMP/efi/EFI/BOOT/grub.cfg
+	echo "initrd${eficmd} (hd0,gpt1)/boot/${initrdfile} }"  >>$TMP/efi/EFI/BOOT/grub.cfg
+
+
+	umount $TMP/efi
+	umount $TMP/rootfs
+fi
 
 kpartx -d $dimg
 error "wrote to ${dimg}"
