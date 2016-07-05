@@ -9,7 +9,9 @@ DEPS=(
   build-essential
   bzr
   flex
+  gdisk
   gettext
+  kpartx
   libncurses5-dev
   parallel
   qemu-kvm
