@@ -210,8 +210,7 @@ for arch in ${ARCHES}; do
   ( cd "$OUT/stage/$arch" &&
     tar cvzf - $p-blank.img $p-vmlinuz $p-initrd ) > \
     "$OUT/release/$p-uec.tar.gz"
-  [ "$arch" = "arm" ] ||
-     cp "$OUT/stage/$arch/$p-disk.img" "$OUT/release/$p-disk.img"
+  cp "$OUT/stage/$arch/$p-disk.img" "$OUT/release/$p-disk.img"
 done
 
 mkdir -p "$OUT/release/buildroot_rootfs"
