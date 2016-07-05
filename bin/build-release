@@ -12,7 +12,8 @@ shift
 pre=cirros-$VER
 BR_VER="2015.05"
 ARCHES="${ARCHES:-i386 x86_64 arm powerpc aarch64 ppc64 ppc64le}"
-KVER="4.4.0-28.47"
+KVER="4.4.0-28.47" # Ubuntu 16.04
+GVER="2.02-0.34"   # CentOS 7
 ME=$(readlink -f "$0")
 MY_D=${ME%/*}
 PATH=${MY_D}:$PATH
@@ -150,6 +151,10 @@ else
       build_arch "$arch"
     done;
 fi
+
+logevent "start grub EFI download" -
+grab-grub-efi $GVER $ARCHES
+logevent "end grub EFI download"
 
 for arch in ${ARCHES}; do
   mkdir -p "$OUT/stage/$arch"
