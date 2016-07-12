@@ -211,7 +211,7 @@ if [ $grub_efi -ne 0 ]; then
 	echo "set default=0" >>$TMP/efi/EFI/BOOT/grub.cfg
 	echo "set timeout=1" >>$TMP/efi/EFI/BOOT/grub.cfg
 	echo "menuentry 'CirrOS' {" >>$TMP/efi/EFI/BOOT/grub.cfg
-	echo "linux${eficmd}  (hd0,gpt1)/boot/${kernelfile} ip=dhcp LABEL=cirros-rootfs"  >>$TMP/efi/EFI/BOOT/grub.cfg
+	echo "linux${eficmd}  (hd0,gpt1)/boot/${kernelfile} LABEL=cirros-rootfs ro"  >>$TMP/efi/EFI/BOOT/grub.cfg
 	echo "initrd${eficmd} (hd0,gpt1)/boot/${initrdfile} }"  >>$TMP/efi/EFI/BOOT/grub.cfg
 
 
