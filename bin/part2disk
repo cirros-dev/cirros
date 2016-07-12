@@ -48,14 +48,15 @@ getsize() {
 
 Usage() {
 	cat <<EOF
-Usage: ${0##*/} [options] partition-image disk-image
+Usage: ${0##*/} [options] partition-image grub-efi-tarball architecture disk-image
 
-   create disk image 'disk-image' with 'partition-image' in a partition
-   inside it.
+   Create disk image 'disk-image' with 'partition-image' in a partition
+   inside it. Add grub if requested.
 
    options:
       -G | --grub       install grub to disk image mbr
          | --grub1      install grub1 to disk image mbr
+         | --grub-efi   install EFI grub to disk image
       -s | --size  S    create the disk image of size 'S'.
                         default is large enough to fit partition-image
       -v | --verbose    increase verbosity
@@ -105,7 +106,7 @@ while [ $# -ne 0 ]; do
 	shift;
 done
 
-[ $# -eq 4 ] || bad_Usage "must supply partition image and output file"
+[ $# -eq 4 ] || bad_Usage "must supply partition image, grub-efi tarball, architecture and output file"
 
 pimg=${1}
 grub_efi_in=${2}
