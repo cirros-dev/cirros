@@ -78,6 +78,13 @@ human2bytes() {
    esac
    _RET=$((${count}*${unit}))
 }
+cleanup() {
+    umount $TMP/efi
+    umount $TMP/rootfs
+    kpartx -d $dimg
+}
+
+trap cleanup EXIT
 
 short_opts="b:c:Ghs:v"
 long_opts="grub-efi,grub1,grub,help,size:,verbose"
