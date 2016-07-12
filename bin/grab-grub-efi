@@ -1,0 +1,101 @@
+#!/bin/sh
+
+set -o xtrace
+
+burl="http://mirror.centos.org"
+outdir="./download"
+def_arches="x86_64 aarch64"
+DEBUG=0
+
+debug() {
+	[ "${DEBUG}" -ge "${1}" ] || return 0;
+	shift;
+	error "$@"
+}
+error() { echo "$@" 1>&2; }
+fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
+dl() {
+    local url="$1" target="$2" tfile="" t=""
+    [ -f "$target" ] && return
+    t=$(dirname "$target")
+    tfile=$(mktemp "$t/.${0##*/}.XXXXXX") || return
+    wget "$url" -O "$tfile" &&
+        mv "$tfile" "$target" ||
+        { t=$?; rm -f "$tfile"; return $t; }
+}
+
+rpm2tar() {
+    local out="$1" t="" rpm=""
+    shift
+    t=$(dirname "$out")
+    tdir=$(mktemp -d "$t/.${0##*/}.XXXXXX") || return
+    debug 1 "creating $out in tempdir at $tdir from $*"
+    mkdir "$tdir/ex"
+    for rpm in "$@"; do
+	rpm=$(realpath $rpm)
+        debug 2 "extracting $rpm"
+        (cd $tdir/ex; rpm2cpio $rpm | cpio --extract --make-directories ) || {
+            error "failed unpacking $rpm";
+            rm -Rf "$tdir";
+            return 1;
+        }
+    done
+    debug 2 "creating grub.tar.gz"
+    tar -C "$tdir/ex" -czf "$tdir/grub.tar.gz" . &&
+        mv "$tdir/grub.tar.gz" "$out" || {
+            error "failed creating tarball from $*";
+            rm -Rf "$tdir"
+            return 1;
+        }
+    return 0
+}
+
+[ "$1" = "--outdir" ] && { outdir="$1" && shift; }
+gver="$1"
+shift
+
+if [ $# -eq 0 ]; then
+   set -- ${def_arches}
+fi
+
+[ -d "$outdir" ] || mkdir -p "$outdir" ||
+   fail "failed mkdir $outdir"
+
+
+[ -n "$gver" ] || fail "must give grub version"
+
+# version like 2.02-0.34.el7
+
+for arch in "$@"; do
+    case "$arch" in
+        aarch64)
+		repo='os'
+		dir='altarch'
+		dist='el7'
+		;;
+        x86_64)
+		repo='updates'
+		dir='centos'
+		dist='el7.centos'
+		;;
+        *) debug 1 "no EFI grub for $arch"
+    esac
+    rpms=""
+
+    if [ -n $repo ] ; then exit ; fi
+
+    url="$burl/$dir/7/$repo/$arch/Packages/grub2-efi-${gver}.${dist}.${arch}.rpm"
+    dl "$url" "$outdir/${url##*/}" || fail "failed dl $url"
+    ln -sf ${url##*/} "$outdir/grub-efi-${arch}.rpm" ||
+        fail "failed symlink for $outdir/grub-efi-$arch.rpm"
+    rpms="${rpms} ${outdir}/${url##*/}"
+    echo $rpms
+
+   tar="grub-efi-${gver}-${arch}.tar.gz"
+   rpm2tar "$outdir/${tar}" ${rpms} ||
+       fail "failed rpm2tar to $tar on $rpms"
+   error "wrote $outdir/${tar}"
+   ln -sf "${tar}" "$outdir/grub-efi-${arch}.tar.gz" ||
+       fail "failed symlink for $outdir/grub-$arch.rpm"
+done
+# vi: ts=4 expandtab
