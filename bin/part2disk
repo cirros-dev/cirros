@@ -202,7 +202,7 @@ if [ $grub_efi -ne 0 ]; then
 	mount /dev/mapper/loop${loop_nr}p15 $TMP/efi
 	install -d $TMP/efi/EFI/BOOT
 	install $TMP/tar/boot/efi/EFI/centos/grub${efiarch}.efi \
-	$TMP/efi/EFI/BOOT/BOOT${efiarch}.efi
+		$TMP/efi/EFI/BOOT/BOOT${efiarch}.efi
 
 	mount /dev/mapper/loop${loop_nr}p1 $TMP/rootfs
 	kernelfile=$(cd $TMP/rootfs/boot; ls vmlinu* | head -n1)
