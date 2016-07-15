@@ -1,19 +1,14 @@
-#!/bin/sh
+#!/bin/bash
 
-set -o xtrace
-
-burl="http://mirror.centos.org"
-outdir="./download"
-def_arches="x86_64 aarch64"
 DEBUG=0
 
-debug() {
-	[ "${DEBUG}" -ge "${1}" ] || return 0;
-	shift;
-	error "$@"
-}
 error() { echo "$@" 1>&2; }
+debug() {
+	[ "${DEBUG}" -ge "${1:-0}" ] && shift || return 0;
+	error "$@";
+}
 fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
+
 dl() {
     local url="$1" target="$2" tfile="" t=""
     [ -f "$target" ] && return
@@ -24,31 +19,9 @@ dl() {
         { t=$?; rm -f "$tfile"; return $t; }
 }
 
-rpm2tar() {
-    local out="$1" t="" rpm=""
-    shift
-    t=$(dirname "$out")
-    tdir=$(mktemp -d "$t/.${0##*/}.XXXXXX") || return
-    debug 1 "creating $out in tempdir at $tdir from $*"
-    mkdir "$tdir/ex"
-    for rpm in "$@"; do
-	rpm=$(realpath $rpm)
-        debug 2 "extracting $rpm"
-        (cd $tdir/ex; rpm2cpio $rpm | cpio --extract --make-directories ) || {
-            error "failed unpacking $rpm";
-            rm -Rf "$tdir";
-            return 1;
-        }
-    done
-    debug 2 "creating grub.tar.gz"
-    tar -C "$tdir/ex" -czf "$tdir/grub.tar.gz" . &&
-        mv "$tdir/grub.tar.gz" "$out" || {
-            error "failed creating tarball from $*";
-            rm -Rf "$tdir"
-            return 1;
-        }
-    return 0
-}
+burl="https://launchpad.net/ubuntu/+archive/primary/+files/"
+outdir="./download"
+def_arches="x86_64 aarch64 i386 arm"
 
 [ "$1" = "--outdir" ] && { outdir="$1" && shift; }
 gver="$1"
@@ -61,41 +34,80 @@ fi
 [ -d "$outdir" ] || mkdir -p "$outdir" ||
    fail "failed mkdir $outdir"
 
-
 [ -n "$gver" ] || fail "must give grub version"
 
-# version like 2.02-0.34.el7
+deb2tar() {
+
+    local deb="$1" tar="$2" efiarch=$3 format=$4
+
+    t=$(dirname "$deb")
+    tdir=$(mktemp -d "$t/.XXXXXX") || return
+
+    debug 1 "creating $out in tempdir at $tdir"
+
+    mkdir -p "$tdir/deb"
+    dpkg -x "$deb" "$tdir/deb" || fail "failed to unpack $deb"
+
+    efibin=boot${efiarch}.efi
+    grub-mkstandalone --compress=xz \
+        --directory="$tdir/deb/usr/lib/grub/$format" \
+        --format $format \
+        --output="$tdir/$efibin"
+
+    rm -rf "$tdir/deb"
+    debug 2 "creating grub.tar.gz"
+    tar -C "$tdir/" -czf "$tdir/grub.tar.gz" $efibin &&
+        mv "$tdir/grub.tar.gz" "$tar" || {
+            error "failed creating tarball";
+            rm -Rf "$tdir"
+            return 1;
+        }
+    rm -Rf "$tdir"
+    return 0
+    
+}
 
 for arch in "$@"; do
     case "$arch" in
         aarch64)
-		repo='os'
-		dir='altarch'
-		dist='el7'
+		efiarch='aa64'
+		debarch='arm64'
+                pkgarch='arm64'
+                format='arm64-efi'
 		;;
         x86_64)
-		repo='updates'
-		dir='centos'
-		dist='el7.centos'
+		efiarch='x64'
+		debarch='amd64'
+                pkgarch='amd64'
+                format='x86_64-efi'
 		;;
-        *) debug 1 "no EFI grub for $arch"
+        i386)
+		efiarch='ia32'
+		debarch='i386'
+                pkgarch='ia32'
+                format='i386-efi'
+		;;
+        arm)
+		efiarch='arm'
+		debarch='armhf'
+                pkgarch='arm'
+                format='arm-efi'
+		;;
+        *) debug 1 "no EFI grub for $arch";;
     esac
-    rpms=""
 
-    if [ -n $repo ] ; then exit ; fi
+    [ -z $efiarch ] && continue
 
-    url="$burl/$dir/7/$repo/$arch/Packages/grub2-efi-${gver}.${dist}.${arch}.rpm"
-    dl "$url" "$outdir/${url##*/}" || fail "failed dl $url"
-    ln -sf ${url##*/} "$outdir/grub-efi-${arch}.rpm" ||
-        fail "failed symlink for $outdir/grub-efi-$arch.rpm"
-    rpms="${rpms} ${outdir}/${url##*/}"
-    echo $rpms
-
-   tar="grub-efi-${gver}-${arch}.tar.gz"
-   rpm2tar "$outdir/${tar}" ${rpms} ||
-       fail "failed rpm2tar to $tar on $rpms"
-   error "wrote $outdir/${tar}"
-   ln -sf "${tar}" "$outdir/grub-efi-${arch}.tar.gz" ||
-       fail "failed symlink for $outdir/grub-$arch.rpm"
+    deb="grub-efi-${pkgarch}-bin_${gver}_${debarch}.deb"
+    if [ ! -f "${outdir}/${deb}" ]; then
+            dl $burl/$deb $outdir/$deb || fail "failed dl $burl/$deb"
+    fi	
+    tar="grub-efi-${gver}-${arch}.tar.gz"
+    deb2tar $outdir/$deb $outdir/$tar $efiarch $format || 
+        fail "failed deb2efi from $deb to $tar"
+    
+    error "wrote $outdir/${tar}"
+    ln -sf "${tar}" "$outdir/grub-efi-${arch}.tar.gz" ||
+        fail "failed symlink for $outdir/grub-$arch.rpm"
 done
 # vi: ts=4 expandtab

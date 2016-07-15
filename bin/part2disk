@@ -196,13 +196,11 @@ if [ $grub_efi -ne 0 ]; then
 	esac
 	TMP=$(mktemp -d)
 	install -d $TMP/tar $TMP/efi $TMP/rootfs
-	tar -xf $grub_efi_in -C $TMP/tar
 
 	mkfs.vfat /dev/mapper/loop${loop_nr}p15
 	mount /dev/mapper/loop${loop_nr}p15 $TMP/efi
 	install -d $TMP/efi/EFI/BOOT
-	install $TMP/tar/boot/efi/EFI/centos/grub${efiarch}.efi \
-		$TMP/efi/EFI/BOOT/BOOT${efiarch}.efi
+	tar -xf $grub_efi_in -C $TMP/efi/EFI/BOOT
 
 	mount /dev/mapper/loop${loop_nr}p1 $TMP/rootfs
 	kernelfile=$(cd $TMP/rootfs/boot; ls vmlinu* | head -n1)
