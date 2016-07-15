@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #    part2disk - wrap a partition image in a disk image
 #
 #    Copyright (C) 2010 Canonical Ltd.
