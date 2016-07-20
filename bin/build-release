@@ -19,7 +19,7 @@
 
 [ $# -ge 1 ] || { echo "must give version"; exit 1; }
 
-source ${0%/*}/common-functions.sh
+source "${0%/*}/common-functions.sh"
 
 VER=$1
 daily=false

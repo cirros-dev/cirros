@@ -18,7 +18,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-source ${0%/*}/common-functions.sh
+source "${0%/*}/common-functions.sh"
 
 DEF_SECTOR_SIZE=512
 base_d=$(dirname $(readlink -f "${0}"))

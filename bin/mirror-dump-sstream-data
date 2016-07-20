@@ -4,7 +4,7 @@ set -f
 # 
 # 
 
-source ${0%/*}/common-functions.sh
+source "${0%/*}/common-functions.sh"
 
 Usage() {
    cat <<EOF

@@ -20,7 +20,7 @@
 # vi: ts=4 noexpandtab
 #
 
-source ${0%/*}/common-functions.sh
+source "${0%/*}/common-functions.sh"
 
 TEMP_D=""
 UMOUNT=""

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source ${0%/*}/common-functions.sh
+source "${0%/*}/common-functions.sh"
 
 _APT_UPDATED=false
 CIRROS_BRANCH="lp:cirros"

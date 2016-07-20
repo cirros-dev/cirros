@@ -6,7 +6,7 @@
 #  <name>    <type>      <mode>  <uid>   <gid>   <major> <minor> <start> <inc>   <count>
 # and make files
 
-source ${0%/*}/common-functions.sh
+source "${0%/*}/common-functions.sh"
 
 DEBUG=${XMAKEDEV_DEBUG}
 Usage() {
