@@ -1,6 +1,11 @@
 #! /bin/bash
 set -e
 
+#
+# Script taken from grub2 Ubuntu package.
+# it is debian/build-efi-images
+#
+
 # Copyright (C) 2010, 2011, 2012 Canonical Ltd.
 # Author: Colin Watson <cjwatson@ubuntu.com>
 #
