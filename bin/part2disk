@@ -207,12 +207,22 @@ if [ $grub_efi -ne 0 ]; then
 	kernelfile=$(cd $TMP/rootfs/boot; ls vmlinu* | head -n1)
 	initrdfile=$(cd $TMP/rootfs/boot; ls initrd.img-* | head -n1)
 
-	echo "set default=0" >>$TMP/efi/EFI/BOOT/grub.cfg
-	echo "set timeout=1" >>$TMP/efi/EFI/BOOT/grub.cfg
-	echo "menuentry 'CirrOS' {" >>$TMP/efi/EFI/BOOT/grub.cfg
-	echo "linux${eficmd}  (hd0,gpt1)/boot/${kernelfile} LABEL=cirros-rootfs ro"  >>$TMP/efi/EFI/BOOT/grub.cfg
-	echo "initrd${eficmd} (hd0,gpt1)/boot/${initrdfile} }"  >>$TMP/efi/EFI/BOOT/grub.cfg
+        
+	cat >$TMP/efi/EFI/BOOT/grub.cfg <<EOF
+set default=0
+set timeout=1
+menuentry 'CirrOS' {
+        set root='hd0,gpt1'
+        if [ x$feature_platform_search_hint = xy ]; then
+          search --no-floppy --label --set=root --hint-bios=hd0,gpt1 --hint-efi=hd0,gpt1 --hint-baremetal=ahci1,gpt1  cirros-rootfs
+        else
+          search --no-floppy --label --set=root cirros-rootfs
+        fi
 
+	linux${eficmd}  /boot/${kernelfile} LABEL=cirros-rootfs ro
+	initrd${eficmd} /boot/${initrdfile} 
+}
+EOF
 
 	umount $TMP/efi
 	umount $TMP/rootfs
