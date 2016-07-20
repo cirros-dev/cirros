@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 source ${0%/*}/common-functions.sh
 
