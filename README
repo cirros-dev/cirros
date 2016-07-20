@@ -47,11 +47,10 @@ To use it, you would do something like:
    $ ./bin/grab-kernels "$kver"
 
  * Download EFI grub to use.
-   The grub-efi input to bundle will be in tar.gz format. The CentOS one
-   is used as a starting point (to not have to deal with 'grub-mkstandalone' tool).
+   The grub-efi input to bundle will be in tar.gz format.
 
-   # gver is newest from http://mirror.centos.org/centos/7/updates/x86_64/Packages/
-   $ gver="2.02-0.34"
+   # gver is newest from https://launchpad.net/ubuntu/+source/grub2
+   $ gver="2.02~beta2-36ubuntu8"
    $ ./bin/grab-grub-efi "$gver"
 
  * build disk images using bin/bundle
