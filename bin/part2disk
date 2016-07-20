@@ -191,8 +191,8 @@ fi
 
 if [ $grub_efi -ne 0 ]; then
 	case $arch in
-		x86_64)  efiarch=x64;eficmd='efi';;
-		aarch64) efiarch=aa64;eficmd='';;
+		x86_64)  efiarch=x64;;
+		aarch64) efiarch=aa64;;
 		*) fail "arch $arch without EFI grub"
 	esac
 	TMP=$(mktemp -d)
@@ -219,8 +219,8 @@ menuentry 'CirrOS' {
           search --no-floppy --label --set=root cirros-rootfs
         fi
 
-	linux${eficmd}  /boot/${kernelfile} LABEL=cirros-rootfs ro
-	initrd${eficmd} /boot/${initrdfile} 
+	linux  /boot/${kernelfile} LABEL=cirros-rootfs ro
+	initrd /boot/${initrdfile} 
 }
 EOF
 
