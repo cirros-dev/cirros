@@ -74,9 +74,9 @@ human2bytes() {
    _RET=$((${count}*${unit}))
 }
 cleanup() {
-    umount $TMP/efi
-    umount $TMP/rootfs
-    kpartx -d $dimg
+    umount "$TMP/efi"
+    umount "$TMP/rootfs"
+    kpartx -d "$dimg"
 }
 
 trap cleanup EXIT
@@ -220,10 +220,10 @@ menuentry 'CirrOS' {
 }
 EOF
 
-	umount $TMP/efi
-	umount $TMP/rootfs
+	umount "$TMP/efi"
+	umount "$TMP/rootfs"
 fi
 
-kpartx -d $dimg
+kpartx -d "$dimg"
 error "wrote to ${dimg}"
 # vi: ts=4 noexpandtab

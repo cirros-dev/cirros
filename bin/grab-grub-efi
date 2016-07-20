@@ -50,7 +50,7 @@ deb2tar() {
 
     efibin=boot${efiarch}.efi
 
-    bin/build-efi-images grub-mkimage "${tdir}/deb/usr/lib/grub/$format" \
+    "${0%/*}/build-efi-images" grub-mkimage "${tdir}/deb/usr/lib/grub/$format" \
         "${tdir}/out/" $format $efiarch
 
     mv "${tdir}/out/grub${efiarch}.efi" "${tdir}/boot${efiarch}.efi"
@@ -100,10 +100,10 @@ for arch in "$@"; do
 
     deb="grub-efi-${pkgarch}-bin_${gver}_${debarch}.deb"
     if [ ! -f "${outdir}/${deb}" ]; then
-            dl $burl/$deb $outdir/$deb || fail "failed dl $burl/$deb"
+            dl $burl/$deb "$outdir/$deb" || fail "failed dl $burl/$deb"
     fi	
     tar="grub-efi-${gver}-${arch}.tar.gz"
-    deb2tar $outdir/$deb $outdir/$tar $efiarch $format || 
+    deb2tar "$outdir/$deb" "$outdir/$tar" $efiarch $format || 
         fail "failed deb2efi from $deb to $tar"
     
     error "wrote $outdir/${tar}"
