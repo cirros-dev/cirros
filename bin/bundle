@@ -307,9 +307,8 @@ umount "$mp" && UMOUNT="" ||
 	fail "failed to unmount partimg"
 
 case $arch in
-	i386) grub_options="--grub1";;
-	x86_64) grub_options="--grub1 --grub-efi";; # CentOS does not provide i386 EFI grub
-	aarch64) grub_options="--grub-efi";;
+	i386|x86_64) grub_options="--grub1 --grub-efi";;
+	arm|aarch64) grub_options="--grub-efi";;
 	*) grub_options=;;
 esac
 
