@@ -1,5 +1,7 @@
 #!/bin/sh
 
+source ${0%/*}/common-functions.sh
+
 Usage() {
    cat <<EOF
 ${0##*/} buildroot-dir arch output [confd]
@@ -8,9 +10,6 @@ ${0##*/} buildroot-dir arch output [confd]
   put output in output. confd defaults to topdir/conf
 EOF
 }
-
-error() { echo "$@" 1>&2; }
-fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
 
 [ $# -eq 3 -o $# -eq 4 ] ||
    { Usage 1>&2; exit 1; }

@@ -18,16 +18,11 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+source ${0%/*}/common-functions.sh
+
 DEF_SECTOR_SIZE=512
-DEBUG=0
 base_d=$(dirname $(readlink -f "${0}"))
 PATH="${PATH}:${base_d}"
-error() { echo "$@" 1>&2; }
-debug() {
-	[ "${DEBUG}" -ge "${1:-0}" ] && shift || return 0;
-	error "$@";
-}
-fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
 getsize() {
 	local fname="$1" kname="" size=""
 	if [ -b "${fname}" ]; then
@@ -63,7 +58,6 @@ Usage: ${0##*/} [options] partition-image grub-efi-tarball architecture disk-ima
       -v | --verbose    increase verbosity
 EOF
 }
-bad_Usage() { Usage 1>&2; fail "$@"; }
 human2bytes() {
    # converts size suitable for input to resize2fs to bytes
    # s:512 byte sectors, K:kilobytes, M:megabytes, G:gigabytes

@@ -20,19 +20,13 @@
 # vi: ts=4 noexpandtab
 #
 
+source ${0%/*}/common-functions.sh
+
 TEMP_D=""
 UMOUNT=""
 DEF_SIZE=${DEF_SIZE:-32M}
-DEBUG=0
 DEF_MODULES="acpiphp e1000 ne2k-pci 8139cp pcnet32 ip_tables"
 
-error() { echo "$@" 1>&2; }
-debug() {
-	[ "${DEBUG}" -ge "${1}" ] || return 0;
-	shift;
-	error "$@"
-}
-fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
 Usage() {
 	cat <<EOF
 Usage: ${0##*/} rootfs.tar kpkg.deb output_dir
@@ -46,7 +40,6 @@ Usage: ${0##*/} rootfs.tar kpkg.deb output_dir
     ${0##*/} rootfs.tar linux-image-*-virtuaal*.deb build-output/
 EOF
 }
-bad_Usage() { Usage 1>&2; fail "$@"; }
 cleanup() {
 	[ -z "${UMOUNT}" ] || umount "${UMOUNT}"
 	[ -z "${TEMP_D}" -o ! -d "${TEMP_D}" ] || rm -Rf "${TEMP_D}"

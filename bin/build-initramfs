@@ -1,15 +1,10 @@
 #!/bin/bash
 # vi: ts=4 noexpandtab
 
+source ${0%/*}/common-functions.sh
+
 TEMP_D=""
 
-error() { echo "$@" 1>&2; }
-debug() {
-	[ "${DEBUG}" -ge "${1}" ] || return 0;
-	shift;
-	error "$@"
-}
-fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
 Usage() {
 	cat <<EOF
 Usage: ${0##*/} initramfs_dir root_dir
@@ -19,7 +14,6 @@ Usage: ${0##*/} initramfs_dir root_dir
     ${0##*/} initramfs/ rootfs/ > my.initramfs.img
 EOF
 }
-bad_Usage() { Usage 1>&2; fail "$@"; }
 cleanup() {
 	[ -z "${TEMP_D}" -o ! -d "${TEMP_D}" ] || rm -Rf "${TEMP_D}"
 }

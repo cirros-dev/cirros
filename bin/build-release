@@ -19,6 +19,8 @@
 
 [ $# -ge 1 ] || { echo "must give version"; exit 1; }
 
+source ${0%/*}/common-functions.sh
+
 VER=$1
 daily=false
 if [ "$1" = "daily" ]; then
@@ -43,15 +45,6 @@ LOGFILE="$OUT/date.txt"
 export TMPDIR="$OUT/tmp"
 mkdir -p "$OUT" "$TMPDIR"
 
-dl() {
-   local url="$1" target="$2" tfile="" t=""
-   [ -f "$target" ] && return
-   t=$(dirname "$target")
-   tfile=$(mktemp "$t/.${0##*/}.XXXXXX") || return
-   wget "$url" -O "$tfile" &&
-      mv "$tfile" "$target" ||
-      { t=$?; rm -f "$tfile"; return $t; }
-}
 msg() {
    echo "$@" >> "$LOGFILE"
    echo "$@"
@@ -73,9 +66,6 @@ logevent() {
    _LAST_UP=$up
    _RET=${_LAST_UP}
 }
-
-error() { echo "$@" 1>&2; }
-fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
 
 build_arch() {
     local arch="" quiet=false cmd="" log=""
