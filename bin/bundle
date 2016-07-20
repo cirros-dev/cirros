@@ -268,13 +268,7 @@ rm -Rf "$initramfs_d/vmlinuz" "$initramfs_d/boot" ||
 ( cd "$initramfs_d" && find . | cpio --quiet -o -H newc |
 	gzip -9 ) > "$initramfs"
 
-rm -Rf "$initramfs_d/lib/modules/$kver" ||
-	fail "failed to remove lib/modules for mini initramfs"
-
-( cd "$initramfs_d" && find . | cpio --quiet -o -H newc |
-	gzip -9 ) > "${initramfs}.smaller"
-
-cp "${initramfs}.smaller" "$stage_d/boot/initrd.img-${kver}" &&
+cp "${initramfs}" "$stage_d/boot/initrd.img-${kver}" &&
 	ln -s "boot/initrd.img-${kver}" "${stage_d}/initrd.img" ||
 	fail "failed to copy initramfs to stage dir"
 
