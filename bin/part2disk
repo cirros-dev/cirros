@@ -200,7 +200,7 @@ if [ $grub_efi -ne 0 ]; then
 
 	mkfs.vfat /dev/mapper/loop${loop_nr}p15
 	mount /dev/mapper/loop${loop_nr}p15 $TMP/efi
-	install -d $TMP/efi/EFI/BOOT
+	install -d $TMP/efi/EFI/BOOT $TMP/efi/EFI/ubuntu
 	tar -xf $grub_efi_in -C $TMP/efi/EFI/BOOT
 
 	mount /dev/mapper/loop${loop_nr}p1 $TMP/rootfs
@@ -208,7 +208,7 @@ if [ $grub_efi -ne 0 ]; then
 	initrdfile=$(cd $TMP/rootfs/boot; ls initrd.img-* | head -n1)
 
         
-	cat >$TMP/efi/EFI/BOOT/grub.cfg <<EOF
+	cat >$TMP/efi/EFI/ubuntu/grub.cfg <<EOF
 set default=0
 set timeout=1
 menuentry 'CirrOS' {

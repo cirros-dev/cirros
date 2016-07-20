@@ -66,12 +66,12 @@ deb2tar() {
     dpkg -x "$deb" "$tdir/deb" || fail "failed to unpack $deb"
 
     efibin=boot${efiarch}.efi
-    grub-mkstandalone --compress=xz \
-        --directory="$tdir/deb/usr/lib/grub/$format" \
-        --format $format \
-        --output="$tdir/$efibin"
 
-    rm -rf "$tdir/deb"
+    bin/build-efi-images grub-mkimage "${tdir}/deb/usr/lib/grub/$format" \
+        "${tdir}/out/" $format $efiarch
+
+    mv "${tdir}/out/grub${efiarch}.efi" "${tdir}/boot${efiarch}.efi"
+    rm -rf "$tdir/{deb,out}"
     debug 2 "creating grub.tar.gz"
     tar -C "$tdir/" -czf "$tdir/grub.tar.gz" $efibin &&
         mv "$tdir/grub.tar.gz" "$tar" || {
