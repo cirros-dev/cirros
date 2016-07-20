@@ -158,7 +158,7 @@ else
 fi
 
 logevent "start grub EFI download" -
-grab-grub-efi $GVER $ARCHES
+grab-grub-efi "$GVER" $ARCHES
 logevent "end grub EFI download"
 
 for arch in ${ARCHES}; do
