@@ -20,8 +20,8 @@ To use it, you would do something like:
 
  * optionally update src/etc/ssl/certs/ca-certificates.crt
    This is not required, but can be done to make sure its up to date.
-   Doing so requires cvs.
-   # ./bin/mkcabundle > src/etc/ssl/certs/ca-certificates.crt
+   # wget https://github.com/mozilla/gecko-dev/raw/master/security/nss/lib/ckfw/builtins/certdata.txt -O certdata.txt
+   # ./bin/mkcabundle <certdata.txt > src/etc/ssl/certs/ca-certificates.crt
 
  * apply any local cirros patches to buildroot
    ( cd buildroot && QUILT_PATCHES=$PWD/../patches-buildroot quilt push -a )
