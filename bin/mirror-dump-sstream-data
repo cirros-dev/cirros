@@ -1,6 +1,8 @@
 #!/bin/bash
 set -f
 
+source "${0%/*}/common-functions.sh"
+
 Usage() {
    cat <<EOF
 Usage: ${0##*/} mirror_dir
@@ -35,9 +37,6 @@ datefortag() {
         { error "failed convert of '$ts' to format=$fmt"; return 1; }
     _RET="$out"
 }
-
-error() { echo "$@" 1>&2; }
-fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
 
 [ "$1" = "-h" -o "$1" = "--help" ] && { Usage; exit 0; }
 [ "$#" -eq 1 ] || { Usage 1>&2; fail "must give mirror dir"; }

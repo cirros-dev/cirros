@@ -1,0 +1,113 @@
+#!/bin/bash
+#
+#    Copyright (C) 2016 Linaro Ltd
+#
+#    Authors: Marcin Juszkiewicz <marcin.juszkiewicz@linaro.org>
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, version 3 of the License.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+source "${0%/*}/common-functions.sh"
+
+burl="https://launchpad.net/ubuntu/+archive/primary/+files/"
+outdir="./download"
+def_arches="x86_64 aarch64 i386 arm"
+
+[ "$1" = "--outdir" ] && { outdir="$1" && shift; }
+gver="$1"
+shift
+
+if [ $# -eq 0 ]; then
+   set -- ${def_arches}
+fi
+
+[ -d "$outdir" ] || mkdir -p "$outdir" ||
+   fail "failed mkdir $outdir"
+
+[ -n "$gver" ] || fail "must give grub version"
+
+deb2tar() {
+
+    local deb="$1" tar="$2" efiarch=$3 format=$4
+
+    t=$(dirname "$deb")
+    tdir=$(mktemp -d "$t/.XXXXXX") || return
+
+    debug 1 "creating $out in tempdir at $tdir"
+
+    mkdir -p "$tdir/deb"
+    dpkg -x "$deb" "$tdir/deb" || fail "failed to unpack $deb"
+
+    efibin=boot${efiarch}.efi
+
+    "${0%/*}/build-efi-images" grub-mkimage "${tdir}/deb/usr/lib/grub/$format" \
+        "${tdir}/out/" $format $efiarch
+
+    mv "${tdir}/out/grub${efiarch}.efi" "${tdir}/boot${efiarch}.efi"
+    rm -rf "$tdir/{deb,out}"
+    debug 2 "creating grub.tar.gz"
+    tar -C "$tdir/" -czf "$tdir/grub.tar.gz" $efibin &&
+        mv "$tdir/grub.tar.gz" "$tar" || {
+            error "failed creating tarball";
+            rm -Rf "$tdir"
+            return 1;
+        }
+    rm -Rf "$tdir"
+    return 0
+    
+}
+
+for arch in "$@"; do
+    case "$arch" in
+        aarch64)
+		efiarch='aa64'
+		debarch='arm64'
+                pkgarch='arm64'
+                format='arm64-efi'
+		;;
+        x86_64)
+		efiarch='x64'
+		debarch='amd64'
+                pkgarch='amd64'
+                format='x86_64-efi'
+		;;
+        i386)
+		efiarch='ia32'
+		debarch='i386'
+                pkgarch='ia32'
+                format='i386-efi'
+		;;
+        arm)
+		efiarch='arm'
+		debarch='armhf'
+                pkgarch='arm'
+                format='arm-efi'
+		;;
+        *) debug 1 "no EFI grub for $arch";;
+    esac
+
+    [ -z $efiarch ] && continue
+
+    deb="grub-efi-${pkgarch}-bin_${gver}_${debarch}.deb"
+    if [ ! -f "${outdir}/${deb}" ]; then
+            dl $burl/$deb "$outdir/$deb" || fail "failed dl $burl/$deb"
+    fi	
+    tar="grub-efi-${gver}-${arch}.tar.gz"
+    deb2tar "$outdir/$deb" "$outdir/$tar" $efiarch $format || 
+        fail "failed deb2efi from $deb to $tar"
+    
+    error "wrote $outdir/${tar}"
+    ln -sf "${tar}" "$outdir/grub-efi-${arch}.tar.gz" ||
+        fail "failed symlink for $outdir/grub-$arch.rpm"
+done
+# vi: ts=4 expandtab

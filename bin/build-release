@@ -1,6 +1,23 @@
 #!/bin/bash
+#
+#    Authors: Scott Moser <smoser@canonical.com>
+#             Marcin Juszkiewicz <marcin.juszkiewicz@linaro.org>
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, version 3 of the License.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 [ $# -ge 1 ] || { echo "must give version"; exit 1; }
+
+source "${0%/*}/common-functions.sh"
 
 VER=$1
 daily=false
@@ -12,7 +29,8 @@ shift
 pre=cirros-$VER
 BR_VER="2015.05"
 ARCHES="${ARCHES:-i386 x86_64 arm powerpc aarch64 ppc64 ppc64le}"
-KVER="4.4.0-28.47"
+KVER="4.4.0-28.47" # Ubuntu 16.04
+GVER="2.02~beta2-36ubuntu8"
 ME=$(readlink -f "$0")
 MY_D=${ME%/*}
 PATH=${MY_D}:$PATH
@@ -25,15 +43,6 @@ LOGFILE="$OUT/date.txt"
 export TMPDIR="$OUT/tmp"
 mkdir -p "$OUT" "$TMPDIR"
 
-dl() {
-    local url="$1" target="$2" tfile="" t=""
-    [ -f "$target" ] && return
-    t=$(dirname "$target")
-    tfile=$(mktemp "$t/.${0##*/}.XXXXXX") || return
-    wget "$url" -O "$tfile" &&
-        mv "$tfile" "$target" ||
-        { t=$?; rm -f "$tfile"; return $t; }
-}
 msg() {
     echo "$@" >> "$LOGFILE"
     echo "$@"
@@ -55,9 +64,6 @@ logevent() {
     _LAST_UP=$up
     _RET=${_LAST_UP}
 }
-
-error() { echo "$@" 1>&2; }
-fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
 
 build_arch() {
     local arch="" quiet=false cmd="" log=""
@@ -151,6 +157,10 @@ else
     done;
 fi
 
+logevent "start grub EFI download" -
+grab-grub-efi "$GVER" $ARCHES
+logevent "end grub EFI download"
+
 for arch in ${ARCHES}; do
     mkdir -p "$OUT/stage/$arch"
 done
@@ -163,7 +173,8 @@ for arch in ${ARCHES}; do
     esac
     sudo ./bin/bundle -v ${size:+--size=$size} --arch="$arch" \
         "$OUT/build/$arch/rootfs.tar" \
-        ./download/kernel-$arch.tar.gz "$OUT/stage/$arch";
+        ./download/kernel-$arch.tar.gz ./download/grub-efi-$arch.tar.gz \
+        "$OUT/stage/$arch";
 done
 logevent "finish bundling"
 
@@ -205,7 +216,6 @@ for arch in ${ARCHES}; do
         ( cd "$OUT/stage/$arch" &&
             tar cvzf - $p-blank.img $p-vmlinuz $p-initrd
         ) > "$OUT/release/$p-uec.tar.gz"
-    [ "$arch" = "arm" ] ||
     cp "$OUT/stage/$arch/$p-disk.img" "$OUT/release/$p-disk.img"
 done
 

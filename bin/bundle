@@ -1,18 +1,28 @@
 #!/bin/bash
+#
+#    Authors: Scott Moser <smoser@canonical.com>
+#             Marcin Juszkiewicz <marcin.juszkiewicz@linaro.org>
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, version 3 of the License.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+source "${0%/*}/common-functions.sh"
 
 TEMP_D=""
 UMOUNT=""
 DEF_SIZE=${DEF_SIZE:-32M}
-DEBUG=0
 DEF_MODULES="acpiphp e1000 ne2k-pci 8139cp pcnet32 ip_tables"
 
-error() { echo "$@" 1>&2; }
-debug() {
-    [ "${DEBUG}" -ge "${1}" ] || return 0;
-    shift;
-    error "$@"
-}
-fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
 Usage() {
     cat <<EOF
 Usage: ${0##*/} rootfs.tar kpkg.deb output_dir
@@ -26,7 +36,6 @@ Usage: ${0##*/} rootfs.tar kpkg.deb output_dir
     ${0##*/} rootfs.tar linux-image-*-virtuaal*.deb build-output/
 EOF
 }
-bad_Usage() { Usage 1>&2; fail "$@"; }
 cleanup() {
     [ -z "${UMOUNT}" ] || umount "${UMOUNT}"
     [ -z "${TEMP_D}" -o ! -d "${TEMP_D}" ] || rm -Rf "${TEMP_D}"
@@ -60,10 +69,11 @@ while [ $# -ne 0 ]; do
     shift;
 done
 
-[ $# -eq 3 ] || bad_Usage "must give rootfs.tar, kernel pkg, out_dir"
+[ $# -eq 4 ] || bad_Usage "must give rootfs.tar, kernel pkg, grub-efi.tar, out_dir"
 rootfs_in=${1}
 kpkg_in=${2}
-out_d_in=${3}
+grub_efi_in=${3}
+out_d_in=${4}
 
 PATH="$topdir/bin:$PATH"
 src_dir="${topdir}/src"
@@ -247,6 +257,18 @@ rm -Rf "$initramfs_d/vmlinuz" "$initramfs_d/boot" ||
 ( cd "$initramfs_d" && find . | cpio --quiet -o -H newc |
     gzip -9 ) > "$initramfs"
 
+# Here we create /boot/initrd.img-${kver}.
+# That is the initramfs that is put inside of disk images.
+# Since the disk images have all the modules available in the
+# filesystem, we put no modules in this initramfs.  Having them
+# in both places would just waste space.
+# 
+# That means that the kernel must have builtin drivers for
+# any block devices.  Another path to accomplishing the same
+# space savings is what cloud-initramfs-copymods does.
+# The solution there is that if there is no /lib/modules/<kver>
+# inside the target filesystem, then the initramfs mount binds
+# its /lib/modules/<kver> into the target.
 rm -Rf "$initramfs_d/lib/modules/$kver" ||
     fail "failed to remove lib/modules for mini initramfs"
 
@@ -291,9 +313,15 @@ sed -i 's/(hd0)/(hd0,0)/' "$mp/boot/grub/menu.lst" ||
 umount "$mp" && UMOUNT="" ||
     fail "failed to unmount partimg"
 
+case $arch in
+	i386|x86_64) grub_options="--grub1 --grub-efi";;
+	arm|aarch64) grub_options="--grub-efi";;
+	*) grub_options=;;
+esac
+
 debug 1 "creating disk image"
-out=$(PATH=$xgrubd:$PATH part2disk --grub1 "$tmp_part" \
-    "$out_diskimg.raw" 2>&1) ||
+out=$(PATH=$xgrubd:$PATH part2disk $grub_options "$tmp_part" \
+    "$grub_efi_in" "$arch" "$out_diskimg.raw" 2>&1) ||
     fail "failed to create disk image: $out"
 qemu-img convert -O qcow2 -c "$out_diskimg.raw" "$out_diskimg" ||
     fail "failed to convert disk image"

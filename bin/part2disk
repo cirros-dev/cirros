@@ -4,6 +4,7 @@
 #    Copyright (C) 2010 Canonical Ltd.
 #
 #    Authors: Scott Moser <smoser@canonical.com>
+#             Marcin Juszkiewicz <marcin.juszkiewicz@linaro.org>
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -17,16 +18,12 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+source "${0%/*}/common-functions.sh"
+
 DEF_SECTOR_SIZE=512
-DEBUG=0
 base_d=$(dirname $(readlink -f "${0}"))
 PATH="${PATH}:${base_d}"
-error() { echo "$@" 1>&2; }
-debug() {
-    [ "${DEBUG}" -ge "${1:-0}" ] && shift || return 0;
-    error "$@";
-}
-fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
+
 getsize() {
     local fname="$1" kname="" size=""
     if [ -b "${fname}" ]; then
@@ -48,20 +45,20 @@ getsize() {
 
 Usage() {
     cat <<EOF
-Usage: ${0##*/} [options] partition-image disk-image
+Usage: ${0##*/} [options] partition-image grub-efi-tarball architecture disk-image
 
-    create disk image 'disk-image' with 'partition-image' in a partition
-    inside it.
+    Create disk image 'disk-image' with 'partition-image' in a partition
+    inside it. Add grub if requested.
 
     options:
       -G | --grub       install grub to disk image mbr
          | --grub1      install grub1 to disk image mbr
+         | --grub-efi   install EFI grub to disk image
       -s | --size  S    create the disk image of size 'S'.
                         default is large enough to fit partition-image
       -v | --verbose    increase verbosity
 EOF
 }
-bad_Usage() { Usage 1>&2; fail "$@"; }
 human2bytes() {
     # converts size suitable for input to resize2fs to bytes
     # s:512 byte sectors, K:kilobytes, M:megabytes, G:gigabytes
@@ -78,8 +75,16 @@ human2bytes() {
     _RET=$((${count}*${unit}))
 }
 
+cleanup() {
+    umount "$TMP/efi"
+    umount "$TMP/rootfs"
+    kpartx -d "$dimg"
+}
+
+trap cleanup EXIT
+
 short_opts="b:c:Ghs:v"
-long_opts="grub1,grub,help,size:,verbose"
+long_opts="grub-efi,grub1,grub,help,size:,verbose"
 getopt_out=$(getopt --name "${0##*/}" \
     --options "${short_opts}" --long "${long_opts}" -- "$@") &&
     eval set -- "${getopt_out}" ||
@@ -90,11 +95,13 @@ size_in=""
 grub_ptnum=1
 grub=0
 grub1=0
+grub_efi=0
 while [ $# -ne 0 ]; do
     cur=${1}; next=${2};
     case "$cur" in
         -G|--grub) grub=1;;
         -G|--grub1) grub1=1;;
+        --grub-efi) grub_efi=1;;
         -h|--help) Usage; exit 0;;
         -s|--size) size_in=$2; shift;;
         -v|--verbose) DEBUG=$((${DEBUG}+1));;
@@ -103,10 +110,12 @@ while [ $# -ne 0 ]; do
     shift;
 done
 
-[ $# -eq 2 ] || bad_Usage "must supply partition image and output file"
+[ $# -eq 4 ] || bad_Usage "must supply partition image, grub-efi tarball, architecture and output file"
 
 pimg=${1}
-dimg=${2}
+grub_efi_in=${2}
+arch=${3}
+dimg=${4}
 
 { [ ${grub} -eq 0 ] || phelper=$(command -v part2disk-grubhelper); } ||
     fail "no part2disk-grubhelper in PATH"
@@ -118,27 +127,15 @@ getsize "$pimg" ||
     fail "failed to get size of $pimg"
 pimg_s="$_RET"
 
-# end_pad_sectors: room for secondary gpt
-end_pad_sectors=33
-end_pad=$(($end_pad_sectors*$ssize))
-front_pad=$((1024*1024))
-front_pad_sectors=$(($front_pad/$ssize))
-padding=$(($front_pad+$end_pad))
-pt_sector_pad=$(($ssize-(${pimg_s}%$ssize)))
-if [ $pt_sector_pad -eq $ssize ]; then
-    pt_sector_pad=0
-fi
-pt_size=$(($pimg_s+$pt_sector_pad))
-pt_sectors=$(($pt_size/$ssize))
-tot_size=$(($front_pad+$pt_size+$end_pad))
+front_pad=$((12*1024*1024))
+tot_size=$(($front_pad+$pimg_s))
 tot_size_sectors=$(($tot_size/$ssize))
 
 if [ -n "${size_in}" ]; then
     human2bytes "${size_in}" 1 || fail "failed to convert ${size_in} to bytes"
     size=${_RET}
 else
-    # no size specified, get enough to fit part_img, 1M header and 1M end.
-    size=$((${pimg_s}+$padding+$pt_sector_pad))
+    size=$tot_size_sectors
 fi
 
 if [ -e "$dimg" ]; then
@@ -153,47 +150,24 @@ if [ "${dimg_s}" -lt "$size" ]; then
     fail "size of $dimg ($dimg_s) not large enough to fit $size"
 fi
 
-debug 1 "input is ${pimg_s} bytes ($pt_sectors sectors of $ssize)."
-debug 1 "target is ${tot_size} bytes ($tot_size_sectors sectors)."
-debug 1 "padding $front_pad_sectors sectors at front," \
-        "$end_pad_sectors sectors at end."
+debug 1 "input is ${pimg_s} bytes."
+debug 1 "target is ${tot_size} bytes."
 
-debug 2 "zeroing first $front_pad_sectors sectors $dimg"
-dd if=/dev/zero of="${dimg}" bs=$ssize "count=${front_pad_sectors}" \
+debug 2 "create target image"
+dd if=/dev/zero of="${dimg}" bs=$ssize count=$tot_size_sectors \
     2>/dev/null ||
     fail "failed to write to ${dimg}"
+
+debug 2 "create partitions"
+sgdisk -n 15:2048:+8M -t 15:ef00 -N 1 $dimg
+loop_nr=`kpartx -av $dimg | head -n1 | cut -d" " -f3 | cut -d"p" -f2`
 
 # copy partition image. this writes $pimg bytes even if that is
 # not divivisble by $ssize
 debug 2 "copying ${pimg} to partition in ${dimg}"
-dd if="$pimg" of="$dimg" seek=${front_pad_sectors} bs=$ssize conv=notrunc \
+dd if="$pimg" of=/dev/mapper/loop${loop_nr}p1 conv=notrunc \
     2>/dev/null ||
     fail "failed to write ${pimg} into ${dimg}"
-
-# zero any unwritten portion of the final sector
-leftover=$(($ssize-(${pimg_s}%$ssize)))
-if [ $pt_sector_pad -ne 0 ]; then
-    debug 2 "finishing final sector with $pt_sector_pad bytes of zeros"
-    dd if=/dev/zero of="$dimg" bs=1 seek=$((${pimg_s}+${front_pad})) \
-        conv=notrunc count=$pt_sector_pad 2>/dev/null ||
-    fail "failed to finish final sector of $pimg"
-fi
-
-# we've now written front pad + round-sectors. now write end_pad
-debug 2 "writing final $end_pad_sectors sectors"
-dd if=/dev/zero "of=$dimg" bs=$ssize \
-    seek=$((($size/$ssize)-${end_pad_sectors})) count=${end_pad_sectors} \
-    conv=notrunc 2>/dev/null ||
-    fail "failed to write final 1M to $pimg"
-
-sfdisk_in="${front_pad_sectors},$pt_sectors,L,*"
-debug 2 "writing partition table to ${dimg} ($sfdisk_in)"
-sfdisk_out=$(echo "$sfdisk_in" | sfdisk --force --unit=S "${dimg}" 2>&1)
-
-[ $? -eq 0 ] || {
-    error "${sfdisk_out}";
-    fail "failed to create partition table";
-}
 
 if [ ${grub} -ne 0 ]; then
     debug 2 "invoking part2disk-grubhelper ${dimg}"
@@ -211,6 +185,47 @@ quit
 EOF
 fi
 
-error "wrote to ${dimg}"
+if [ $grub_efi -ne 0 ]; then
+    case $arch in
+        x86_64)  efiarch=x64;;
+        aarch64) efiarch=aa64;;
+        i386)    efiarch=ia32;;
+        arm)     efiarch=arm;;
+        *) fail "arch $arch without EFI grub"
+    esac
+    TMP=$(mktemp -d)
+    install -d $TMP/tar $TMP/efi $TMP/rootfs
 
-# vi: tabstop=4 expandtab
+    mkfs.vfat /dev/mapper/loop${loop_nr}p15
+    mount /dev/mapper/loop${loop_nr}p15 $TMP/efi
+    install -d $TMP/efi/EFI/BOOT $TMP/efi/EFI/ubuntu
+    tar -xf $grub_efi_in -C $TMP/efi/EFI/BOOT
+
+    mount /dev/mapper/loop${loop_nr}p1 $TMP/rootfs
+    kernelfile=$(cd $TMP/rootfs/boot; ls vmlinu* | head -n1)
+    initrdfile=$(cd $TMP/rootfs/boot; ls initrd.img-* | head -n1)
+
+        
+    cat >$TMP/efi/EFI/ubuntu/grub.cfg <<EOF
+set default=0
+set timeout=1
+menuentry 'CirrOS' {
+        set root='hd0,gpt1'
+        if [ x$feature_platform_search_hint = xy ]; then
+          search --no-floppy --label --set=root --hint-bios=hd0,gpt1 --hint-efi=hd0,gpt1 --hint-baremetal=ahci1,gpt1  cirros-rootfs
+        else
+          search --no-floppy --label --set=root cirros-rootfs
+        fi
+
+    linux  /boot/${kernelfile} LABEL=cirros-rootfs ro
+    initrd /boot/${initrdfile} 
+}
+EOF
+
+    umount "$TMP/efi"
+    umount "$TMP/rootfs"
+fi
+
+kpartx -d "$dimg"
+error "wrote to ${dimg}"
+# vi: ts=4 noexpandtab

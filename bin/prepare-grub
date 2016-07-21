@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source "${0%/*}/common-functions.sh"
+
 # these urls are for lucid release version of grub
 i386_url="https://launchpad.net/ubuntu/+archive/primary/+files/grub_0.97-29ubuntu60_i386.deb"
 x86_64_url="https://launchpad.net/ubuntu/+archive/primary/+files/grub_0.97-29ubuntu60_amd64.deb"
@@ -15,8 +17,6 @@ EOF
 cleanup() {
     [ -z "${TEMP_D}" -o ! -d "${TEMP_D}" ] || rm -Rf "${TEMP_D}"
 }
-error() { echo "$@" 1>&2; }
-fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
 
 [ "$1" = "-h" -o "$1" = "--help" ] && { Usage; exit 0; }
 [ $# -eq 1 ] || { Usage 1>&2; error "must give out_d"; exit 1; }

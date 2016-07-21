@@ -46,6 +46,13 @@ To use it, you would do something like:
    $ kver="3.19.0-20.20~14.04.1"
    $ ./bin/grab-kernels "$kver"
 
+ * Download EFI grub to use.
+   The grub-efi input to bundle will be in tar.gz format.
+
+   # gver is newest from https://launchpad.net/ubuntu/+source/grub2
+   $ gver="2.02~beta2-36ubuntu8"
+   $ ./bin/grab-grub-efi "$gver"
+
  * build disk images using bin/bundle
    $ sudo ./bin/bundle -v --arch=$ARCH output/$ARCH/rootfs.tar \
       download/kernel-$ARCH.deb output/$ARCH/images
