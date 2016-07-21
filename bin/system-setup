@@ -16,6 +16,7 @@ DEPS=(
     gettext
     kpartx
     libncurses5-dev
+    mtools
     parallel
     qemu-kvm
     quilt
