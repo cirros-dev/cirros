@@ -5,8 +5,8 @@
 VER=$1
 daily=false
 if [ "$1" = "daily" ]; then
-   VER="d$(date +%y%m%d)"
-   daily=true
+    VER="d$(date +%y%m%d)"
+    daily=true
 fi
 shift
 pre=cirros-$VER
@@ -26,34 +26,34 @@ export TMPDIR="$OUT/tmp"
 mkdir -p "$OUT" "$TMPDIR"
 
 dl() {
-   local url="$1" target="$2" tfile="" t=""
-   [ -f "$target" ] && return
-   t=$(dirname "$target")
-   tfile=$(mktemp "$t/.${0##*/}.XXXXXX") || return
-   wget "$url" -O "$tfile" &&
-      mv "$tfile" "$target" ||
-      { t=$?; rm -f "$tfile"; return $t; }
+    local url="$1" target="$2" tfile="" t=""
+    [ -f "$target" ] && return
+    t=$(dirname "$target")
+    tfile=$(mktemp "$t/.${0##*/}.XXXXXX") || return
+    wget "$url" -O "$tfile" &&
+        mv "$tfile" "$target" ||
+        { t=$?; rm -f "$tfile"; return $t; }
 }
 msg() {
-   echo "$@" >> "$LOGFILE"
-   echo "$@"
+    echo "$@" >> "$LOGFILE"
+    echo "$@"
 }
 logevent() {
-   # logevent(msg, [from])
-   # log the message in $1 and time since $2, defaulting to last call.
-   local up delta msg="$1" ref="$2"
-   up=${SECONDS}
-   if [ "$ref" = "-" ]; then
-      ref=""
-   elif [ "$ref" = "" ]; then
-      ref="${_LAST_UP}"
-   fi
-   if [ -n "$ref" ]; then
-      delta="$(($up-$ref))"
-   fi
-   msg "$(date -R)" "$msg" "${delta:+[${delta}s]}"
-   _LAST_UP=$up
-   _RET=${_LAST_UP}
+    # logevent(msg, [from])
+    # log the message in $1 and time since $2, defaulting to last call.
+    local up delta msg="$1" ref="$2"
+    up=${SECONDS}
+    if [ "$ref" = "-" ]; then
+        ref=""
+    elif [ "$ref" = "" ]; then
+        ref="${_LAST_UP}"
+    fi
+    if [ -n "$ref" ]; then
+        delta="$(($up-$ref))"
+    fi
+    msg "$(date -R)" "$msg" "${delta:+[${delta}s]}"
+    _LAST_UP=$up
+    _RET=${_LAST_UP}
 }
 
 error() { echo "$@" 1>&2; }
@@ -67,8 +67,8 @@ build_arch() {
     fi
     arch="$1"
     log="${OUT}/build-$arch.log"
-    cmd=( make ARCH=$arch "OUT_D=$OUT/build/$arch" \
-        ${CCACHE_D:+"BR2_CCACHE_DIR=${CCACHE_D}/$arch"} )
+    cmd=( make ARCH=$arch "OUT_D=$OUT/build/$arch"
+          ${CCACHE_D:+"BR2_CCACHE_DIR=${CCACHE_D}/$arch"} )
 
     logevent "start $arch" -
     if $quiet; then
@@ -147,23 +147,23 @@ if $parallel; then
         "$0" "$VER" build_arch quiet {} ::: ${ARCHES}
 else
     for arch in ${ARCHES}; do
-      build_arch "$arch"
+        build_arch "$arch"
     done;
 fi
 
 for arch in ${ARCHES}; do
-  mkdir -p "$OUT/stage/$arch"
+    mkdir -p "$OUT/stage/$arch"
 done
 
 logevent "start bundling" -
 for arch in ${ARCHES}; do
-  case "$arch" in
-     powerpc|ppc*|aarch64) size=96M;;
-     *) size="";;
-  esac
-  sudo ./bin/bundle -v ${size:+--size=$size} --arch="$arch" \
-     "$OUT/build/$arch/rootfs.tar" \
-     ./download/kernel-$arch.tar.gz "$OUT/stage/$arch";
+    case "$arch" in
+        powerpc|ppc*|aarch64) size=96M;;
+        *) size="";;
+    esac
+    sudo ./bin/bundle -v ${size:+--size=$size} --arch="$arch" \
+        "$OUT/build/$arch/rootfs.tar" \
+        ./download/kernel-$arch.tar.gz "$OUT/stage/$arch";
 done
 logevent "finish bundling"
 
@@ -175,52 +175,56 @@ mkdir -p "$OUT/release"
 #bzr export -r "tag:$VER" --format=tgz --root="cirros-$VER" "$srctgz"
 #echo "wrote source tgz: $srctgz"
 if ! $daily; then
-  ( srcd="$PWD" && tmpd=$(mktemp -d) && cd "$tmpd" &&
-    bzr branch "$srcd" -r tag:$VER cirros-$VER &&
-    rm -Rf cirros-$VER/.bzr &&
-    echo "$VER" > "cirros-$VER/src/etc/cirros/version" &&
-    tar cvzf - cirros-$VER ) > "$OUT/release/cirros-$VER-source.tar.gz"
+   ( srcd="$PWD" && tmpd=$(mktemp -d) && cd "$tmpd" &&
+        bzr branch "$srcd" -r tag:$VER cirros-$VER &&
+        rm -Rf cirros-$VER/.bzr &&
+        echo "$VER" > "cirros-$VER/src/etc/cirros/version" &&
+        tar cvzf - cirros-$VER ) > "$OUT/release/cirros-$VER-source.tar.gz"
 fi
 
 rm -f "$OUT/stage"/*/"$pre"*
 for arch in ${ARCHES}; do
-  p=$pre-$arch
-  ( cd "$OUT/stage/$arch" &&
-    ln kernel $p-vmlinuz && ln kernel $p-kernel &&
-    ln initramfs $p-initrd && ln initramfs $p-initramfs &&
-    ln part.img $p-rootfs.img &&
-    ln blank.img $p-blank.img &&
-    ln disk.img $p-disk.img &&
-    ln filesys.tar.gz $p-lxc.tar.gz &&
-    true
-  ); done
+    p=$pre-$arch
+    ( cd "$OUT/stage/$arch" &&
+        ln kernel $p-vmlinuz && ln kernel $p-kernel &&
+        ln initramfs $p-initrd && ln initramfs $p-initramfs &&
+        ln part.img $p-rootfs.img &&
+        ln blank.img $p-blank.img &&
+        ln disk.img $p-disk.img &&
+        ln filesys.tar.gz $p-lxc.tar.gz &&
+        true
+    );
+done
 
 logevent "start populating release" -
 for arch in ${ARCHES}; do
-  p=$pre-$arch
-  ( cd "$OUT/stage/$arch" &&
-    cp $p-kernel $p-initramfs $p-lxc.tar.gz "$OUT/release/" &&
-    gzip -9 -c $p-rootfs.img > $OUT/release/$p-rootfs.img.gz ) &&
-  ( cd "$OUT/stage/$arch" &&
-    tar cvzf - $p-blank.img $p-vmlinuz $p-initrd ) > \
-    "$OUT/release/$p-uec.tar.gz"
-  [ "$arch" = "arm" ] ||
-     cp "$OUT/stage/$arch/$p-disk.img" "$OUT/release/$p-disk.img"
+    p=$pre-$arch
+    ( cd "$OUT/stage/$arch" &&
+        cp $p-kernel $p-initramfs $p-lxc.tar.gz "$OUT/release/" &&
+        gzip -9 -c $p-rootfs.img > $OUT/release/$p-rootfs.img.gz ) &&
+        ( cd "$OUT/stage/$arch" &&
+            tar cvzf - $p-blank.img $p-vmlinuz $p-initrd
+        ) > "$OUT/release/$p-uec.tar.gz"
+    [ "$arch" = "arm" ] ||
+    cp "$OUT/stage/$arch/$p-disk.img" "$OUT/release/$p-disk.img"
 done
 
 mkdir -p "$OUT/release/buildroot_rootfs"
 for arch in ${ARCHES}; do
-  t="$OUT/release/buildroot_rootfs/buildroot-$VER-$arch.tar"
-  cp "$OUT/build/$arch/rootfs.tar" "$t" && gzip --force -9 "$t"
+    t="$OUT/release/buildroot_rootfs/buildroot-$VER-$arch.tar"
+    cp "$OUT/build/$arch/rootfs.tar" "$t"
+    gzip --force -9 "$t"
 done
 
 chmod u+rwX,go+rX -R "$OUT/release/"* 
 
 sumfiles=$(cd "$OUT/release" && for f in *; do
-   [ -f "$f" -a "$f" != MD5SUMS ] && echo "$f"; done)
+    [ -f "$f" -a "$f" != MD5SUMS ] && echo "$f"; done)
 ( cd "$OUT/release" && md5sum $sumfiles > MD5SUMS )
 
 logevent "finish populate release" -
 msg "output in $OUT/release"
 msg "entire process took $SECONDS seconds"
 logevent "finished" "$tstart"
+
+# vi: tabstop=4 expandtab

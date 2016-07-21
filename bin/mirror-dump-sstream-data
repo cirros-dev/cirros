@@ -1,41 +1,39 @@
 #!/bin/bash
 set -f
-#
-# 
-# 
+
 Usage() {
    cat <<EOF
 Usage: ${0##*/} mirror_dir
 
-  write tab delimited data for simple streams 'tab2streams' input.
+    write tab delimited data for simple streams 'tab2streams' input.
 
-  Example:
+    Example:
 
-    bzr branch lp:simplestreams simplestreams
-    bzr branch lp:cirros cirros
+      bzr branch lp:simplestreams simplestreams
+      bzr branch lp:cirros cirros
 
-    ./cirros/bin/mirror-dump-sstream-data "\$mirror_d" > mdata.txt
-    ./simplestreams/tools/tenv tab2streams mdata.txt cirros-streams.d
+      ./cirros/bin/mirror-dump-sstream-data "\$mirror_d" > mdata.txt
+      ./simplestreams/tools/tenv tab2streams mdata.txt cirros-streams.d
 
-    ./simplestreams/tools/tenv env -u GNUPGHOME \
-       SS_GPG_BATCH=1 SS_GPG_DEFAULT_KEY=A5DDB840  \
-       js2signed cirros-streams.d
+      ./simplestreams/tools/tenv env -u GNUPGHOME \
+         SS_GPG_BATCH=1 SS_GPG_DEFAULT_KEY=A5DDB840  \
+         js2signed cirros-streams.d
 EOF
 }
 
 datefortag() {
-   local loginfo ts out repo="${CIRROS_BZR:-.}"
-   local spec="$1" fmt="${2:-+%Y%m%d}"
-   loginfo=$(bzr log "$repo" --log-format=long --revision "$spec") ||
-      { error "couldn't bzr log tag:$i"; return 1; }
-   ts=$(echo "$loginfo" | sed -n '/^timestamp:/s,.*: ,,p') &&
-      [ -n "$ts" ] || {
-         error "failed to get timestamp from log for $spec";
-         return 1;
-   }
-   out=$(date --date="$ts" "$fmt") ||
-      { error "failed convert of '$ts' to format=$fmt"; return 1; }
-   _RET="$out"
+    local loginfo ts out repo="${CIRROS_BZR:-.}"
+    local spec="$1" fmt="${2:-+%Y%m%d}"
+    loginfo=$(bzr log "$repo" --log-format=long --revision "$spec") ||
+        { error "couldn't bzr log tag:$i"; return 1; }
+    ts=$(echo "$loginfo" | sed -n '/^timestamp:/s,.*: ,,p') &&
+        [ -n "$ts" ] || {
+            error "failed to get timestamp from log for $spec";
+            return 1;
+    }
+    out=$(date --date="$ts" "$fmt") ||
+        { error "failed convert of '$ts' to format=$fmt"; return 1; }
+    _RET="$out"
 }
 
 error() { echo "$@" 1>&2; }
@@ -50,11 +48,12 @@ fi
 
 OIFS="$IFS"
 declare -A VERSION2SERIAL
-VERSION2SERIAL=( [0.3.0]="20111020" [0.3.1]="20130207"
-                 [0.3.1~pre1]="20120611" [0.3.1~pre3]="20120827"
-                 [0.3.1~pre4]="20130111" [0.3.2~pre1]="20130513"
-                 [0.3.2~pre2]="20131218" [0.3.2~pre3]="20140315"
-                 [0.3.2]="20140317"
+VERSION2SERIAL=(
+    [0.3.0]="20111020" [0.3.1]="20130207"
+    [0.3.1~pre1]="20120611" [0.3.1~pre3]="20120827"
+    [0.3.1~pre4]="20130111" [0.3.2~pre1]="20130513"
+    [0.3.2~pre2]="20131218" [0.3.2~pre3]="20140315"
+    [0.3.2]="20140317"
 )
 
 #content-id product_name version_name img_name [key=value [key=value]]
@@ -67,59 +66,61 @@ cd "$top_d"
 IFS=$'\n'; files=( $(find . -type f -printf "%p|%s\n") ); IFS="$OIFS"
 
 for ent in "${files[@]}"; do
-   IFS="|"; set -- $ent; IFS="$OIFS"
-   path=${1#./}
-   size=${2}
+    IFS="|"; set -- $ent; IFS="$OIFS"
+    path=${1#./}
+    size=${2}
 
-   case "$path" in
-      *-uec.tar.gz|*-disk.img|*-rootfs.img|*-lxc.tar.gz) :;;
-      *) continue;;
-   esac
-   IFS="/"; set -- $path; IFS=$OIFS
-   version="$1"; fname="$2";
-   serial="${VERSION2SERIAL[$version]}"
-   if [ -z "$serial" ]; then
-      datefortag "tag:$version" ||
-         fail "serial not found for $version!"
-      serial="$_RET"
-      VERSION2SERIAL[$version]="$serial"
-   fi
+    case "$path" in
+        *-uec.tar.gz|*-disk.img|*-rootfs.img|*-lxc.tar.gz) :;;
+        *) continue;;
+    esac
+    IFS="/"; set -- $path; IFS=$OIFS
+    version="$1"; fname="$2";
+    serial="${VERSION2SERIAL[$version]}"
+    if [ -z "$serial" ]; then
+        datefortag "tag:$version" ||
+            fail "serial not found for $version!"
+        serial="$_RET"
+        VERSION2SERIAL[$version]="$serial"
+    fi
 
-   # tokenize cirros-0.3.1~pre4-x86_64-lxc.tar.gz, baseproduct gets 'cirros'
-   IFS="-"; set -- $fname; IFS="$OIFS"
-   baseproduct="$1"; _version="$2"; arch="$3"; ftype="$4"
+    # tokenize cirros-0.3.1~pre4-x86_64-lxc.tar.gz, baseproduct gets 'cirros'
+    IFS="-"; set -- $fname; IFS="$OIFS"
+    baseproduct="$1"; _version="$2"; arch="$3"; ftype="$4"
 
-   # tokenize 0.3.1~pre1 or 0.3.0
-   extra=${version#*~}; [ "$extra" = "$version" ] && extra=""
-   tmp=${version%$extra}
-   IFS="."; set -- ${version%$extra}; IFS="$IOFS"
-   vmaj="$1"; vmin="$2"; vmic="$3"
+    # tokenize 0.3.1~pre1 or 0.3.0
+    extra=${version#*~}; [ "$extra" = "$version" ] && extra=""
+    tmp=${version%$extra}
+    IFS="."; set -- ${version%$extra}; IFS="$IOFS"
+    vmaj="$1"; vmin="$2"; vmic="$3"
 
-   [ -z "$extra" ] && stream="released" || stream="devel"
+    [ -z "$extra" ] && stream="released" || stream="devel"
 
-   # productname is "net.cirros-cloud[.devel]:standard:0.3:arch"
-   rdns="net.cirros-cloud"
-   [ "$stream" = "released" ] || rdns="${rdns}.${stream}"
-   product_name="$rdns:standard:$vmaj.$vmin:$arch"
-   content_id="${content_id_base//%(stream)s/${stream}}"
+    # productname is "net.cirros-cloud[.devel]:standard:0.3:arch"
+    rdns="net.cirros-cloud"
+    [ "$stream" = "released" ] || rdns="${rdns}.${stream}"
+    product_name="$rdns:standard:$vmaj.$vmin:$arch"
+    content_id="${content_id_base//%(stream)s/${stream}}"
 
-   req_out=""
-   for item in "$content_id" "$product_name" "$serial" "$ftype"; do
-      req_out="${req_out}${tab}${item}"
-   done
-   req_out=${req_out#${tab}}
+    req_out=""
+    for item in "$content_id" "$product_name" "$serial" "$ftype"; do
+        req_out="${req_out}${tab}${item}"
+    done
+    req_out=${req_out#${tab}}
 
-   md5=$(md5sum "${path}") && md5="${md5%%  ${path}}"
-   sha256=$(sha256sum "${path}") && sha256="${sha256%%  ${path}}"
-   pubname="${baseproduct}-${version}-${arch}"
+    md5=$(md5sum "${path}") && md5="${md5%%  ${path}}"
+    sha256=$(sha256sum "${path}") && sha256="${sha256%%  ${path}}"
+    pubname="${baseproduct}-${version}-${arch}"
 
-   out=""
-   for i in ftype path arch version size sha256 md5 pubname stream; do
-      out="${out}${tab}${i}=${!i}"
-   done
-   out=${out#${tab}}
-   printf "%s\n" "${req_out}${tab}${out}"
-   #printf "
-   #echo "$content_id
-   #echo "version=$version fname=$fname stream=$stream product_name=$product_name"
+    out=""
+    for i in ftype path arch version size sha256 md5 pubname stream; do
+        out="${out}${tab}${i}=${!i}"
+    done
+    out=${out#${tab}}
+    printf "%s\n" "${req_out}${tab}${out}"
+    #printf "
+    #echo "$content_id
+    #echo "version=$version fname=$fname stream=$stream product_name=$product_name"
 done
+
+# vi: tabstop=4 expandtab

@@ -39,3 +39,5 @@ while (<IN>) {
         print "# Generated from certdata.txt RCS revision $1\n#\n";
     }
 }
+
+# vi: tabstop=4 expandtab

@@ -1,15 +1,16 @@
-#!/bin/sh -e
-# vi: ts=4 noexpandtab
+#!/bin/bash
 #
 # this mimics function of buildroot's makedev
 # read a file like:
 #  <name>    <type>      <mode>  <uid>   <gid>   <major> <minor> <start> <inc>   <count>
 # and make files
+
+set -e
 DEBUG=${XMAKEDEV_DEBUG}
 Usage() {
-   cat <<EOF
+    cat <<EOF
 Usage: ${0##*/} file root
-  read file, and make devs apropriately under 'root'.
+    read file, and make devs apropriately under 'root'.
 
 file looks like:
   <name>    <type>      <mode>  <uid>   <gid>   <major> <minor> <start> <inc>   <count>
@@ -31,71 +32,73 @@ fail() { [ $# -eq 0 ] || error "$@" ; exit 1; }
 root="$2"
 
 if [ "$1" != "-" ]; then
-	exec < "$1" || fail "failed to redirect input from $1"
+    exec < "$1" || fail "failed to redirect input from $1"
 fi
 
 chmodchown() {
-	local mode=$1 uid=$2 gid=$3
-	shift 3;
-	[ "$mode" = "-" ] || chmod "$mode" "$@" || return
-	[ "$uid" = "-" ] || chown "$uid" "$@" || return
-	[ "$gid" = "-" ] || chgrp "$gid" "$@" || return
+    local mode=$1 uid=$2 gid=$3
+    shift 3;
+    [ "$mode" = "-" ] || chmod "$mode" "$@" || return
+    [ "$uid" = "-" ] || chown "$uid" "$@" || return
+    [ "$gid" = "-" ] || chgrp "$gid" "$@" || return
 }
 iswild() {
-	local star="\\*"
-	case "$1" in
-		*$star*) return 0;;
-	esac
-	return 1
+    local star="\\*"
+    case "$1" in
+        *$star*) return 0;;
+    esac
+    return 1
 }
 
 cd "$root" || fail "failed cd $root"
 
 while read line; do
-	line=${line%#*}
-	[ -n "$line" ] || continue
-	set -f
-	set -- $line
-	name=$1; type=$2; mode=$3; uid=$4; gid=$5; major=$6; minor=$7; start=$8; inc=$9; count="${10}"
-	set +f
-	files="./${name#/}"
-	if iswild "$name"; then
-		files=$(echo ./$name)
-		iswild "$files" && fail "wildcards in wildcards: $files"
-	fi
-	case "$type" in
-		f) 
-			for f in $files; do
-				$DEBUG mkdir -p "${f%/*}" || fail "failed to make ${f%/*}";
-			done
-			$DEBUG touch $files &&
-			$DEBUG chmodchown "$mode" "$uid" "$gid" $files ||
-			fail "failed create file $files"
-			;;
-		d)
-			$DEBUG mkdir -p $files &&
-			$DEBUG chmodchown "$mode" "$uid" "$gid" $files ||
-			fail "failed create dir $files"
-			;;
-		c|b)
-			for f in $files; do
-				$DEBUG mkdir -p "${f%/*}" || fail "failed to make ${f%/*}";
-			done
-			if [ "$count" = "-" ]; then
-				$DEBUG mknod $files $type $major $minor ||
-					fail "failed mknod"
-				$DEBUG chmodchown "$mode" "$uid" "$gid" $files ||
-					fail "failed chmodchown '$mode' '$uid' '$gid' $files"
-			else
-				[ "$count" = "-" ] && count=1;
-				i=0
-				while [ $i -lt $count ]; do
-					fname="./$name"
-					$DEBUG mknod "$fname" "$type" "$major" "$(($minor+($i*$inc)))"
-					$DEBUG chmodchown "$fname" "$mode" "$uid" "$gid"
-					i=$(($i+1))
-				done
-			fi
-			;;
-	esac
+    line=${line%#*}
+    [ -n "$line" ] || continue
+    set -f
+    set -- $line
+    name=$1; type=$2; mode=$3; uid=$4; gid=$5; major=$6; minor=$7; start=$8; inc=$9; count="${10}"
+    set +f
+    files="./${name#/}"
+    if iswild "$name"; then
+        files=$(echo ./$name)
+        iswild "$files" && fail "wildcards in wildcards: $files"
+    fi
+    case "$type" in
+        f) 
+            for f in $files; do
+                $DEBUG mkdir -p "${f%/*}" || fail "failed to make ${f%/*}";
+            done
+            $DEBUG touch $files &&
+            $DEBUG chmodchown "$mode" "$uid" "$gid" $files ||
+            fail "failed create file $files"
+            ;;
+        d)
+            $DEBUG mkdir -p $files &&
+            $DEBUG chmodchown "$mode" "$uid" "$gid" $files ||
+            fail "failed create dir $files"
+            ;;
+        c|b)
+            for f in $files; do
+                $DEBUG mkdir -p "${f%/*}" || fail "failed to make ${f%/*}";
+            done
+            if [ "$count" = "-" ]; then
+                $DEBUG mknod $files $type $major $minor ||
+                    fail "failed mknod"
+                $DEBUG chmodchown "$mode" "$uid" "$gid" $files ||
+                    fail "failed chmodchown '$mode' '$uid' '$gid' $files"
+            else
+                [ "$count" = "-" ] && count=1;
+                i=0
+                while [ $i -lt $count ]; do
+                    fname="./$name"
+                    $DEBUG mknod "$fname" "$type" "$major" "$(($minor+($i*$inc)))"
+                    $DEBUG chmodchown "$fname" "$mode" "$uid" "$gid"
+                    i=$(($i+1))
+                done
+            fi
+            ;;
+    esac
 done
+
+# vi: ts=4 expandtab

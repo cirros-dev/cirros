@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #    part2disk - wrap a partition image in a disk image
 #
 #    Copyright (C) 2010 Canonical Ltd.
@@ -23,37 +23,37 @@ base_d=$(dirname $(readlink -f "${0}"))
 PATH="${PATH}:${base_d}"
 error() { echo "$@" 1>&2; }
 debug() {
-	[ "${DEBUG}" -ge "${1:-0}" ] && shift || return 0;
-	error "$@";
+    [ "${DEBUG}" -ge "${1:-0}" ] && shift || return 0;
+    error "$@";
 }
 fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
 getsize() {
-	local fname="$1" kname="" size=""
-	if [ -b "${fname}" ]; then
-		kname=$(readlink -f "${fname}") &&
-			size=$(awk '$4 == kn { print $3 * 1024 }' \
-		             	"kn=${kname##*/}" /proc/partitions) &&
-			[ -n "${size}" ] || {
-				error "failed to read size of ${fname} from /proc/partitions";
-				return 1;
-			}
-	else
-		size=$(stat --format "%s" "${fname}") || {
-			error "failed to get size of ${fname}"
-			return 1;
-		}
-	fi
-	_RET="$size"
+    local fname="$1" kname="" size=""
+    if [ -b "${fname}" ]; then
+        kname=$(readlink -f "${fname}") &&
+            size=$(awk '$4 == kn { print $3 * 1024 }' \
+                         "kn=${kname##*/}" /proc/partitions) &&
+            [ -n "${size}" ] || {
+                error "failed to read size of ${fname} from /proc/partitions";
+                return 1;
+            }
+    else
+        size=$(stat --format "%s" "${fname}") || {
+            error "failed to get size of ${fname}"
+            return 1;
+        }
+    fi
+    _RET="$size"
 }
 
 Usage() {
-	cat <<EOF
+    cat <<EOF
 Usage: ${0##*/} [options] partition-image disk-image
 
-   create disk image 'disk-image' with 'partition-image' in a partition
-   inside it.
+    create disk image 'disk-image' with 'partition-image' in a partition
+    inside it.
 
-   options:
+    options:
       -G | --grub       install grub to disk image mbr
          | --grub1      install grub1 to disk image mbr
       -s | --size  S    create the disk image of size 'S'.
@@ -63,27 +63,27 @@ EOF
 }
 bad_Usage() { Usage 1>&2; fail "$@"; }
 human2bytes() {
-   # converts size suitable for input to resize2fs to bytes
-   # s:512 byte sectors, K:kilobytes, M:megabytes, G:gigabytes
-   # none: block size of the image
-   local input=${1} defunit=${2:-1024}
-   local unit count;
-   case "$input" in
-      *s) count=${input%s}; unit=512;;
-      *K) count=${input%K}; unit=1024;;
-      *M) count=${input%M}; unit=$((1024*1024));;
-      *G) count=${input%G}; unit=$((1024*1024*1024));;
-      *)  count=${input}  ; unit=${2:-1024};;
-   esac
-   _RET=$((${count}*${unit}))
+    # converts size suitable for input to resize2fs to bytes
+    # s:512 byte sectors, K:kilobytes, M:megabytes, G:gigabytes
+    # none: block size of the image
+    local input=${1} defunit=${2:-1024}
+    local unit count;
+    case "$input" in
+        *s) count=${input%s}; unit=512;;
+        *K) count=${input%K}; unit=1024;;
+        *M) count=${input%M}; unit=$((1024*1024));;
+        *G) count=${input%G}; unit=$((1024*1024*1024));;
+        *)  count=${input}  ; unit=${2:-1024};;
+    esac
+    _RET=$((${count}*${unit}))
 }
 
 short_opts="b:c:Ghs:v"
 long_opts="grub1,grub,help,size:,verbose"
 getopt_out=$(getopt --name "${0##*/}" \
-	--options "${short_opts}" --long "${long_opts}" -- "$@") &&
-	eval set -- "${getopt_out}" ||
-	bad_Usage
+    --options "${short_opts}" --long "${long_opts}" -- "$@") &&
+    eval set -- "${getopt_out}" ||
+    bad_Usage
 
 ssize=${DEF_SECTOR_SIZE}
 size_in=""
@@ -91,16 +91,16 @@ grub_ptnum=1
 grub=0
 grub1=0
 while [ $# -ne 0 ]; do
-	cur=${1}; next=${2};
-	case "$cur" in
-		-G|--grub) grub=1;;
-		-G|--grub1) grub1=1;;
-		-h|--help) Usage; exit 0;;
-		-s|--size) size_in=$2; shift;;
-		-v|--verbose) DEBUG=$((${DEBUG}+1));;
-		--) shift; break;;
-	esac
-	shift;
+    cur=${1}; next=${2};
+    case "$cur" in
+        -G|--grub) grub=1;;
+        -G|--grub1) grub1=1;;
+        -h|--help) Usage; exit 0;;
+        -s|--size) size_in=$2; shift;;
+        -v|--verbose) DEBUG=$((${DEBUG}+1));;
+        --) shift; break;;
+    esac
+    shift;
 done
 
 [ $# -eq 2 ] || bad_Usage "must supply partition image and output file"
@@ -109,13 +109,13 @@ pimg=${1}
 dimg=${2}
 
 { [ ${grub} -eq 0 ] || phelper=$(command -v part2disk-grubhelper); } ||
-	fail "no part2disk-grubhelper in PATH"
+    fail "no part2disk-grubhelper in PATH"
 [ $grub1 -eq 0 ] || command -v grub >/dev/null || fail "no 'grub' in path";
 
 [ -f "${pimg}" -o -b "${pimg}" ] || fail "${pimg}: not a file or block device"
 
 getsize "$pimg" ||
-	fail "failed to get size of $pimg"
+    fail "failed to get size of $pimg"
 pimg_s="$_RET"
 
 # end_pad_sectors: room for secondary gpt
@@ -126,7 +126,7 @@ front_pad_sectors=$(($front_pad/$ssize))
 padding=$(($front_pad+$end_pad))
 pt_sector_pad=$(($ssize-(${pimg_s}%$ssize)))
 if [ $pt_sector_pad -eq $ssize ]; then
-	pt_sector_pad=0
+    pt_sector_pad=0
 fi
 pt_size=$(($pimg_s+$pt_sector_pad))
 pt_sectors=$(($pt_size/$ssize))
@@ -134,23 +134,23 @@ tot_size=$(($front_pad+$pt_size+$end_pad))
 tot_size_sectors=$(($tot_size/$ssize))
 
 if [ -n "${size_in}" ]; then
-	human2bytes "${size_in}" 1 || fail "failed to convert ${size_in} to bytes"
-	size=${_RET}
+    human2bytes "${size_in}" 1 || fail "failed to convert ${size_in} to bytes"
+    size=${_RET}
 else
-	# no size specified, get enough to fit part_img, 1M header and 1M end.
-	size=$((${pimg_s}+$padding+$pt_sector_pad))
+    # no size specified, get enough to fit part_img, 1M header and 1M end.
+    size=$((${pimg_s}+$padding+$pt_sector_pad))
 fi
 
 if [ -e "$dimg" ]; then
-	getsize "$dimg" ||
-		fail "failed to get size of $dimg"
-	dimg_s="$_RET"
+    getsize "$dimg" ||
+        fail "failed to get size of $dimg"
+    dimg_s="$_RET"
 else
-	dimg_s="$size"
+    dimg_s="$size"
 fi
 
 if [ "${dimg_s}" -lt "$size" ]; then
-	fail "size of $dimg ($dimg_s) not large enough to fit $size"
+    fail "size of $dimg ($dimg_s) not large enough to fit $size"
 fi
 
 debug 1 "input is ${pimg_s} bytes ($pt_sectors sectors of $ssize)."
@@ -160,50 +160,50 @@ debug 1 "padding $front_pad_sectors sectors at front," \
 
 debug 2 "zeroing first $front_pad_sectors sectors $dimg"
 dd if=/dev/zero of="${dimg}" bs=$ssize "count=${front_pad_sectors}" \
-	2>/dev/null ||
+    2>/dev/null ||
     fail "failed to write to ${dimg}"
 
 # copy partition image. this writes $pimg bytes even if that is
 # not divivisble by $ssize
 debug 2 "copying ${pimg} to partition in ${dimg}"
 dd if="$pimg" of="$dimg" seek=${front_pad_sectors} bs=$ssize conv=notrunc \
-	2>/dev/null ||
-	fail "failed to write ${pimg} into ${dimg}"
+    2>/dev/null ||
+    fail "failed to write ${pimg} into ${dimg}"
 
 # zero any unwritten portion of the final sector
 leftover=$(($ssize-(${pimg_s}%$ssize)))
 if [ $pt_sector_pad -ne 0 ]; then
-	debug 2 "finishing final sector with $pt_sector_pad bytes of zeros"
-	dd if=/dev/zero of="$dimg" bs=1 seek=$((${pimg_s}+${front_pad})) \
-		conv=notrunc count=$pt_sector_pad 2>/dev/null ||
-	fail "failed to finish final sector of $pimg"
+    debug 2 "finishing final sector with $pt_sector_pad bytes of zeros"
+    dd if=/dev/zero of="$dimg" bs=1 seek=$((${pimg_s}+${front_pad})) \
+        conv=notrunc count=$pt_sector_pad 2>/dev/null ||
+    fail "failed to finish final sector of $pimg"
 fi
 
 # we've now written front pad + round-sectors. now write end_pad
 debug 2 "writing final $end_pad_sectors sectors"
 dd if=/dev/zero "of=$dimg" bs=$ssize \
-	seek=$((($size/$ssize)-${end_pad_sectors})) count=${end_pad_sectors} \
-	conv=notrunc 2>/dev/null ||
-	fail "failed to write final 1M to $pimg"
+    seek=$((($size/$ssize)-${end_pad_sectors})) count=${end_pad_sectors} \
+    conv=notrunc 2>/dev/null ||
+    fail "failed to write final 1M to $pimg"
 
 sfdisk_in="${front_pad_sectors},$pt_sectors,L,*"
 debug 2 "writing partition table to ${dimg} ($sfdisk_in)"
 sfdisk_out=$(echo "$sfdisk_in" | sfdisk --force --unit=S "${dimg}" 2>&1)
 
 [ $? -eq 0 ] || {
-	error "${sfdisk_out}";
-	fail "failed to create partition table";
+    error "${sfdisk_out}";
+    fail "failed to create partition table";
 }
 
 if [ ${grub} -ne 0 ]; then
-	debug 2 "invoking part2disk-grubhelper ${dimg}"
-	sudo "${phelper}" "${dimg}" ||
-		fail "part2disk-grubhelper ${dimg} failed"
+    debug 2 "invoking part2disk-grubhelper ${dimg}"
+    sudo "${phelper}" "${dimg}" ||
+        fail "part2disk-grubhelper ${dimg} failed"
 fi
 
 if [ $grub1 -ne 0 ]; then
-	debug 2 "installing grub"
-	grub --no-floppy --batch <<EOF
+    debug 2 "installing grub"
+    grub --no-floppy --batch <<EOF
 device (hd0) $dimg
 root (hd0,0)
 setup (hd0)
@@ -212,4 +212,5 @@ EOF
 fi
 
 error "wrote to ${dimg}"
-# vi: ts=4 noexpandtab
+
+# vi: tabstop=4 expandtab

@@ -4,20 +4,20 @@ _APT_UPDATED=false
 CIRROS_BRANCH="lp:cirros"
 CIRROS_D=""
 DEPS=(
-  bc
-  bison
-  build-essential
-  bzr
-  flex
-  gettext
-  libncurses5-dev
-  parallel
-  qemu-kvm
-  quilt
-  rsync
-  texinfo
-  unzip
-  wget
+    bc
+    bison
+    build-essential
+    bzr
+    flex
+    gettext
+    libncurses5-dev
+    parallel
+    qemu-kvm
+    quilt
+    rsync
+    texinfo
+    unzip
+    wget
 )
 
 error() { echo "$@" 1>&2; }
@@ -92,4 +92,4 @@ fi
 
 error "set up functional to $CIRROS_D"
 
-# vi: ts=4 expandtab
+# vi: tabstop=4 expandtab

@@ -1,6 +1,4 @@
 #!/bin/bash
-# vi: ts=4 noexpandtab
-#
 
 TEMP_D=""
 UMOUNT=""
@@ -10,17 +8,17 @@ DEF_MODULES="acpiphp e1000 ne2k-pci 8139cp pcnet32 ip_tables"
 
 error() { echo "$@" 1>&2; }
 debug() {
-	[ "${DEBUG}" -ge "${1}" ] || return 0;
-	shift;
-	error "$@"
+    [ "${DEBUG}" -ge "${1}" ] || return 0;
+    shift;
+    error "$@"
 }
 fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
 Usage() {
-	cat <<EOF
+    cat <<EOF
 Usage: ${0##*/} rootfs.tar kpkg.deb output_dir
-   [re]Bundle a buildroot rootfs into a mini-cloud image
+    [re]Bundle a buildroot rootfs into a mini-cloud image
 
-   options:
+    options:
      -s | --size S            resize image to size (default: ${DEF_SIZE})
           --arch A            prepare for arch A
 
@@ -30,19 +28,19 @@ EOF
 }
 bad_Usage() { Usage 1>&2; fail "$@"; }
 cleanup() {
-	[ -z "${UMOUNT}" ] || umount "${UMOUNT}"
-	[ -z "${TEMP_D}" -o ! -d "${TEMP_D}" ] || rm -Rf "${TEMP_D}"
+    [ -z "${UMOUNT}" ] || umount "${UMOUNT}"
+    [ -z "${TEMP_D}" -o ! -d "${TEMP_D}" ] || rm -Rf "${TEMP_D}"
 }
 xrsync() {
-	rsync --archive --xattrs --hard-links --acls --sparse "$@"
+    rsync --archive --xattrs --hard-links --acls --sparse "$@"
 }
 
 short_opts="hs:v"
 long_opts="arch:,initrd-busybox:,help,size:,verbose"
 getopt_out=$(getopt --name "${0##*/}" \
-	--options "${short_opts}" --long "${long_opts}" -- "$@") &&
-	eval set -- "${getopt_out}" ||
-	bad_Usage
+    --options "${short_opts}" --long "${long_opts}" -- "$@") &&
+    eval set -- "${getopt_out}" ||
+    bad_Usage
 
 topdir=$(cd "${0%/*}/.." && pwd)
 size=${DEF_SIZE}
@@ -51,15 +49,15 @@ fs_type="ext3"
 arch=""
 
 while [ $# -ne 0 ]; do
-	cur=${1}; next=${2};
-	case "$cur" in
-		-h|--help) Usage; exit 0;;
-		-s|--size) size=${next}; shift;;
-		   --arch) arch=${next}; shift;;
-		-v|--verbose) DEBUG=$((${DEBUG}+1));;
-		--) shift; break;;
-	esac
-	shift;
+    cur=${1}; next=${2};
+    case "$cur" in
+        -h|--help) Usage; exit 0;;
+        -s|--size) size=${next}; shift;;
+           --arch) arch=${next}; shift;;
+        -v|--verbose) DEBUG=$((${DEBUG}+1));;
+        --) shift; break;;
+    esac
+    shift;
 done
 
 [ $# -eq 3 ] || bad_Usage "must give rootfs.tar, kernel pkg, out_dir"
@@ -79,13 +77,13 @@ xgrubd="$topdir/grubd"
 [ -d "${src_dir}" ] || fail "no source dir ${src_d}"
 
 TEMP_D=$(mktemp -d "${TMPDIR:-/tmp}/.${0##*/}.XXXXXX") ||
-	fail "failed to make tempd"
+    fail "failed to make tempd"
 trap cleanup EXIT
 
 mkdir -p "${out_d_in}" && out_d=$(readlink -f "${out_d_in}") &&
-	rootfs=$(readlink -f "${rootfs_in}") &&
-	kpkg=$(readlink -f "${kpkg_in}") ||
-	fail "failed to get full path for input"
+    rootfs=$(readlink -f "${rootfs_in}") &&
+    kpkg=$(readlink -f "${kpkg_in}") ||
+    fail "failed to get full path for input"
 
 out_partimg="${out_d}/part.img"
 out_diskimg="${out_d}/disk.img"
@@ -112,199 +110,200 @@ filesys_tar="$inter_d/filesys.tar"
 
 modfile="$src_dir/etc/modules"
 if [ -f "$modfile" ]; then
-	MODULES=$("$src_dir/etc/init.d/load-modules" parse_modules \
+    MODULES=$("$src_dir/etc/init.d/load-modules" parse_modules \
         "$modfile" "$arch") ||
-		fail "failed to read modules"
-	MODULES=$(echo "$MODULES" | sed 's, .*,,' | tr '\n' ' ')
+        fail "failed to read modules"
+    MODULES=$(echo "$MODULES" | sed 's, .*,,' | tr '\n' ' ')
 else
-	MODULES=${DEF_MODULES}
+    MODULES=${DEF_MODULES}
 fi
 debug 1 "modules: $MODULES"
 
 prepare-grub "$xgrubd" ||
-	fail "failed to get grub binary"
+    fail "failed to get grub binary"
 
 mkdir -p "${mp}" "${kernel_d}" "${overlay_d}" \
-	"${initramfs_d}" "$inter_d" "$stage_d" ||
-	fail "failed to make temp dirs"
+    "${initramfs_d}" "$inter_d" "$stage_d" ||
+    fail "failed to make temp dirs"
 
 debug 1 "creating filesystem in ${out_partimg}"
 rm -f "$out_partimg"
 truncate "--size=${size}" "${out_partimg}" ||
-	fail "failed to create ${out_partimg} of size ${size}"
+    fail "failed to create ${out_partimg} of size ${size}"
 
 out=$("mkfs.${fs_type}" -F "${out_partimg}" -L "${FS_LABEL}" 2>&1) ||
-	fail "failed to make filesystem of type ${fs_type}: ${out}" 
+    fail "failed to make filesystem of type ${fs_type}: ${out}" 
 
 cp "$out_partimg" "$out_blankimg" ||
-	fail "failed to to copy blank partition image"
+    fail "failed to to copy blank partition image"
 
 debug 1 "preparing kernel overlay"
 # creating kernel tarball
 case "$kpkg_in" in
-	*.deb)
-		dpkg -x "${kpkg_in}" "${kernel_d}" ||
-			fail "failed extracting kernel deb package in ${kpkg_in}"
-		;;
-	*.tar*)
-		tar -C "$kernel_d" -xf "$kpkg_in" ||
-			fail "failed extracting kernel tarball in ${kpkg_in}"
-		;;
-	*) fail "unknown file format for $kpkg_in";;
+    *.deb)
+        dpkg -x "${kpkg_in}" "${kernel_d}" ||
+            fail "failed extracting kernel deb package in ${kpkg_in}"
+        ;;
+    *.tar*)
+        tar -C "$kernel_d" -xf "$kpkg_in" ||
+            fail "failed extracting kernel tarball in ${kpkg_in}"
+        ;;
+    *) fail "unknown file format for $kpkg_in";;
 esac
 
 ( cd "${kernel_d}" && find * -type f ) > "${kern_list_full}" ||
-	fail "failed to extract kernel to ${kernel_d}"
+    fail "failed to extract kernel to ${kernel_d}"
 
 kver=""
 for x in "$kernel_d/lib/modules"/*; do
-	[ -d "$x/kernel" ] || continue
-	[ -z "$kver" ] ||
-		fail "2 or more things looked like kernels in lib/modules of $kpkg_in"
-	kver="${x##*/}"
+    [ -d "$x/kernel" ] || continue
+    [ -z "$kver" ] ||
+        fail "2 or more things looked like kernels in lib/modules of $kpkg_in"
+    kver="${x##*/}"
 done
 [ -n "$kver" ] ||
-	fail "failed to find kernel version. no lib/modules/* ?"
+    fail "failed to find kernel version. no lib/modules/* ?"
 
 depmod -a --basedir "${kernel_d}" "${kver}" ||
-	fail "failed to run depmod"
+    fail "failed to run depmod"
 
 mdep="${kernel_d}/lib/modules/${kver}/modules.dep"
 for x in ${MODULES}; do
-	grep -q "/${x}.ko" "${mdep}" ||
-		{ error "WARNING: no ${x} in kernel package!"; continue; }
-	awk -F: '$1 ~ mat {
-		sub(":","",$1)
-		printf("%s/%s\n",p,$1)
-		leng=split($0,deps," ")
-		x=2 # strange, but 0 contains nothing, 1 contains first field (with :)
-		while ( x<=leng ) {
-			printf("%s/%s\n", p, deps[x]);
-			x++
-		}
-	}' mat="/${x}.ko$" p="lib/modules/${kver}" "${mdep}"
+    grep -q "/${x}.ko" "${mdep}" ||
+        { error "WARNING: no ${x} in kernel package!"; continue; }
+    awk -F: '$1 ~ mat {
+        sub(":","",$1)
+        printf("%s/%s\n",p,$1)
+        leng=split($0,deps," ")
+        x=2 # strange, but 0 contains nothing, 1 contains first field (with :)
+        while ( x<=leng ) {
+            printf("%s/%s\n", p, deps[x]);
+            x++
+        }
+    }' mat="/${x}.ko$" p="lib/modules/${kver}" "${mdep}"
 done > "${kern_modules}"
 sort -u "${kern_modules}" > "${kern_files}"
 vmlinuz=$( cd "${kernel_d}" && [ -f boot/vmlinu?-* ] &&
-	echo boot/vmlinu?-* ) && echo "${vmlinuz}" >> "${kern_files}" &&
-	ln -sf "$vmlinuz" "$kernel_d/vmlinuz" && echo "vmlinuz" >> "$kern_files" ||
-	fail "no kernel (boot/vmlinuz-*) found in ${kpkg_in}"
+    echo boot/vmlinu?-* ) && echo "${vmlinuz}" >> "${kern_files}" &&
+    ln -sf "$vmlinuz" "$kernel_d/vmlinuz" && echo "vmlinuz" >> "$kern_files" ||
+    fail "no kernel (boot/vmlinuz-*) found in ${kpkg_in}"
 echo "boot/config-$kver" >> "$kern_files"
 
 tar -C "${kernel_d}" -cpf - \
-	--files-from "${kern_files}" > "${kernel_tar}" ||
-	fail "failed to collect kernel files"
+    --files-from "${kern_files}" > "${kernel_tar}" ||
+    fail "failed to collect kernel files"
 
 debug 1 "preparing source overlay from ${src_dir}"
 xrsync "${src_dir}/" "${overlay_d}" ||
-	fail "failed to copy source dir"
+    fail "failed to copy source dir"
 
 chown -R 0:0 "${overlay_d}" || fail "failed to chown files in overlay"
-	
+    
 if [ -f "${src_symlinks}" ]; then
-	( cd "${overlay_d}" &&
-		while read src target; do
-			{ [ -d "${target%/*}" ] || mkdir -p "${target%/*}"; } ||
-				{ error "could not create ${target%/*}"; exit 1; }
-			ln -sf "${src}" "${target}" || exit 1
-		done < "${src_symlinks}"
-	) || fail "failed to create symlinks"
+    ( cd "${overlay_d}" &&
+        while read src target; do
+            { [ -d "${target%/*}" ] || mkdir -p "${target%/*}"; } ||
+                { error "could not create ${target%/*}"; exit 1; }
+            ln -sf "${src}" "${target}" || exit 1
+        done < "${src_symlinks}"
+    ) || fail "failed to create symlinks"
 fi
 if [ -f "${makedevs_list}" ]; then
-	xmakedevs "$makedevs_list" "$overlay_d" ||
-		fail "failed to makedevs on overlay"
+    xmakedevs "$makedevs_list" "$overlay_d" ||
+        fail "failed to makedevs on overlay"
 fi
 
 ( cd "$overlay_d" && tar -cpf - * ) > "$overlay_tar" ||
-	fail "failed to make overlay_tar"
+    fail "failed to make overlay_tar"
 
 debug 1 "populating staging directory"
 tar -C "$stage_d" -xpf - < "$rootfs_in" ||
-	fail "failed to extract rootfs_tar"
+    fail "failed to extract rootfs_tar"
 tar -C "$stage_d" -xpf - < "$overlay_tar" ||
-	fail "failed to extract overlay_tar"
+    fail "failed to extract overlay_tar"
 
 if [ -x "${fixup_fs}" ]; then
-	"${fixup_fs}" "${stage_d}" ||
-		fail "failed to fixup filesystem"
+    "${fixup_fs}" "${stage_d}" ||
+        fail "failed to fixup filesystem"
 fi
 
 ( cd "$stage_d" && tar -Scpzf - -- * ) > "$out_filesys_lxc" ||
-	fail "failed to create filesys tarball"
+    fail "failed to create filesys tarball"
 
 tar -C "$stage_d" -xpf - < "$kernel_tar" ||
-	fail "failed to extract kernel_tar"
+    fail "failed to extract kernel_tar"
 tar -C "$stage_d" -xpf - < "$xgrubd/bootgrub.tar" ||
-	fail "failed to extract bootgrub"
+    fail "failed to extract bootgrub"
 
 depmod -a --basedir "$stage_d" "${kver}" ||
-	fail "failed to run depmod for kver ${kver} in output"
+    fail "failed to run depmod for kver ${kver} in output"
 
 debug 1 "creating initramfs"
 xrsync "$stage_d/" "$initramfs_d" ||
-	fail "failed to copy to initramfs_d"
+    fail "failed to copy to initramfs_d"
 rm -Rf "$initramfs_d/vmlinuz" "$initramfs_d/boot" ||
-	fail "failed to remove files in initramfs staging dir"
+    fail "failed to remove files in initramfs staging dir"
 
 ( cd "$initramfs_d" && find . | cpio --quiet -o -H newc |
-	gzip -9 ) > "$initramfs"
+    gzip -9 ) > "$initramfs"
 
 rm -Rf "$initramfs_d/lib/modules/$kver" ||
-	fail "failed to remove lib/modules for mini initramfs"
+    fail "failed to remove lib/modules for mini initramfs"
 
 ( cd "$initramfs_d" && find . | cpio --quiet -o -H newc |
-	gzip -9 ) > "${initramfs}.smaller"
+    gzip -9 ) > "${initramfs}.smaller"
 
 cp "${initramfs}.smaller" "$stage_d/boot/initrd.img-${kver}" &&
-	ln -s "boot/initrd.img-${kver}" "${stage_d}/initrd.img" ||
-	fail "failed to copy initramfs to stage dir"
+    ln -s "boot/initrd.img-${kver}" "${stage_d}/initrd.img" ||
+    fail "failed to copy initramfs to stage dir"
 
 debug 1 "packing clean kernel_tar"
 tar -C "$stage_d" -cpf - \
-	vmlinuz initrd.img boot/ lib/modules/ > "$kernel_tar" ||
-	fail "failed to create clean kerne_tar"
+    vmlinuz initrd.img boot/ lib/modules/ > "$kernel_tar" ||
+    fail "failed to create clean kerne_tar"
 
 ( cd "$stage_d" && tar -cpf - * ) > "$filesys_tar" ||
-	fail "failed to create filesys_tar"
+    fail "failed to create filesys_tar"
 
 debug 1 "populating image"
 mount -o loop "${out_partimg}" "${mp}" && UMOUNT=${mp} ||
-	fail "failed to mount ${out_partimg} loopback"
+    fail "failed to mount ${out_partimg} loopback"
 
 tar -C "$mp" -xpf - < "$filesys_tar" ||
-	fail "failed to populate mount point"
+    fail "failed to populate mount point"
 
 umount "${mp}" && UMOUNT="" ||
-	fail "failed to unmount ${out_partimg}"
+    fail "failed to unmount ${out_partimg}"
 
 cp "${kernel_d}/${vmlinuz}" "${out_kernel}" ||
-	fail "failed to copy kernel to ${out_kernel}"
+    fail "failed to copy kernel to ${out_kernel}"
 
 { [ -z "${out_initramfs}" ] || cp "${initramfs}" "${out_initramfs}"; }  ||
-	fail "failed to copy initramfs to ${out_initramfs}"
+    fail "failed to copy initramfs to ${out_initramfs}"
 
 debug 1 "fixing grub entry in partimg"
 tmp_part="$TEMP_D/part.img.disk"
 cp "$out_partimg" "$tmp_part" &&
-	mount -o loop "$tmp_part" "$mp" && UMOUNT="$mp" ||
-	fail "failed to mount $tmp_part"
+    mount -o loop "$tmp_part" "$mp" && UMOUNT="$mp" ||
+    fail "failed to mount $tmp_part"
 sed -i 's/(hd0)/(hd0,0)/' "$mp/boot/grub/menu.lst" ||
-	fail "failed to edit /boot/grub/menu.lst in image"
+    fail "failed to edit /boot/grub/menu.lst in image"
 umount "$mp" && UMOUNT="" ||
-	fail "failed to unmount partimg"
+    fail "failed to unmount partimg"
 
 debug 1 "creating disk image"
-out=$(PATH=$xgrubd:$PATH part2disk --grub1 "$tmp_part" "$out_diskimg.raw" 2>&1) ||
-	fail "failed to create disk image: $out"
+out=$(PATH=$xgrubd:$PATH part2disk --grub1 "$tmp_part" \
+    "$out_diskimg.raw" 2>&1) ||
+    fail "failed to create disk image: $out"
 qemu-img convert -O qcow2 -c "$out_diskimg.raw" "$out_diskimg" ||
-	fail "failed to convert disk image"
+    fail "failed to convert disk image"
 rm -f "$out_diskimg.raw" "$tmp_part"
 
 if [ -n "${SUDO_USER}" ]; then
-	u=${SUDO_USER}
-	g=$(id -g "${u}") || g=${u}
-	chown "${u}:${g}" -R "$out_d" ||
-		fail "failed to grant ownership of ${u}:${g} to ${u}:${g}"
+    u=${SUDO_USER}
+    g=$(id -g "${u}") || g=${u}
+    chown "${u}:${g}" -R "$out_d" ||
+        fail "failed to grant ownership of ${u}:${g} to ${u}:${g}"
 fi
 
 echo "wrote ${out_partimg}"
@@ -315,3 +314,5 @@ echo "wrote ${out_blankimg}"
 echo "wrote ${out_filesys_lxc}"
 
 exit 0
+
+# vi: tabstop=4 expandtab

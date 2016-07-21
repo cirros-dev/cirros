@@ -1,11 +1,11 @@
-#!/bin/sh
+#!/bin/bash
 
 Usage() {
-   cat <<EOF
+    cat <<EOF
 ${0##*/} buildroot-dir arch output [confd]
 
-  build the buildroot dir in buildroot-dir
-  put output in output. confd defaults to topdir/conf
+    build the buildroot dir in buildroot-dir
+    put output in output. confd defaults to topdir/conf
 EOF
 }
 
@@ -13,7 +13,7 @@ error() { echo "$@" 1>&2; }
 fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
 
 [ $# -eq 3 -o $# -eq 4 ] ||
-   { Usage 1>&2; exit 1; }
+    { Usage 1>&2; exit 1; }
 [ "$1" = "-h" -o "$1" = "--help" ] && { Usage; exit 0; }
 
 
@@ -25,7 +25,7 @@ confd=""
 [ $# -eq 0 ] && set -- make
 
 [ -n "$confd" ] || confd=$( cd "${0%/*}/../conf" && pwd) ||
-   fail "failed to find conf dir"
+    fail "failed to find conf dir"
 
 mkdir -p "$out" || fail "failed to make outdir $out"
 out=$(cd "${out}" && pwd)
@@ -38,3 +38,5 @@ out=$(cd "${out}" && pwd)
 
 cd "$bdir" 
 make "O=$BR_OUT" "BUSYBOX_CONFIG_FILE=$out/busybox.config" "$@"
+
+# vi: tabstop=4 expandtab
