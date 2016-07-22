@@ -53,6 +53,8 @@ sec2human() {
     full=${full# }
     tbrev=${tbrev# }
     brev=${brev# }
+    [ -z "$tbrev" ] && tbrev="0s"
+    [ -z "$tfull" ] && tfull="0 seconds"
     case "$fmt" in
         full) _RET="$full";;    # full words with leading
         tfull) _RET="$tfull";;  # full words, no leading 0
