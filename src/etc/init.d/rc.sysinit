@@ -85,7 +85,7 @@ if is_lxc; then
 fi
 
 s_args=""
-for tty in $lxc_console tty1 ttyS0 hvc0; do
+for tty in $lxc_console tty1 ttyS0 hvc0 ttyAMA0; do
 	if [ -e /dev/$tty ] && { echo "" >> "/dev/$tty" ; } 2>/dev/null ; then
 		s_args="${s_args:+${s_args} }s/^#$tty:\(.*\)/$tty:\1/;"
 	else
