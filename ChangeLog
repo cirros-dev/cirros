@@ -9,6 +9,7 @@
  - Add support for UEFI booting on AArch64 and x86-64 architectures.
    [Marcin Juszkiewicz]
  - update ca-certificates.crt to mozilla trunk as of 2016-07-21.
+ - arm/aarch64: put a getty on ttyAMAO.
 0.3.4
  - Improve tooling for IPv6 and network debugging [Jens Rosenboom]
  - make 'nc -ll' work again. [Jens Rosenboom]

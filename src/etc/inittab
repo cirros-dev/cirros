@@ -18,6 +18,7 @@
 
 # Put a getty on the serial port
 #ttyS0::respawn:/sbin/getty -L 115200 ttyS0 vt100 # GENERIC_SERIAL
+#ttyAMA0::respawn:/sbin/getty -L 115200 ttyAMA0 vt100 # GENERIC_SERIAL
 #tty1::respawn:/sbin/getty 115200 tty1
 #hvc0::respawn:/sbin/getty 115200 hvc0 # xen virtual console
 #console::respawn:/sbin/getty 115200 console
