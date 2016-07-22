@@ -50,7 +50,7 @@ msg() {
 logevent() {
     # logevent(msg, [from])
     # log the message in $1 and time since $2, defaulting to last call.
-    local up delta msg="$1" ref="$2"
+    local up delta msg="$1" ref="$2" human=""
     up=${SECONDS}
     if [ "$ref" = "-" ]; then
         ref=""
@@ -59,8 +59,9 @@ logevent() {
     fi
     if [ -n "$ref" ]; then
         delta="$(($up-$ref))"
+        sec2human "$delta" tshort && human=${_RET}
     fi
-    msg "$(date -R)" "$msg" "${delta:+[${delta}s]}"
+    msg "$(date -R)" "$msg" "${delta:+Took ${human}. [${delta}s]}"
     _LAST_UP=$up
     _RET=${_LAST_UP}
 }
