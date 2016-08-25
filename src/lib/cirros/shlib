@@ -151,20 +151,21 @@ find_devs_with() {
 ipinfo() {
 	# return a list of ip info
 	# each line contain: ifname,up/down,ipv4,ipv4mask
-	local cur_if="" cur_up=0 cur_inargs=0 cur_good=0 cur_ipv4="" cur_ipv6="" cur_nm
+	local cur_if="" cur_up=0 cur_inargs=0 cur_good=0 cur_ipv4="" cur_ipv6_global="" cur_ipv6_local="" cur_nm
 	local data="" dline=""
 	while read line; do
 		case "$line" in
 			[0-9]:*|[0-9][0-9]:*|[0-9][0-9][0-9]:*)
 				if [ -n "$cur_if" ]; then
-					dline="${cur_if},${cur_up},${cur_ipv4},${cur_nm},${cur_ipv6}"
+					dline="${cur_if},${cur_up},${cur_ipv4},${cur_nm},${cur_ipv6_local},${cur_ipv6_global}"
 					data="${data}|${dline}"
 				fi
 				set -- ${line}
 				cur_if=${2%:}
 				cur_up=down
 				cur_ipv4=""
-				cur_ipv6=""
+				cur_ipv6_global=""
+				cur_ipv6_local=""
 				case "$3" in
 					*,UP,*|*,UP\>|\<UP,*) cur_up=up;;
 				esac
@@ -180,11 +181,12 @@ ipinfo() {
 			*inet6\ *) :
 				# don't know how to do this
 				set -- $line
-				[ "${2#*/}" != "$2" ] && cur_ipv6="${2%/*}";;
+				[ "$4" == "global" ] && cur_ipv6_global="$2"
+				[ "$4" == "link" ] && cur_ipv6_local="$2";;
 		esac
 	done
 	if [ -n "$cur_if" ]; then
-		data="${data}|${cur_if},${cur_up},${cur_ipv4},${cur_nm},${cur_ipv6}"
+		data="${data}|${cur_if},${cur_up},${cur_ipv4},${cur_nm},${cur_ipv6_local},${cur_ipv6_global}"
 	fi
 	_RET="${data#|}"
 	return 0

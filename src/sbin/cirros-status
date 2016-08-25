@@ -91,6 +91,7 @@ cirros_status() {
 		echo "if-info: $x"
 	done
 	ip route | sed 's,^,ip-route:,'
+	ip -6 route | sed 's,^,ip-route6:,'
 
 	if assert_datasource; then
 		echo "=== datasource: $_DATASOURCE_NAME $_DATASOURCE_MODE ==="
