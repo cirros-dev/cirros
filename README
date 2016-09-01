@@ -60,7 +60,7 @@ To use it, you would do something like:
 
  * build disk images using bin/bundle
    $ sudo ./bin/bundle -v --arch=$ARCH output/$ARCH/rootfs.tar \
-      download/kernel-$ARCH.deb output/$ARCH/images
+      download/kernel-$ARCH.deb download/grub-efi-$ARCH.tar.gz output/$ARCH/images
 
  * Then, test using the images
    $ kvm -drive file=disk.img,if=virtio -curses
