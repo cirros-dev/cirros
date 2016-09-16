@@ -12,7 +12,7 @@ Usage: ${0##*/} mirror_dir
     Example:
 
       bzr branch lp:simplestreams simplestreams
-      bzr branch lp:cirros cirros
+      git clone https://git.launchpad.net/~cirros-dev/cirros cirros
 
       ./cirros/bin/mirror-dump-sstream-data "\$mirror_d" > mdata.txt
       ./simplestreams/tools/tenv tab2streams mdata.txt cirros-streams.d
@@ -24,15 +24,10 @@ EOF
 }
 
 datefortag() {
-    local loginfo ts out repo="${CIRROS_BZR:-.}"
+    local ts out
     local spec="$1" fmt="${2:-+%Y%m%d}"
-    loginfo=$(bzr log "$repo" --log-format=long --revision "$spec") ||
-        { error "couldn't bzr log tag:$i"; return 1; }
-    ts=$(echo "$loginfo" | sed -n '/^timestamp:/s,.*: ,,p') &&
-        [ -n "$ts" ] || {
-            error "failed to get timestamp from log for $spec";
-            return 1;
-    }
+    ts=$(git log --date=iso --pretty="%cd" -1 "$spec") ||
+        { error "couldn't git log $spec"; return 1; }
     out=$(date --date="$ts" "$fmt") ||
         { error "failed convert of '$ts' to format=$fmt"; return 1; }
     _RET="$out"
@@ -40,10 +35,6 @@ datefortag() {
 
 [ "$1" = "-h" -o "$1" = "--help" ] && { Usage; exit 0; }
 [ "$#" -eq 1 ] || { Usage 1>&2; fail "must give mirror dir"; }
-
-if [ -z "$CIRROS_BZR" ]; then
-   CIRROS_BZR=$(t=$(readlink -f "$0") && cd "${t%/*}/.." && pwd)
-fi
 
 OIFS="$IFS"
 declare -A VERSION2SERIAL

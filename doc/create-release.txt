@@ -4,12 +4,9 @@ VER=0.3.2
 # set up the system / install any deps
 ./bin/system-setup
 
-bzr init-repo cirros
+git clone https://git.launchpad.net/~cirros-dev/cirros cirros
 cd cirros
-bzr branch lp:cirros trunk
-
-bzr branch -r $VER trunk cirros-$VER
-cd cirros-$VER
+git checkout $VER
 
 ./bin/build-release $VER 2>&1 | tee build-$VER.log
 
@@ -19,7 +16,6 @@ rsync -av --progress $USER@$HOST:/path/to/build-$VER/release $VER
 ## now create simplestreams data ##
 # to create simplestream data with mirror at $mirror_d
 ( cd .. && bzr branch lp:simplestreams simplestreams )
-bzr branch lp:cirros cirros
 
 ./bin/mirror-dump-sstream-data "$mirror_d" > mdata.txt
 ../simplestreams/tools/tenv tab2streams mdata.txt cirros-streams.d

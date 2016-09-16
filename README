@@ -7,7 +7,12 @@ To use it, you would do something like:
  * get the build dependencies:
    $ ./bin/system-setup
 
- * bzr branch lp:cirros
+ * git clone https://git.launchpad.net/~cirros-dev/cirros
+   or
+   git clone git://git.launchpad.net/~cirros-dev/cirros
+   or
+   git clone git+ssh://git.launchpad.net/~cirros-dev/cirros
+
  * cd cirros
 
  * download buildroot and setup environment

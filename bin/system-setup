@@ -3,13 +3,13 @@
 source "${0%/*}/common-functions.sh"
 
 _APT_UPDATED=false
-CIRROS_BRANCH="lp:cirros"
+CIRROS_BRANCH="https://git.launchpad.net/~cirros-dev/cirros"
 CIRROS_D=""
 DEPS=(
     bc
     bison
     build-essential
-    bzr
+    git
     dosfstools
     flex
     gdisk
@@ -88,8 +88,8 @@ apt_install "${DEPS[@]}"
 
 if [ -z "$CIRROS_D" ]; then
     error "getting $CIRROS_BRANCH to $PWD/cirros"
-    bzr branch "$CIRROS_BRANCH" cirros ||
-        fail "failed branch $CIRROS_BRANCH"
+    git clone "$CIRROS_BRANCH" cirros ||
+        fail "failed clone $CIRROS_BRANCH"
     CIRROS_D="$PWD/cirros"
 fi
 

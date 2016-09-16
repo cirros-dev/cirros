@@ -4,10 +4,15 @@ For many things, you can quickly iterate without root by doing something like:
    * tar -xvzf $uec_tgz
    * initrd=$(echo *-initrd)
    * cp $initrd $initrd.dist
-   * frev=$(bzr revno) # set to whatever your last image was
+   * chash=$(git log -1 -U "--pretty=%H") # set to whatever your last image was
+    ts=$(git log --date=iso --pretty="%cd" -1 "$spec") ||
+        { error "couldn't git log $spec"; return 1; }
+    out=$(date --date="$ts" "$fmt") ||
+        { error "failed convert of '$ts' to format=$fmt"; return 1; }
  * Then changes things
  * cp $initrd.dist $initrd
-   (cd ../cirros/src && bzr status --versioned --short -r $frev |
-      awk '$2 ~ "^src/" {sub("^src/","",$2); print $2}' | cpio -H newc -o ) |
+   (cd ../cirros/src && 
+      git diff --stat "$frev" |
+      awk '$1 ~ "^src/" {sub("^src/","",$1); print $1}' | cpio -H newc -o ) |
       gzip -c >> "$initrd"
  * kvm -kernel *-vmlinuz -initrd "$initrd" -append "console=ttyS0" -nographic

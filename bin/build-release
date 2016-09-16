@@ -100,8 +100,7 @@ fi
 # really just here to check that VER is a tag
 # or source code checkout would fail
 if ! $daily; then
-    revno=$(bzr tags -r "tag:$VER") || fail "$VER: not a tag in $PWD."
-    revno=$(echo "$revno" | awk '{print $2}')
+    git tag -l | grep -q "^$VER$" || fail "$VER: not a tag in $PWD."
 fi
 
 logevent "begin" -
@@ -183,13 +182,12 @@ sudo chown -R $USER:$USER "$OUT/stage"
 
 mkdir -p "$OUT/release"
 
-#srctgz="$OUT/release/cirros-$VER-source.tar.gz"
-#bzr export -r "tag:$VER" --format=tgz --root="cirros-$VER" "$srctgz"
-#echo "wrote source tgz: $srctgz"
 if ! $daily; then
    ( srcd="$PWD" && tmpd=$(mktemp -d) && cd "$tmpd" &&
-        bzr branch "$srcd" -r tag:$VER cirros-$VER &&
-        rm -Rf cirros-$VER/.bzr &&
+        git clone "$srcd" "cirros-$VER" &&
+        cd "cirros-$VER" && git checkout "$VER" &&
+        cd .. &&
+        rm -Rf "cirros-$VER/.git/" &&
         echo "$VER" > "cirros-$VER/src/etc/cirros/version" &&
         tar cvzf - cirros-$VER ) > "$OUT/release/cirros-$VER-source.tar.gz"
 fi
