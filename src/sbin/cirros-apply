@@ -3,7 +3,8 @@
 . ${CIRROS_LIB:=/lib/cirros/shlib_cirros} ||
 	{ echo "failed to read ${CIRROS_LIB}" 1>&2; exit 1; }
 
-SSH_ROOT_PREFIX="command=\"echo Please login as \\'cirros\\' user, not as root; echo; sleep 10\""
+SSH_ROOT_EXIT_CODE=43
+SSH_ROOT_PREFIX="command=\"echo Please login as \\'cirros\\' user, not as root; echo; sleep 10; exit ${SSH_ROOT_EXIT_CODE};\""
 
 Usage() {
 	cat <<EOF
