@@ -2,6 +2,7 @@
 #
 #    Authors: Scott Moser <smoser@canonical.com>
 #             Marcin Juszkiewicz <marcin.juszkiewicz@linaro.org>
+#             Rafael Folco <rfolco@br.ibm.com>
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -89,6 +90,24 @@ build_arch() {
     return $ret
 }
 
+get_grub_format() {
+    local arch=$1
+    case "$arch" in
+        powerpc|ppc*) format=ieee;;
+        *) format=efi;;
+    esac
+    echo $format
+}
+
+get_img_size() {
+    local arch=$1
+    case "$arch" in
+        powerpc|ppc*|aarch64) size=96M;;
+        *) size="";;
+    esac
+    echo $size
+}
+
 if [ "$1" = "build_arch" ]; then
     shift
     build_arch "$@"
@@ -106,6 +125,7 @@ fi
 logevent "begin" -
 tstart=${_RET}
 
+# Stage 1: DOWNLOAD
 logevent "start download" -
 rm -f download
 mkdir -p ../download
@@ -131,13 +151,28 @@ echo "$VER" > "src/etc/cirros/version"
 logevent "end unpack"
 
 logevent "start br-source" -
-make ARCH=i386 br-source
+make ARCH=${ARCHES%% *} br-source
 logevent "end br-source"
 
-logevent "start kernel download" -
-grab-kernels "$KVER" ${ARCHES}
-logevent "end kernel download"
+logevent "start kernel and grub downloads" -
+kstart=${_RET}
+for arch in ${ARCHES}; do
+    format=$(get_grub_format "$arch")
+    mkdir -p "$OUT/stage/$arch"
 
+    # grab kernel
+    logevent "start kernel ($arch) download" -
+    grab-kernels "$KVER" $arch
+    logevent "end kernel ($arch) download"
+
+    # grab grub
+    logevent "start grub $arch-$format download" -
+    grab-grub-${format} "$GVER" $arch
+    logevent "end grub $arch-$format download"
+done
+logevent "end kernel and grub downloads" "$kstart"
+
+# STAGE 2: BUILD
 jobs_flag=""
 parallel=true
 case "${CIRROS_PARALLEL:-none}" in
@@ -157,26 +192,18 @@ else
     done;
 fi
 
-logevent "start grub EFI download" -
-grab-grub-efi "$GVER" $ARCHES
-logevent "end grub EFI download"
-
+# STAGE 3: BUNDLE
 for arch in ${ARCHES}; do
-    mkdir -p "$OUT/stage/$arch"
-done
-
-logevent "start bundling" -
-for arch in ${ARCHES}; do
-    case "$arch" in
-        powerpc|ppc*|aarch64) size=96M;;
-        *) size="";;
-    esac
+    # bundle rootfs, kernel & grub
+    format=$(get_grub_format "$arch")
+    size=$(get_img_size "$arch")
+    logevent "start bundling $arch" -
     sudo ./bin/bundle -v ${size:+--size=$size} --arch="$arch" \
         "$OUT/build/$arch/rootfs.tar" \
-        ./download/kernel-$arch.tar.gz ./download/grub-efi-$arch.tar.gz \
+        ./download/kernel-$arch.tar.gz ./download/grub-${format}-$arch.tar.gz \
         "$OUT/stage/$arch";
+    logevent "finish bundling $arch"
 done
-logevent "finish bundling"
 
 sudo chown -R $USER:$USER "$OUT/stage"
 

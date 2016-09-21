@@ -5,6 +5,7 @@
 #
 #    Authors: Scott Moser <smoser@canonical.com>
 #             Marcin Juszkiewicz <marcin.juszkiewicz@linaro.org>
+#             Rafael Folco <rfolco@br.ibm.com>
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -45,7 +46,7 @@ getsize() {
 
 Usage() {
     cat <<EOF
-Usage: ${0##*/} [options] partition-image grub-efi-tarball architecture disk-image
+Usage: ${0##*/} [options] partition-image grub-{efi|ieee}-tarball architecture disk-image
 
     Create disk image 'disk-image' with 'partition-image' in a partition
     inside it. Add grub if requested.
@@ -54,6 +55,7 @@ Usage: ${0##*/} [options] partition-image grub-efi-tarball architecture disk-ima
       -G | --grub       install grub to disk image mbr
          | --grub1      install grub1 to disk image mbr
          | --grub-efi   install EFI grub to disk image
+         | --grub-ieee  install ieee1275 grub to disk image prep partition
       -s | --size  S    create the disk image of size 'S'.
                         default is large enough to fit partition-image
       -v | --verbose    increase verbosity
@@ -84,7 +86,7 @@ cleanup() {
 trap cleanup EXIT
 
 short_opts="b:c:Ghs:v"
-long_opts="grub-efi,grub1,grub,help,size:,verbose"
+long_opts="grub-ieee,grub-efi,grub1,grub,help,size:,verbose"
 getopt_out=$(getopt --name "${0##*/}" \
     --options "${short_opts}" --long "${long_opts}" -- "$@") &&
     eval set -- "${getopt_out}" ||
@@ -96,12 +98,20 @@ grub_ptnum=1
 grub=0
 grub1=0
 grub_efi=0
+grub_ieee=0
 while [ $# -ne 0 ]; do
     cur=${1}; next=${2};
     case "$cur" in
         -G|--grub) grub=1;;
         -G|--grub1) grub1=1;;
-        --grub-efi) grub_efi=1;;
+        --grub-efi)
+            grub_efi=1
+            ptype="ef00" # EFI System
+        ;;
+        --grub-ieee)
+            grub_ieee=1
+            ptype="4100" # PowerPC PreP Boot
+        ;;
         -h|--help) Usage; exit 0;;
         -s|--size) size_in=$2; shift;;
         -v|--verbose) DEBUG=$((${DEBUG}+1));;
@@ -110,10 +120,10 @@ while [ $# -ne 0 ]; do
     shift;
 done
 
-[ $# -eq 4 ] || bad_Usage "must supply partition image, grub-efi tarball, architecture and output file"
+[ $# -eq 4 ] || bad_Usage "must supply partition image, grub-{efi|ieee} tarball, architecture and output file"
 
 pimg=${1}
-grub_efi_in=${2}
+grub_in=${2}
 arch=${3}
 dimg=${4}
 
@@ -159,8 +169,11 @@ dd if=/dev/zero of="${dimg}" bs=$ssize count=$tot_size_sectors \
     fail "failed to write to ${dimg}"
 
 debug 2 "create partitions"
-sgdisk -n 15:2048:+8M -t 15:ef00 -N 1 $dimg
+sgdisk -n 15:2048:+8M -t 15:${ptype} -N 1 $dimg
 loop_nr=`kpartx -av $dimg | head -n1 | cut -d" " -f3 | cut -d"p" -f2`
+
+debug 2 "parted $dimg print"
+parted $dimg print
 
 # copy partition image. this writes $pimg bytes even if that is
 # not divivisble by $ssize
@@ -199,7 +212,7 @@ if [ $grub_efi -ne 0 ]; then
     mkfs.vfat /dev/mapper/loop${loop_nr}p15
     mount /dev/mapper/loop${loop_nr}p15 $TMP/efi
     install -d $TMP/efi/EFI/BOOT $TMP/efi/EFI/ubuntu
-    tar -xf $grub_efi_in -C $TMP/efi/EFI/BOOT
+    tar -xf $grub_in -C $TMP/efi/EFI/BOOT
 
     mount /dev/mapper/loop${loop_nr}p1 $TMP/rootfs
     kernelfile=$(cd $TMP/rootfs/boot; ls vmlinu* | head -n1)
@@ -223,6 +236,39 @@ menuentry 'CirrOS' {
 EOF
 
     umount "$TMP/efi"
+    umount "$TMP/rootfs"
+fi
+
+# grub-ieee1275 (powerpc)
+if [ $grub_ieee -ne 0 ]; then
+    TMP=$(mktemp -d)
+    install -d $TMP/rootfs $TMP/tar
+
+    mkfs.vfat /dev/mapper/loop${loop_nr}p15
+    tar -xf $grub_in -C $TMP/tar
+    dd if=$TMP/tar/grub of=/dev/mapper/loop${loop_nr}p15
+
+    mount /dev/mapper/loop${loop_nr}p1 $TMP/rootfs
+    kernelfile=$(cd $TMP/rootfs/boot; ls vmlinu* | head -n1)
+    initrdfile=$(cd $TMP/rootfs/boot; ls initrd.img-* | head -n1)
+
+    cat >$TMP/rootfs/boot/grub/grub.cfg <<EOF
+set default=0
+set timeout=1
+menuentry 'CirrOS' {
+        set root='ieee1275/disk,gpt1'
+
+        if [ x$feature_platform_search_hint = xy ]; then
+          search --no-floppy --label --set=root --hint-ieee1275=ieee1275/disk,gpt1 cirros-rootfs
+        else
+          search --no-floppy --label --set=root cirros-rootfs
+        fi
+
+    linux  /boot/${kernelfile} LABEL=cirros-rootfs ro
+    initrd /boot/${initrdfile}
+}
+EOF
+
     umount "$TMP/rootfs"
 fi
 

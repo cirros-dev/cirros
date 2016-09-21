@@ -1,0 +1,103 @@
+#!/bin/bash
+#
+#    Copyright (C) 2016 IBM Corp.
+#
+#    Author: Rafael Folco <rfolco@br.ibm.com>
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, version 3 of the License.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+source "${0%/*}/common-functions.sh"
+
+burl="https://launchpad.net/ubuntu/+archive/primary/+files/"
+outdir="./download"
+def_arches="ppc64le powerpc ppc64"
+
+[ "$1" = "--outdir" ] && { outdir="$1" && shift; }
+gver="$1"
+shift
+
+if [ $# -eq 0 ]; then
+   set -- ${def_arches}
+fi
+
+[ -d "$outdir" ] || mkdir -p "$outdir" ||
+   fail "failed mkdir $outdir"
+
+[ -n "$gver" ] || fail "must give grub version"
+
+deb2tar() {
+
+    local deb="$1" tar="$2"
+
+    t=$(dirname "$deb")
+    tdir=$(mktemp -d "$t/.XXXXXX") || return
+
+    debug 1 "creating $out in tempdir at $tdir"
+
+    mkdir -p "$tdir/deb"
+    dpkg -x "$deb" "$tdir/deb" || fail "failed to unpack $deb"
+
+    gbin="grub"
+    gmod="boot cat configfile echo ext2 halt loadenv minicmd normal part_gpt
+          reboot search search_fs_uuid search_fs_file search_label serial sleep
+          test linux"
+
+    debug 2 "grub-mkimage: creating grub powerpc-ieee1275 image"
+    grub-mkimage --directory "${tdir}/deb/usr/lib/grub/powerpc-ieee1275" \
+        --prefix "(ieee1275/disk,gpt1)/boot/grub" \
+        --output "$tdir/${gbin}" \
+        --format "powerpc-ieee1275" \
+        --compression "none" $gmod
+
+    rm -rf "$tdir/deb"
+    debug 2 "creating grub.tar.gz"
+    tar -C "$tdir/" -czf "$tdir/grub.tar.gz" $gbin &&
+        mv "$tdir/grub.tar.gz" "$tar" || {
+            error "failed creating tarball";
+            rm -Rf "$tdir"
+            return 1;
+        }
+    rm -Rf "$tdir"
+    return 0
+
+}
+
+for arch in "$@"; do
+    case "$arch" in
+        ppc64le)
+            debarch='ppc64el'
+            ;;
+        powerpc|ppc64)
+            debarch='powerpc'
+            ;;
+        *)
+            debug 1 "no grub-ieee1275 for $arch"
+            exit 1
+            ;;
+    esac
+
+    # e.g. https://launchpad.net/ubuntu/+archive/primary/+files/grub-ieee1275-bin_2.02~beta2-36ubuntu8_ppc64el.deb
+    deb="grub-ieee1275-bin_${gver}_${debarch}.deb"
+    if [ ! -f "${outdir}/${deb}" ]; then
+            dl $burl/$deb "$outdir/$deb" || fail "failed dl $burl/$deb"
+    fi
+    tar="grub-ieee-${gver}-${arch}.tar.gz"
+    deb2tar "$outdir/$deb" "$outdir/$tar" ||
+        fail "failed deb2tar from $deb to $tar"
+
+    error "wrote $outdir/${tar}"
+    ln -sf "${tar}" "$outdir/grub-ieee-${arch}.tar.gz" ||
+        fail "failed symlink for $outdir/grub-ieee-${arch}.tar.gz"
+done
+# vi: ts=4 expandtab
