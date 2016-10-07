@@ -101,34 +101,151 @@ debug_connection() {
 	echo "############ debug end   ##############"
 }
 
-mount_callback_umount() {
-	# dev, opts, callback, args
-	local dev="$1" opts="$2" callback="$3" ret=""
-	local tmpd=$(mktemp -d "${TMPDIR:-/tmp}/${0##*/}.mp.XXXXXX")
-	mount "$dev" $opts "$tmpd" || {
+dev_with_info() {
+	local info="$1" dev=""
+	dev=$(blkid -l -o device -t "$info") &&
+		[ -b "$dev" ] && _RET="$dev"
+	return
+}
+
+check_sbin_init() {
+	# used as mount_callback callback
+	debug 1 "check_sbin_init: $*"
+	local dev="$1" mp="$2"
+	shift 2
+	[ -x "$mp/sbin/init" ]
+}
+
+search_for_blank() {
+	# search_for_root(info, mountpoint)
+	local info="$1" opts="$2" mp="$3"
+	mount_callback "$info" "$opts" "$mp" false
+}
+
+search_for_root() {
+	# search_for_root(info, mountpoint)
+	local info="$1" opts="$2" mp="$3"
+	shift 2;
+	mount_callback "$info" "$opts" "$mp" cbfail check_sbin_init
+}
+
+mount_callback() {
+	# mount_fs_callback(info, mount_opts, target, umount, callback [args])
+	# attempt to mount a device with info 'info' with mount_opts
+	# at target.  if target is 'tmp', then create a temp dir.
+	# on success call callback
+	# unmount:
+	#   true: unmount
+	#   cbfail: unmount callback returns non-zero
+	#   false: do not unmount
+	# callback is called like:
+	#    callback <device> <mountpoint> [args]
+	#
+	# info can be:
+	#   /*        : block device path
+	#   LABEL=*   : filesystem with provided label
+	#   UUID=*    : filesystem with provided uuid
+	#
+	# return value:
+	#   2: unknown failure
+	#   3: mount failed
+	#   4: device not found
+	# otherwise, return the callback's return code.
+	local info="$1" mount_opts="$2" target="$3" unmount="${4-true}"
+	local fail_unknown=2 fail_mount=3 fail_not_found=4
+	local tmpd="" msg="" mp=""
+	_RET_MCB_MP=""
+	_RET_MCB_DEV=""
+	shift 4;
+	if [ $# -eq 0 ]; then
+		set -- :
+	fi
+	local callback="$1"
+	shift
+	case "$unmount" in
+		true|false|cbfail) :;;
+		*)
+			error "unexpected input for unmount: '$unmount'"
+			return $fail_unknown
+	esac
+	case "$info" in
+		/*) dev="$info"
+			[ -b "$dev" ] || return $fail_not_found;;
+		LABEL=*|UUID=*)
+			dev_with_info "$info" && dev="$_RET" ||
+				return $fail_not_found;;
+		*)
+			error "unexpected mount info: $info";
+			return $fail_unknown;;
+	esac
+	if [ "$target" = "tmp" ]; then
+		tmpd=$(mktemp -d "${TMPDIR:-/tmp}/${0##*/}.mp.XXXXXX") ||
+			return $fail_unknown
+		debug 2 "mktemp failed"
+		mp="$tmpd"
+	else
+		mp="$target"
+	fi
+	case "$mount_opts" in
+		ro|rw) mount_opts="-o $mount_opts";;
+	esac
+	msg="mcb [info=$info dev=$dev target=$target unmount=$unmount callback=$callback]"
+	debug 1 "$msg: mount '$dev' '$mount_opts' '$mp'"
+	mount "$dev" $mount_opts "$mp" || {
 		ret=$?;
-		debug 2 "failed mount $dev";
-		rmdir "$tmpd"
-		return $ret;
+		debug 2 "$msg: failed mount $dev";
+		if [ -n "$tmpd" ]; then
+			rmdir "$tmpd"
+			return $fail_mount;
+		fi
 	}
-	shift 3;
-	"$callback" "$tmpd" "$@"
+	"$callback" "$dev" "$mp" "$@"
 	ret=$?
-	umount "$tmpd" || {
-		ret=$?;
-		debug 1 "failed umount $dev";
-		return $ret;
-	}
-	rmdir "$tmpd"
-	return 0
+	msg="${msg%]} ret=$ret"
+	if [ "$unmount" = "true" ] ||
+		[ "$unmount" = "cbfail" -a "$ret" -ne 0 ]; then
+		umount "$dev" || {
+			error "$msg: failed to unmount"
+			return $fail_unknown
+		}
+		if [ "$target" = "tmp" ]; then
+			rmdir "$tmpd" || {
+				error "$msg: failed rmdir $tmpd"
+				return $fail_unknown
+			}
+		fi
+	else
+		[ "$unmount" = "cbfail" ] &&
+			debug 2 "$msg: not unmounting cbfail=0"
+		_RET_MCB_MP="$mp"
+	fi
+	_RET_MCB_DEV="$dev"
+	return $ret
+}
+
+mcu_drop_dev_arg() {
+	# mount_callback_umount called the callbacks with only
+	# mountpoint, while mount_callback calls dev and mountpoint
+	# this is used to provide legacy interface.
+	local dev="$1" mp="$2" fn="$3"
+	shift 3
+	debug 1 "mcudda: fn=$fn dev=$dev mp=$mp : $*"
+	"$fn" "$mp" "$@"
+}
+
+mount_callback_umount() {
+	# this is legacy-ish wrapper around mount_callback
+	local dev="$1" opts="$2"
+	shift 2
+	mount_callback "$dev" "$opts" tmp true mcu_drop_dev_arg "$@"
 }
 
 find_devs_with() {
 	# return a list of devices that match filter
 	# where filter is like:
-    #  TYPE=<filesystem>
-    #  LABEL=<label>
-    #  UUID=<uuid>
+	#  TYPE=<filesystem>
+	#  LABEL=<label>
+	#  UUID=<uuid>
 	local filter="$1"
 	local out rc ret=""
 	out=$(blkid "-t$filter" "-odevice" 2>/dev/null)
@@ -229,11 +346,14 @@ parse_cmdline() {
 			init) KC_INIT="$val";;
 			debug-initramfs) KC_DEBUG_INITRAMFS=1;;
 			verbose) KC_VERBOSE=1;;
+			verbose=*) KC_VERBOSE=${tok#verbose=};;
 		esac
 	done
 
 	case "$KC_ROOT" in
-		[Nn][Oo][Nn][Ee]|ramdisk) KC_RAMDISK_ROOT=1;;
+		[Nn][Oo][Nn][Ee]|ramdisk)
+			KC_RAMDISK_ROOT=1;
+			KC_ROOT="ramdisk";;
 	esac
 
 	# set KC_PREF_CONSOLE to the last writable console

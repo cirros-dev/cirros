@@ -30,17 +30,22 @@ idebug "loading modules"
 /etc/init.d/load-modules start
 
 ROOT=""
-MOUNTED=""
+NEWROOT_MP=/newroot
 
-if [ "$KC_RAMDISK_ROOT" != "1" ]; then
-	while read maj min blk name other; do
-		[ -n "${maj}" -a "${maj}" != "major" ] || continue
-		umount=0
-		mount -o ro "/dev/${name}" "/newroot" >/dev/null 2>&1 &&
-			MOUNTED="$MOUNTED ${name}" && umount=1 &&
-			[ -x /newroot/sbin/init ] && ROOT="/dev/$name" && break
-		[ ${umount} -eq 0 ] || umount /newroot
-	done < /proc/partitions
+rootspec="$KC_ROOT"
+if [ -z "$rootspec" ]; then
+	rootspec="LABEL=$ROOTFS_LABEL"
+	debug 2 "using default root=$rootspec"
+fi
+
+ROOT=""
+if [ "$KC_RAMDISK_ROOT" = "1" ]; then
+	ROOT="ramdisk"
+elif search_for_root "$rootspec" ro "$NEWROOT_MP"; then
+	debug 2 "mounted root '$rootspec' from dev '${_RET_MCB_DEV}'"
+	ROOT="${_RET_MCB_DEV}"
+else
+	debug 1 "did not find a device matching $rootspec"
 fi
 
 if [ "$KC_DEBUG" = "1" ]; then
@@ -48,44 +53,37 @@ if [ "$KC_DEBUG" = "1" ]; then
 	/bin/sh
 fi
 
-if [ -z "$ROOT" -a "$KC_RAMDISK_ROOT" != "1" ] &&
-   blank=$(blkid -l -o device -t LABEL=$ROOTFS_LABEL) &&
-   [ -e "$blank" ]; then
-	iinfo "copying initramfs to $blank"
-	items=""
-	set +f
-	for x in /*; do
-		case "$x" in
-			/dev|/proc|/newroot) : ;;
-			*) items="$items $x";;
-		esac
-	done
-	set -f
-	mount "$blank" /newroot
-	mkdir -p /newroot/dev /newroot/proc
-	cp -a $items /newroot/
-	cp -a /dev/console /newroot/dev
-	mount -o remount,ro /newroot
-	ROOT="$blank"
+if [ -z "$ROOT" ]; then
+	if search_for_blank "$rootspec" rw "$NEWROOT_MP"; then
+		blank="${_RET_MCB_DEV}"
+		# copy initramfs to new mount.
+		iinfo "copying initramfs to $blank"
+		items=""
+		set +f
+		for x in /*; do
+			case "$x" in
+				/dev|/proc|/newroot) : ;;
+				*) items="$items $x";;
+			esac
+		done
+		set -f
+		mkdir -p "${NEWROOT_MP}/dev" "${NEWROOT_MP}/proc"
+		cp -a $items "${NEWROOT_MP}/"
+		cp -a "/dev/console" "$NEWROOT_MP/dev/"
+		mount -o remount,ro "$NEWROOT_MP"
+		ROOT="$blank"
+	fi
 fi
 
-if [ -n "$ROOT" ]; then
+if [ -n "$ROOT" -a "$ROOT" != "ramdisk" ]; then
 	cd /newroot
 	mount -o move /dev ./dev
 	umount /proc
 	iinfo "initramfs loading root from $ROOT"
 	exec switch_root /newroot "$KC_INIT" "$@"
 else
-	while read maj min blk name other; do
-		[ -n "${maj}" -a "${maj}" != "major" ] || continue
-		umount=0
-		mount -o ro "/dev/${name}" "/newroot" >/dev/null 2>&1 &&
-			umount=1 &&
-			[ -x /newroot/sbin/init ] && ROOT="/dev/$name" && break
-		[ ${umount} -eq 0 ] || umount /newroot
-	done < /proc/partitions
 	umount /proc
-	[ "$KC_RAMDISK_ROOT" = "0" ] &&
+	[ "$ROOT" != "ramdisk" ] &&
 		iinfo "initramfs did not find root, running as ramdisk" ||
 		iinfo "running in ramdisk mode as requested"
 	exec "$KC_INIT" "$@"

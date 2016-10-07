@@ -292,8 +292,9 @@ debug 1 "populating image"
 mount -o loop "${out_partimg}" "${mp}" && UMOUNT=${mp} ||
     fail "failed to mount ${out_partimg} loopback"
 
-tar -C "$mp" -xpf - < "$filesys_tar" ||
-    fail "failed to populate mount point"
+tar -C "$mp" -xpf - vmlinuz initrd.img boot/ < "$kernel_tar" ||
+    fail "failed to extract kernel_tar"
+cp "$initramfs" "$mp/boot/initrd.img-${kver}"
 
 umount "${mp}" && UMOUNT="" ||
     fail "failed to unmount ${out_partimg}"
