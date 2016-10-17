@@ -71,6 +71,7 @@ deb2tar() {
 }
 
 for arch in "$@"; do
+    efiarch=""
     case "$arch" in
         aarch64)
 		efiarch='aa64'
@@ -99,7 +100,10 @@ for arch in "$@"; do
         *) debug 1 "no EFI grub for $arch";;
     esac
 
-    [ -z $efiarch ] && continue
+    if [ -z "$efiarch" ]; then
+        error "arch '$arch' does not have a known EFI grub. skipping."
+        continue
+    fi
 
     deb="grub-efi-${pkgarch}-bin_${gver}_${debarch}.deb"
     if [ ! -f "${outdir}/${deb}" ]; then
