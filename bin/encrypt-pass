@@ -1,0 +1,50 @@
+#!/bin/sh
+# vi: ts=4 noexpandtab
+Usage() {
+   cat <<EOF
+Usage: ${0##*/} password [format]
+
+convert password to crypt'd password suitable for /etc/shadow
+
+  format is one of:
+     md5 [default]
+     sha256
+     sha512
+EOF
+}
+
+encrypt_pass() {
+	local pass="$1" fmt="${2:-md5}" fmt_arg=""
+	case "$fmt" in
+		md5) fmt_arg='$1$';;
+		sha256) fmt_arg='$5$';;
+		sha512) fmt_arg='$6$';;
+		\$*\$) fmt_arg="$fmt";;
+	esac
+	enc=$(echo "$pass" |
+		perl -e '
+			$p=<STDIN>; chomp($p);
+			$salt = join "", map { (q(a)..q(z))[rand(26)] } 1 .. 8;
+			if (${ARGV[0]}) { $salt = "${ARGV[0]}$salt\$"; }
+			print crypt($p, "$salt") . "\n";' "$fmt_arg") || return
+	[ -n "${enc}" ] && [ "${enc#${fmt_arg}}" != "${enc}" ] &&
+		_RET="$enc"
+}
+error() { echo "$@" 1>&2; }
+fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
+
+[ "$1" = "--help" -o "$1" = "-h" ] && { Usage; exit 0; }
+if ! [ $# -eq 1 -o $# -eq 2 ]; then 
+	Usage 1>&2
+	error "got $# args, expected 1 or 2"
+	exit 1
+fi
+
+password="$1"
+fmt=${2:-md5}
+if [ "$1" = "-" ]; then
+   read password || fail "failed to read password from stdin"
+fi
+
+encrypt_pass "$password" "$fmt" || fail "failed to encrypt password in '$fmt'"
+echo "$_RET"
