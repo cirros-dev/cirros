@@ -21,15 +21,17 @@ encrypt_pass() {
 		sha512) fmt_arg='$6$';;
 		\$*\$) fmt_arg="$fmt";;
 	esac
-	enc=$(echo "$pass" |
-		perl -e '
-			$p=<STDIN>; chomp($p);
-			$salt = join "", map { (q(a)..q(z))[rand(26)] } 1 .. 8;
-			if (${ARGV[0]}) { $salt = "${ARGV[0]}$salt\$"; }
-			print crypt($p, "$salt") . "\n";' "$fmt_arg") || return
+	enc=$(python3 -c '
+import crypt, random, string, sys
+pw, fmt = sys.argv[1], sys.argv[2]
+salt = "".join(
+    random.choice(string.ascii_letters + string.digits) for i in (0, 1))
+print(crypt.crypt(pw, fmt + salt))
+' "$pass" "${fmt_arg}") || return
 	[ -n "${enc}" ] && [ "${enc#${fmt_arg}}" != "${enc}" ] &&
 		_RET="$enc"
 }
+
 error() { echo "$@" 1>&2; }
 fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
 
