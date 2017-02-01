@@ -9,7 +9,7 @@ echo "Top of dropbear init script"
 test -r /etc/default/dropbear && . /etc/default/dropbear
 
 start() {
-	DROPBEAR_ARGS="$DROPBEAR_ARGS -R"
+	DROPBEAR_ARGS="$DROPBEAR_ARGS"
 
 	echo -n "Starting dropbear sshd: "
 	umask 077
@@ -26,14 +26,22 @@ start() {
 	for ktype in rsa dss ecdsa; do
 		file="/etc/dropbear/dropbear_${ktype}_host_key"
 		# -f = input file, -y = validate and print pubkey info
-		if ! dropbearkey -f "$file" -y &>/dev/null; then
+		if ! dropbearkey -f "$file" -y >/dev/null 2>&1; then
 			if [ -e "$file" ]; then
 				echo "Removing invalid key: $file"
 				rm -f "$file"
 			fi
 			# -t = type (dss, rsa, ecdsa), -f = output file
-			dropbearkey -t "$ktype" -f "$file" >/dev/null 2>&1 ||
-		echo "WARN: generating key of type $ktype failed!"
+			tmp="${file}.working.$$"
+			if [ -e "$tmp" ]; then
+				rm -f "$tmp" ||
+					echo "WARN: failed to remove tmp file '$tmp'"
+			fi
+			dropbearkey -t "$ktype" -f "$tmp" >/dev/null 2>&1 &&
+				mv "$tmp" "$file" || {
+					echo "WARN: generating key of type $ktype failed!"
+					rm -f "$tmp"
+			}
 		fi
 	done
 	start-stop-daemon -S -q -p /var/run/dropbear.pid \
