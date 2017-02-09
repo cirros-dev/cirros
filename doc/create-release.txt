@@ -1,16 +1,12 @@
 # set version to build
-VER=0.3.2
+VER=0.3.5
 
 # get some build dependencies:
-sudo apt-get update
-sudo apt-get -qy install bison flex texinfo build-essential gettext ncurses-dev unzip bzr qemu-kvm quilt wget rsync
+./bin/system-setup
 
-bzr init-repo cirros
+git clone https://git.launchpad.net/~cirros-dev/cirros cirros
 cd cirros
-bzr branch lp:cirros trunk
-
-bzr branch -r $VER trunk cirros-$VER
-cd cirros-$VER
+git checkout $VER
 
 ./bin/build-release $VER 2>&1 | tee build-$VER.log
 

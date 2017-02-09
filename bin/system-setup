@@ -1,0 +1,98 @@
+#!/bin/bash
+
+source "${0%/*}/common-functions.sh"
+
+_APT_UPDATED=false
+CIRROS_BRANCH="https://git.launchpad.net/~cirros-dev/cirros"
+CIRROS_D=""
+DEPS=(
+    bc
+    bison
+    build-essential
+    git
+    dosfstools
+    flex
+    gdisk
+    gettext
+    kpartx
+    libncurses5-dev
+    mtools
+    parallel
+    qemu-kvm
+    quilt
+    rsync
+    texinfo
+    unzip
+    wget
+)
+
+apt_get() {
+    local ret=""
+    if [ "$1" != "update" ] && ! $_APT_UPDATED; then
+        error "updating apt"
+        apt_get update >/dev/null || {
+            ret=$?;
+            error "failed to update apt [$ret]";
+            return $ret;
+        }
+        _APT_UPDATED=true
+    fi
+    sudo DEBIAN_FRONTEND=noninteractive apt-get --quiet \
+        --assume-yes "$@" </dev/null
+}
+
+filter_installed_packages() {
+    # write to stdout, a list of packages not installed locally
+    local fmt='${Package} ${Version}\n'
+    LC_ALL=C dpkg-query --show "--showformat=${fmt}" "$@" 2>&1 | awk '
+        $0 ~ /[Nn]o packages/ {
+            sub("[.]$","",$NF);
+            pkgs[n]=$NF;
+            n=n+1;
+        }
+        $2 == "" {
+                pkgs[n]=$1;
+                n=n+1;
+        };
+        END { for(p in pkgs) {printf("%s ",pkgs[p])}; printf("\n"); }' n=0
+}
+
+apt_install() {
+    local needed
+    needed=$(filter_installed_packages "$@")
+    [ -z "$needed" ] && return 0
+    error "installing: $needed"
+    apt_get install "$@"
+}
+
+dist_id=$(lsb_release --short --id) || fail "failed: lsb_release --short --id"
+case "$dist_id" in
+    *buntu) :;;
+    *) fail "do not know how to setup $dist_id";;
+esac
+
+ver=$(lsb_release --short --release)
+[[ "$ver" != "12.04" ]] &&
+    fail "0.3 branch only builds on 12.04"
+
+me=$(readlink -f "$0")
+myd=$(dirname "$me")
+
+if [ -f "$myd/../fixup-fs" ]; then
+    CIRROS_D=$(cd "$myd/.." && pwd)
+elif [ -f "$PWD/cirros/fixup-fs" ]; then
+    CIRROS_D="$PWD/cirros"
+fi
+
+apt_install "${DEPS[@]}"
+
+if [ -z "$CIRROS_D" ]; then
+    error "getting $CIRROS_BRANCH to $PWD/cirros"
+    git clone "$CIRROS_BRANCH" cirros ||
+        fail "failed clone $CIRROS_BRANCH"
+    CIRROS_D="$PWD/cirros"
+fi
+
+error "set up functional to $CIRROS_D"
+
+# vi: tabstop=4 expandtab

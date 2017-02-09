@@ -29,8 +29,9 @@ mkdir -p "$out" "$TMPDIR"
 
 # really just here to check that VER is a tag
 # or source code checkout would fail
-revno=$(bzr tags -r "tag:$VER") || fail "$VER: not a tag in $PWD."
-revno=$(echo "$revno" | awk '{print $2}')
+if true; then
+    git tag -l | grep -q "^$VER$" || fail "$VER: not a tag in $PWD."
+fi
 
 echo "$(date): begin" >> "$out/date.txt";
 echo "$(date): start download" >> "$out/date.txt";
@@ -101,10 +102,12 @@ mkdir -p "$out/release"
 #echo "wrote source tgz: $srctgz"
 
 ( srcd="$PWD" && tmpd=$(mktemp -d) && cd "$tmpd" &&
-  bzr branch "$srcd" -r tag:$VER cirros-$VER &&
-  rm -Rf cirros-$VER/.bzr &&
-  echo "$VER" > "cirros-$VER/src/etc/cirros/version" &&
-  tar cvzf - cirros-$VER ) > "$out/release/cirros-$VER-source.tar.gz"
+     git clone "$srcd" "cirros-$VER" &&
+     cd "cirros-$VER" && git checkout "$VER" &&
+     cd .. &&
+     rm -Rf "cirros-$VER/.git/" &&
+     echo "$VER" > "cirros-$VER/src/etc/cirros/version" &&
+     tar cvzf - cirros-$VER ) > "$out/release/cirros-$VER-source.tar.gz"
 
 rm -f "$out/stage"/*/"$pre"*
 for arch in ${ARCHES}; do
