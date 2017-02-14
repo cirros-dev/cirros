@@ -12,7 +12,7 @@ Usage: ${0##*/} mirror_dir
   Example:
 
     bzr branch lp:simplestreams simplestreams
-    bzr branch lp:cirros cirros
+    git clone https://git.launchpad.net/cirros
 
     ./cirros/bin/mirror-dump-sstream-data "\$mirror_d" > mdata.txt
     ./simplestreams/tools/tenv tab2streams mdata.txt cirros-streams.d
@@ -23,9 +23,9 @@ Usage: ${0##*/} mirror_dir
 EOF
 }
 
-datefortag() {
+datefortag_bzr() {
    local loginfo ts out repo="${CIRROS_BZR:-.}"
-   local spec="$1" fmt="${2:-+%Y%m%d}"
+   local spec="tag:$1" fmt="${2:-+%Y%m%d}"
    loginfo=$(bzr log "$repo" --log-format=long --revision "$spec") ||
       { error "couldn't bzr log tag:$i"; return 1; }
    ts=$(echo "$loginfo" | sed -n '/^timestamp:/s,.*: ,,p') &&
@@ -38,6 +38,22 @@ datefortag() {
    _RET="$out"
 }
 
+datefortag() {
+   local spec="$1" fmt="${2:-+%Y%m%d}"
+   local repo="${CIRROS_GIT:-${CIRROS_BZR:-.}}"
+   if [ ! -d "$repo/.git" -a -d "$repo/.bzr" ]; then
+      datefortag_bzr "$@"
+      return
+   fi
+   local ts="" out=""
+   ts=$( cd "$repo" &&
+      git show --no-patch "--pretty=format:%ct" "$spec") ||
+      { error "failed to 'git show $spec' in $repo"; return 1; }
+   out=$(date --utc --date="@$ts" "$fmt") ||
+      { error "failed to convert seconds '$ts' to format $fmt"; return 1; }
+   _RET="$out"
+}
+
 error() { echo "$@" 1>&2; }
 fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
 
@@ -46,6 +62,8 @@ fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
 
 if [ -z "$CIRROS_BZR" ]; then
    CIRROS_BZR=$(t=$(readlink -f "$0") && cd "${t%/*}/.." && pwd)
+elif [ -z "$CIRROS_GIT" ]; then
+   CIRROS_GIT=$(t=$(readlink -f "$0") && cd "${t%/*}/.." && pwd)
 fi
 
 OIFS="$IFS"
@@ -79,7 +97,7 @@ for ent in "${files[@]}"; do
    version="$1"; fname="$2";
    serial="${VERSION2SERIAL[$version]}"
    if [ -z "$serial" ]; then
-      datefortag "tag:$version" ||
+      datefortag "$version" ||
          fail "serial not found for $version!"
       serial="$_RET"
       VERSION2SERIAL[$version]="$serial"
