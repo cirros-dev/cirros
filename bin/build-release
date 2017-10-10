@@ -118,8 +118,10 @@ fi
 
 # really just here to check that VER is a tag
 # or source code checkout would fail
+tagname=${VER//"~"/_}
 if ! $daily; then
-    git tag -l | grep -q "^$VER$" || fail "$VER: not a tag in $PWD."
+    git tag -l | grep -q "^$tagname$" ||
+        fail "$VER ($tagname): not a tag in $PWD."
 fi
 
 logevent "begin" -
