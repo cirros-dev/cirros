@@ -215,7 +215,7 @@ if ! $daily; then
    ( srcd="$PWD" && tmpd=$(mktemp -d) && cd "$tmpd" &&
         trap "rm -Rf '$tmpd'" EXIT &&
         git clone "$srcd" "cirros-$VER" &&
-        cd "cirros-$VER" && git checkout "$VER" &&
+        cd "cirros-$VER" && git checkout "$tagname" &&
         cd .. &&
         rm -Rf "cirros-$VER/.git/" &&
         echo "$VER" > "cirros-$VER/src/etc/cirros/version" &&
