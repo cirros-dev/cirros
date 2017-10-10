@@ -8,7 +8,7 @@ git clone https://git.launchpad.net/~cirros-dev/cirros cirros
 cd cirros
 git checkout $VER
 
-./bin/build-release $VER 2>&1 | tee build-$VER.log
+CIRROS_PARALLEL=true ./bin/build-release $VER 2>&1 | tee build-$VER.log
 
 # pull that release content into an existing mirror dir
 rsync -av --progress $USER@$HOST:/path/to/build-$VER/release $VER
