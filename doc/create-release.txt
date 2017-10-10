@@ -1,12 +1,13 @@
 # set version to build
 VER=0.3.2
+tag=${VER//"~"/_}
 
 # set up the system / install any deps
 ./bin/system-setup
 
 git clone https://git.launchpad.net/~cirros-dev/cirros cirros
 cd cirros
-git checkout $VER
+git checkout $tag
 
 CIRROS_PARALLEL=true ./bin/build-release $VER 2>&1 | tee build-$VER.log
 
