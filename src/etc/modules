@@ -37,3 +37,9 @@ ip_tables
 #sit
 #veth
 #vxlan
+
+## Block storage
+## Present for config_drive support
+cdrom
+sr_mod
+sg
