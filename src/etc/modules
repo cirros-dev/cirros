@@ -13,6 +13,7 @@ nls_iso8859-1
 
 ## VirtIO
 virtio_blk
+virtio_input
 virtio_net
 virtio_pci
 virtio_scsi
