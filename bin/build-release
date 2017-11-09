@@ -28,10 +28,10 @@ if [ "$1" = "daily" ]; then
 fi
 shift
 pre=cirros-$VER
-BR_VER="2015.05"
+BR_VER="${BR_VER:-2015.05}" # WARNING: this may be non-trivial to change
 ARCHES="${ARCHES:-i386 x86_64 arm powerpc aarch64 ppc64 ppc64le}"
-KVER="4.4.0-28.47" # Ubuntu 16.04
-GVER="2.02~beta2-36ubuntu8"
+KVER="${KVER:-4.4.0-28.47}" # Ubuntu 16.04
+GVER="${GVER:-2.02~beta2-36ubuntu8}" # Ubuntu 16.04
 ME=$(readlink -f "$0")
 MY_D=${ME%/*}
 PATH=${MY_D}:$PATH
