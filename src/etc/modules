@@ -3,7 +3,6 @@ e1000
 ne2k-pci           # arch=x86
 8139cp             # arch=x86
 pcnet32            # arch=x86
-ip_tables
 
 ## VirtIO
 9pnet_virtio
@@ -26,3 +25,15 @@ nls_ascii
 nls_cp437
 nls_iso8859-1
 nls_utf8
+
+## Networking
+#8021q
+#gre
+#ipip
+ip_tables
+#ipvlan
+#macvlan
+#macvtap
+#sit
+#veth
+#vxlan
