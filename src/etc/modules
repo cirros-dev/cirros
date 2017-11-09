@@ -12,6 +12,7 @@ nls_cp437
 nls_iso8859-1
 
 ## VirtIO
+9pnet_virtio
 qemu_fw_cfg
 virtio_blk
 virtio_input
