@@ -22,5 +22,7 @@ ibmvscsi           # arch=powerpc
 ## nls* are needed for VFAT
 isofs
 vfat
+nls_ascii
 nls_cp437
 nls_iso8859-1
+nls_utf8
