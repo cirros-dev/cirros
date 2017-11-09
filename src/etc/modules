@@ -1,10 +1,6 @@
 # modules here are loaded one per line
 ibmvscsic          # arch=powerpc
 ibmveth            # arch=powerpc
-virtio_scsi
-virtio_pci
-virtio_blk
-virtio_net
 e1000
 ne2k-pci           # arch=x86
 8139cp             # arch=x86
@@ -14,3 +10,9 @@ isofs
 vfat
 nls_cp437
 nls_iso8859-1
+
+## VirtIO
+virtio_blk
+virtio_net
+virtio_pci
+virtio_scsi
