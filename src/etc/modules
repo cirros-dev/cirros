@@ -1,6 +1,4 @@
 # modules here are loaded one per line
-ibmvscsic          # arch=powerpc
-ibmveth            # arch=powerpc
 e1000
 ne2k-pci           # arch=x86
 8139cp             # arch=x86
@@ -19,3 +17,7 @@ virtio_input
 virtio_net
 virtio_pci
 virtio_scsi
+
+## PowerPC
+ibmveth            # arch=powerpc
+ibmvscsic          # arch=powerpc
