@@ -24,6 +24,7 @@ DEPS=(
     texinfo
     unzip
     wget
+    xz-utils
 )
 
 apt_get() {

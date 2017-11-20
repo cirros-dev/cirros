@@ -209,6 +209,12 @@ done
 
 sudo chown -R $USER:$USER "$OUT/stage"
 
+logevent "generating lxd.tar.xz for ${ARCHES}" -
+for arch in ${ARCHES}; do
+    ./bin/generate-lxd-meta "$OUT/stage/$arch/lxd.tar.xz" "$arch" "$VER"
+done
+logevent "done generating lxd.tar.xz for ${ARCHES}"
+
 mkdir -p "$OUT/release"
 
 if ! $daily; then
@@ -232,6 +238,8 @@ for arch in ${ARCHES}; do
         ln blank.img $p-blank.img &&
         ln disk.img $p-disk.img &&
         ln filesys.tar.gz $p-lxc.tar.gz &&
+        ln filesys.tar.xz $p-lxc.tar.xz &&
+        ln lxd.tar.xz $p-lxd.tar.xz &&
         true
     );
 done
@@ -240,7 +248,8 @@ logevent "start populating release" -
 for arch in ${ARCHES}; do
     p=$pre-$arch
     ( cd "$OUT/stage/$arch" &&
-        cp $p-kernel $p-initramfs $p-lxc.tar.gz "$OUT/release/" &&
+        cp $p-kernel $p-initramfs $p-lxc.tar.gz $p-lxc.tar.xz \
+            $p-lxd.tar.xz "$OUT/release/" &&
         gzip -9 -c $p-rootfs.img > $OUT/release/$p-rootfs.img.gz ) &&
         ( cd "$OUT/stage/$arch" &&
             tar cvzf - $p-blank.img $p-vmlinuz $p-initrd

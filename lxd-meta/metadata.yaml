@@ -1,0 +1,27 @@
+architecture: "@@ARCH@@"
+creation_date: @@SERIAL_SECONDS@@
+properties:
+    architecture: "@@ARCH@@"
+    description: "Cirros @@VERSION@@"
+    os: "cirros"
+    release: "@@RELEASE@@"
+templates:
+    /etc/hostname:
+        when:
+            - create
+            - copy
+        template: hostname.tpl
+    /var/lib/cloud/seed/nocloud/meta-data:
+        when:
+            - create
+            - copy
+        template: meta-data.tpl
+        properties:
+            default: '"instance-id": "i-lxd-undefined"'
+    /var/lib/cloud/seed/nocloud/user-data:
+        when:
+            - create
+            - copy
+        template: user-data.tpl
+        properties:
+            default: ""

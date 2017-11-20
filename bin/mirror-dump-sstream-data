@@ -1,6 +1,8 @@
 #!/bin/bash
 set -f
 
+PATH="$(cd "${0%/*}" && pwd):$PATH"
+
 source "${0%/*}/common-functions.sh"
 
 Usage() {
@@ -23,37 +25,6 @@ Usage: ${0##*/} mirror_dir
 EOF
 }
 
-datefortag_bzr() {
-    local loginfo ts out repo="${CIRROS_BZR:-.}"
-    local spec="tag:$1" fmt="${2:-+%Y%m%d}"
-    loginfo=$(bzr log "$repo" --log-format=long --revision "$spec") ||
-        { error "couldn't bzr log tag:$i"; return 1; }
-    ts=$(echo "$loginfo" | sed -n '/^timestamp:/s,.*: ,,p') &&
-        [ -n "$ts" ] || {
-            error "failed to get timestamp from log for $spec";
-            return 1;
-        }
-    out=$(date --date="$ts" "$fmt") ||
-        { error "failed convert of '$ts' to format=$fmt"; return 1; }
-    _RET="$out"
-}
-
-datefortag() {
-    local spec="$1" fmt="${2:-+%Y%m%d}"
-    local repo="${CIRROS_GIT:-${CIRROS_BZR:-.}}"
-    if [ ! -d "$repo/.git" -a -d "$repo/.bzr" ]; then
-        datefortag_bzr "$@"
-        return
-    fi
-    spec=${spec//"~"/_} # git tags cannot contain ~
-    ts=$( cd "$repo" &&
-        git show --no-patch "--pretty=format:%ct" "$spec") ||
-        { error "failed to 'git show $spec' in $repo"; return 1; }
-    out=$(date --utc --date="@$ts" "$fmt") ||
-        { error "failed to convert seconds '$ts' to format $fmt"; return 1; }
-    _RET="$out"
-}
-
 [ "$1" = "-h" -o "$1" = "--help" ] && { Usage; exit 0; }
 [ "$#" -eq 1 ] || { Usage 1>&2; fail "must give mirror dir"; }
 
@@ -73,26 +44,45 @@ VERSION2SERIAL=(
     [0.3.2]="20140317"
 )
 
-#content-id product_name version_name img_name [key=value [key=value]]
-content_id_base="net.cirros-cloud:%(stream)s:download"
+generate_lxd() {
+    local gzpath="$1"
+    local xzpath="${gzpath%-lxc.tar.gz}-lxc.tar.xz"
+    local lxdpath="${gzpath%-lxc.tar.gz}-lxd.tar.xz"
+    if [ ! -f "$xzpath" ]; then
+        error "creating $xzpath from $gzpath"
+        zcat "$gzpath" | xz > "$xzpath.tmp" &&
+            mv "$xzpath.tmp" "$xzpath" ||
+            { error "failed to create $xzpath"; return 1; }
+    fi
+    if [ ! -f "$lxdpath" ]; then
+        error "creating lxd meta in $lxdpath"
+        data_from_path "$lxdpath"
+        LXD_META=$LXD_META generate-lxd-meta \
+            "$lxdpath" "${D_arch}" "${D_version}" "${D_serial}" ||
+            { error "failed to create $lxdpath"; return 1; }
+    fi
+    return 0
+}
 
-tab="$(printf '\t')"
+data_from_path() {
+    # populate D_<name> for information about path.
+    local path="$1"
+    local version="" fname="" serial="" baseproduct="" arch="" ftype="" item=""
+    local extra="" vmaj="" vmin="" vmic="" stream=""
+    local product_name="" content_id="" pubname=""
+    local rdns="net.cirros-cloud"
+    local _version="" tmnp=""
+    fname=${path##*/}
 
-top_d="${1:-.}"
-cd "$top_d"
-IFS=$'\n'; files=( $(find . -type f -printf "%p|%s\n") ); IFS="$OIFS"
-
-for ent in "${files[@]}"; do
-    IFS="|"; set -- $ent; IFS="$OIFS"
-    path=${1#./}
-    size=${2}
-
-    case "$path" in
-        *-uec.tar.gz|*-disk.img|*-rootfs.img|*-lxc.tar.gz) :;;
-        *) continue;;
+    # tokenize cirros-0.3.1~pre4-x86_64-lxc.tar.gz, baseproduct gets 'cirros'
+    IFS="-"; set -- $fname; IFS="$OIFS"
+    baseproduct="$1"; version="$2"; arch="$3"; item="$4"
+    case "$item" in
+        # lxc.tar.gz -> root.tar.xz
+        lxc.tar.xz|lxc.tar.gz) ftype="root.${item#lxc.}";;
+        *) ftype="$item";;
     esac
-    IFS="/"; set -- $path; IFS=$OIFS
-    version="$1"; fname="$2";
+
     serial="${VERSION2SERIAL[$version]}"
     if [ -z "$serial" ]; then
         datefortag "$version" ||
@@ -101,14 +91,10 @@ for ent in "${files[@]}"; do
         VERSION2SERIAL[$version]="$serial"
     fi
 
-    # tokenize cirros-0.3.1~pre4-x86_64-lxc.tar.gz, baseproduct gets 'cirros'
-    IFS="-"; set -- $fname; IFS="$OIFS"
-    baseproduct="$1"; _version="$2"; arch="$3"; ftype="$4"
-
     # tokenize 0.3.1~pre1 or 0.3.0
     extra=${version#*~}; [ "$extra" = "$version" ] && extra=""
     tmp=${version%$extra}
-    IFS="."; set -- ${version%$extra}; IFS="$IOFS"
+    IFS="."; set -- ${version%$extra}; IFS="$OIFS"
     vmaj="$1"; vmin="$2"; vmic="$3"
 
     [ -z "$extra" ] && stream="released" || stream="devel"
@@ -117,27 +103,96 @@ for ent in "${files[@]}"; do
     rdns="net.cirros-cloud"
     [ "$stream" = "released" ] || rdns="${rdns}.${stream}"
     product_name="$rdns:standard:$vmaj.$vmin:$arch"
-    content_id="${content_id_base//%(stream)s/${stream}}"
-
-    req_out=""
-    for item in "$content_id" "$product_name" "$serial" "$ftype"; do
-        req_out="${req_out}${tab}${item}"
-    done
-    req_out=${req_out#${tab}}
-
-    md5=$(md5sum "${path}") && md5="${md5%%  ${path}}"
-    sha256=$(sha256sum "${path}") && sha256="${sha256%%  ${path}}"
+    content_id="${CONTENT_ID_BASE//%(stream)s/${stream}}"
     pubname="${baseproduct}-${version}-${arch}"
 
-    out=""
-    for i in ftype path arch version size sha256 md5 pubname stream; do
-        out="${out}${tab}${i}=${!i}"
+    local os="$baseproduct" release_title="$vmaj.$vmin" aliases=""
+    if [ "$stream" = "released" ]; then
+        aliases="$vmaj.$vmin"
+    else
+        aliases="$vmaj.$vmin-$stream"
+    fi
+
+    local label="$stream"
+    local vname="" pre="D_"
+    for vname in content_id product_name serial ftype item path arch \
+        version pubname stream os release_title label aliases; do
+        eval ${pre}${vname}='${!vname}' || return
     done
-    out=${out#${tab}}
-    printf "%s\n" "${req_out}${tab}${out}"
-    #printf "
-    #echo "$content_id
-    #echo "version=$version fname=$fname stream=$stream product_name=$product_name"
+    return 0
+}
+
+output_for_path() {
+    local ent="$1"
+    local path=${1#./}
+    local size="" md5="" sha256="" pubname=""
+    case "$path" in
+        *-uec.tar.gz|*-disk.img|*-rootfs.img|*-lxc.tar.gz|*-lxc.tar.xz) :;;
+        *-lxd.tar.xz) :;;
+        *) return;;
+    esac
+    data_from_path "$path" || return
+    size=$(stat --format="%s" "$path") || return
+    md5=$(md5sum "${path}") && md5="${md5%%  ${path}}" || return
+    sha256=$(sha256sum "${path}") && sha256="${sha256%%  ${path}}" || return
+
+    local req_out="" dname="" item=""
+    local rfields="content_id product_name serial item"
+    for item in $rfields; do
+        dname="D_${item}"
+        req_out="${req_out}${TAB}${!dname}"
+    done
+    req_out=${req_out#${TAB}}
+
+    local fields="ftype path arch version size sha256 md5 pubname stream"
+    local fields="${fields} os release_title label aliases"
+    local out="" sha="" exdata=""
+    local D_size="${size}" D_md5="${md5}" D_sha256="${sha256}"
+    for i in $fields; do
+        dname="D_${i}"
+        out="${out}${TAB}${i}=${!dname}"
+    done
+    out=${out#${TAB}}
+
+    case "$path" in
+        *-lxd.tar.xz)
+            xzpath=${path%-lxd.tar.xz}-lxc.tar.xz
+            [ -f "$xzpath" ] || {
+                error "no $xzpath for lxd $path";
+                return 1;
+            }
+            sha=$(cat "$xzpath" "$path" | sha256sum) &&
+                sha="${sha%%  -}" &&
+                exdata="${exdata}${TAB}combined_rootxz_sha256=$sha" || {
+                    error "failed create combined sha for lxd '$path'";
+                    exit 1;
+                }
+            ;;
+    esac
+    if [ -n "$exdata" ]; then
+        out="${out}${TAB}${exdata#${TAB}}"
+    fi
+    printf "%s\n" "${req_out}${TAB}${out}"
+}
+
+#content-id product_name version_name img_name [key=value [key=value]]
+CONTENT_ID_BASE="net.cirros-cloud:%(stream)s:download"
+
+TAB="$(printf '\t')"
+
+top_d="${1:-.}"
+cd "$top_d"
+
+IFS=$'\n'; files=( $(find . -type f -name "*-lxc.tar.gz") ); IFS="$OIFS"
+for lxc_tar_gz in "${files[@]}"; do
+    generate_lxd "${lxc_tar_gz}" || fail "failed generate_lxd for $lxc_tar_gz"
+done
+
+IFS=$'\n'; files=( $(find . -type f -printf "%p\n") ); IFS="$OIFS"
+
+for ent in "${files[@]}"; do
+    path=${ent#./}
+    output_for_path "$path" "$size" || exit
 done
 
 # vi: tabstop=4 expandtab

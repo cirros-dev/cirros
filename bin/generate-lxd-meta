@@ -1,0 +1,74 @@
+#!/bin/bash
+set -f
+
+TEMP_D=""
+source "${0%/*}/common-functions.sh"
+
+if [ -z "$LXD_META" ]; then
+    LXD_META=$(t=$(readlink -f "$0") && cd "${t%/*}/../lxd-meta" && pwd)
+fi
+
+Usage() {
+   cat <<EOF
+Usage: ${0##*/} out.tar.xz arch version [serial]
+
+    create an lxd metadata tarball from the data in
+    LXD_META ($LXD_META).
+EOF
+}
+
+cleanup() {
+    [ -z "$TEMP_D" ] || rm -Rf "${TEMP_D}"
+}
+
+[ "$1" = "-h" -o "$1" = "--help" ] && { Usage; exit 0; }
+[ $# -eq 3 -o $# -eq 4 ] ||
+    { Usage 1>&2; error "got $# args, expected 3"; exit 1; }
+
+out=$1
+arch=$2
+version=$3
+serial=$4
+
+if [ "${version#d}" != "$version" ]; then
+    # daily
+    stream="daily"
+    [ -z "$serial" ] && serial="${version#d}"
+    release="daily"
+else
+    extra=${version#*~}; [ "$extra" = "$version" ] && extra=""
+    tmp=${version%$extra}
+    IFS="."; set -- ${version%$extra}; IFS="$IOFS"
+    vmaj="$1"; vmin="$2"; vmic="$3"
+    [ -z "$extra" ] && stream="released" || stream="devel"
+    release="${vmaj}.${vmin}"
+    if [ -z "$serial" ]; then
+        serial=$(datefortag "$version" && echo $_RET) ||
+            fail "Failed to get date for version '$version'"
+    fi
+fi
+ts=$(date --date="$serial 00:00:00 UTC" "+%s")
+
+TEMP_D=$(mktemp -d) || fail "failed mktemp"
+trap cleanup EXIT
+
+bdir="${TEMP_D}/lxd-meta"
+cp -a "$LXD_META" "$bdir" || fail "failed copy $LXD_META to tmpdir/lxd-meta"
+
+# release is '0.3' (major.minor)
+# stream is 'daily', 'devel', 'release' 
+# serial seconds is 00:00:00 on that day.
+sed -i \
+    -e "s/@@ARCH@@/$arch/" \
+    -e "s/@@VERSION@@/$version/" \
+    -e "s/@@STREAM@@/$stream/" \
+    -e "s/@@SERIAL_SECONDS@@/$ts/" \
+    -e "s/@@RELEASE@@/$release/" \
+    "$bdir/metadata.yaml"
+
+tar -C "$bdir" -cJf "$out.tmp" metadata.yaml templates ||
+    fail "failed to create tarball in $out.tmp"
+mv "$out.tmp" "$out" ||
+    fail "failed moving $out.tmp to $out"
+
+# vi: tabstop=4 expandtab

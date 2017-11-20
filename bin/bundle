@@ -102,7 +102,8 @@ out_kernel="${out_d}/kernel"
 out_initramfs="${out_d}/initramfs"
 out_diskimg="${out_d}/disk.img"
 out_blankimg="${out_d}/blank.img"
-out_filesys_lxc="${out_d}/filesys.tar.gz"
+out_filesys_lxc_gz="${out_d}/filesys.tar.gz"
+out_filesys_lxc_xz="${out_d}/filesys.tar.xz"
 inter_d="$out_d/intermediate"
 
 mp="${TEMP_D}/mnt"
@@ -238,8 +239,18 @@ if [ -x "${fixup_fs}" ]; then
         fail "failed to fixup filesystem"
 fi
 
-( cd "$stage_d" && tar -Scpzf - -- * ) > "$out_filesys_lxc" ||
-    fail "failed to create filesys tarball"
+fstar="${TEMP_D}/filesys.tar"
+( cd "$stage_d" && tar -Scpf - -- * ) > "$fstar" ||
+    fail "failed to create filesys.tar tarball"
+( gzip -9 --stdout "$fstar" ) > "${out_filesys_lxc_gz}.tmp" &&
+    mv "${out_filesys_lxc_gz}.tmp" "${out_filesys_lxc_gz}" ||
+    fail "failed to compress filesys with gzip"
+( xz --compress --stdout "$fstar" ) > "${out_filesys_lxc_xz}.tmp" &&
+    mv "${out_filesys_lxc_xz}.tmp" "${out_filesys_lxc_xz}" ||
+    fail "failed to compress filesys with xz"
+
+( cd "$stage_d" && tar -ScpJf - -- * ) > "${out_filesys_lxc_xz}" ||
+    fail "failed to create filesys tarball xz"
 
 tar -C "$stage_d" -xpf - < "$kernel_tar" ||
     fail "failed to extract kernel_tar"
@@ -342,7 +353,8 @@ echo "wrote ${out_diskimg}"
 echo "wrote ${out_kernel}"
 echo "wrote ${out_initramfs}"
 echo "wrote ${out_blankimg}"
-echo "wrote ${out_filesys_lxc}"
+echo "wrote ${out_filesys_lxc_gz}"
+echo "wrote ${out_filesys_lxc_xz}"
 
 exit 0
 

@@ -65,5 +65,36 @@ sec2human() {
     return
 }
 
+datefortag_bzr() {
+    local loginfo ts out repo="${CIRROS_BZR:-.}"
+    local spec="tag:$1" fmt="${2:-+%Y%m%d}"
+    loginfo=$(bzr log "$repo" --log-format=long --revision "$spec") ||
+        { error "couldn't bzr log tag:$i"; return 1; }
+    ts=$(echo "$loginfo" | sed -n '/^timestamp:/s,.*: ,,p') &&
+        [ -n "$ts" ] || {
+            error "failed to get timestamp from log for $spec";
+            return 1;
+        }
+    out=$(date --date="$ts" "$fmt") ||
+        { error "failed convert of '$ts' to format=$fmt"; return 1; }
+    _RET="$out"
+}
+
+datefortag() {
+    local spec="$1" fmt="${2:-+%Y%m%d}"
+    local repo="${CIRROS_GIT:-${CIRROS_BZR:-.}}"
+    if [ ! -d "$repo/.git" -a -d "$repo/.bzr" ]; then
+        datefortag_bzr "$@"
+        return
+    fi
+    spec=${spec//"~"/_} # git tags cannot contain ~
+    ts=$( cd "$repo" &&
+        git show --no-patch "--pretty=format:%ct" "$spec") ||
+        { error "failed to 'git show $spec' in $repo"; return 1; }
+    out=$(date --utc --date="@$ts" "$fmt") ||
+        { error "failed to convert seconds '$ts' to format $fmt"; return 1; }
+    _RET="$out"
+}
+
 
 # vi: tabstop=4 noexpandtab
