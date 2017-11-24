@@ -1,2 +1,3 @@
 ifupdown-cirros.patch
 util-linux-2.27.patch
+ncurses-gcc-5.x.patch
