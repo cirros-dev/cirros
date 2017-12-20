@@ -3,7 +3,7 @@
 VERBOSITY=0
 CONFIG=/etc/cirros-init/configdrive
 NAME="${0##*/}"
-LABEL="config-2"
+LABELS="config-2 CONFIG-2"
 SEED_PRE_D="/var/lib/cloud/seed/configdrive-pre"
 SEED_POST_D="/var/lib/cloud/seed/configdrive"
 
@@ -22,11 +22,14 @@ search_local() {
 	local out_d="$1"
 	local devlist="" num="" found="" fstree_d=""
 	local raw_d="" dev="" rdir="" mdjson="" ud="" found=""
-	find_devs_with "LABEL=$LABEL" ||
-		{ error "failed to find devs"; return 1; }
-
-	devlist=${_RET}
-	[ -n "$devlist" ] || { debug 1 "no devices labeled $LABEL"; exit 0; }
+	local label=""
+	for label in $LABELS; do
+		find_devs_with "LABEL=$label" && devlist=${_RET} && break
+	done
+	[ -n "$devlist" ] || {
+		debug 1 "no devices with a label in $LABELS";
+		exit 0;
+	}
 
 	if [ -d "${SEED_PRE_D}" ]; then
 		devlist="$SEED_PRE_D $devlist"
@@ -37,7 +40,7 @@ search_local() {
 
 	num=0
 	for dev in ${devlist}; do num=$(($num+1)); done
-	[ $num -eq 1 ] || debug 1 "multiple devices matching $LABEL: $devlist"
+	[ $num -eq 1 ] || debug 1 "multiple devices matching $label: $devlist"
 
 	[ -d "$out_d" ] || mkdir -p "$out_d" ||
 		fail "failed to create outputdir: ${out_d}"
