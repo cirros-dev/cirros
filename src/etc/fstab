@@ -6,4 +6,4 @@ proc       /proc     proc     defaults                  0 0
 devpts     /dev/pts  devpts   defaults,gid=5,mode=620   0 0
 tmpfs      /dev/shm  tmpfs    mode=0777                 0 0
 sysfs      /sys      sysfs    defaults                  0 0
-tmpfs      /run      tmpfs    rw,nosuid,relatime,size=200k,mode=755 0 0
+tmpfs      /run      tmpfs    rw,nosuid,relatime,size=1024k,mode=755 0 0
