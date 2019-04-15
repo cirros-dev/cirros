@@ -9,6 +9,7 @@ DEPS=(
     bc
     bison
     build-essential
+    grub-common
     git
     dosfstools
     flex
