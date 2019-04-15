@@ -1,7 +1,8 @@
 This is a project to build a small cloud image that has useful tools and
 function for debugging or developing cloud infrastructure.
 
-The following works on Ubuntu 14.04 LTS.
+The following works on Ubuntu 18.04 LTS, running on x86_64.  Native building
+for other architectures is not recommended.
 
 To use it, you would do something like:
  * get the build dependencies:
@@ -16,7 +17,7 @@ To use it, you would do something like:
  * cd cirros
 
  * download buildroot and setup environment
-   $ br_ver="2015.05"
+   $ br_ver="2019.02.1"
    $ mkdir -p ../download
    $ ln -snf ../download download
    $ ( cd download && wget http://buildroot.uclibc.org/downloads/buildroot-${br_ver}.tar.gz )
@@ -32,11 +33,12 @@ To use it, you would do something like:
    ( cd buildroot && QUILT_PATCHES=$PWD/../patches-buildroot quilt push -a )
 
  * download the buildroot sources
-   $ make ARCH=i386 br-source
+   $ ARCH=i386
+   $ make ARCH=$ARCH br-source
 
  * Build buildroot for a given arch
-   # ARCH should be set to 'i386', 'x86_64' or 'arm'
-   $ make ARCH=i386 OUT_D=$PWD/output/i386
+   # ARCH should be set to 'i386', 'x86_64', 'arm' or 'aarch64'
+   $ make ARCH=$ARCH OUT_D=$PWD/output/$ARCH
 
    This will do a full buildroot build, which will take a while. The output
    that CirrOS is interested in is output/i386/rootfs.tar.
@@ -48,15 +50,15 @@ To use it, you would do something like:
    kernel is used as a starting point.
 
    # kver is newest -updates kernel from https://launchpad.net/ubuntu/+source/linux
-   $ kver="3.19.0-20.20~14.04.1"
-   $ ./bin/grab-kernels "$kver"
+   $ kver="4.4.0-148.174"
+   $ ./bin/grab-kernels "$kver" $ARCH
 
  * Download EFI grub to use.
    The grub-efi input to bundle will be in tar.gz format.
 
    # gver is newest from https://launchpad.net/ubuntu/+source/grub2
-   $ gver="2.02~beta2-36ubuntu8"
-   $ ./bin/grab-grub-efi "$gver"
+   $ gver="2.02~beta2-36ubuntu3.22"
+   $ ./bin/grab-grub-efi "$gver" $ARCH
 
  * build disk images using bin/bundle
    $ sudo ./bin/bundle -v --arch=$ARCH output/$ARCH/rootfs.tar \
