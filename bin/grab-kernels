@@ -17,7 +17,7 @@
 
 source "${0%/*}/common-functions.sh"
 
-burl="https://launchpad.net/ubuntu/+archive/primary/+files/linux-image"
+burl="https://launchpad.net/ubuntu/+archive/primary/+files/"
 outdir="./download"
 def_arches="i386 x86_64 arm powerpc ppc64 ppc64le aarch64"
 
@@ -52,7 +52,6 @@ debs2tar() {
     return 0
 }
 
-[ "$1" = "--outdir" ] && { outdir="$1" && shift; }
 kver="$1"
 shift
 
@@ -69,6 +68,48 @@ fi
 # version like 3.13.0-52.86
 #              3.19.0-20.20~14.04.1
 
+fmt_old() {
+    # this worked for kernels 3.2 -> 4.4
+    local xarch="$1"
+    image="linux-image"
+    extras=""
+    case "$xarch" in
+        amd64|i386|ppc64el|s390x)
+            extras="linux-image-extra";;
+    esac
+}
+
+fmt_4_4_new() {
+    # this is 4.15 format but with 4.4 arch availability.
+    # was in place for 4.4 kernels >= abi 148.
+    local xarch="$1"
+    case "$xarch" in
+        amd64|i386|ppc64el|s390x)
+            extras="linux-modules linux-modules-extra";;
+        arm64|armhf|powerpc)
+            extras="linux-modules";;
+    esac
+    [ "$xarch" = "amd64" ] &&
+        image="linux-image-unsigned" || image="linux-image"
+}
+
+fmt_4_15() {
+    # this format, with
+    #   images linux-image and linux-image-unsigned)
+    #   modules linux-modules and linux-modules-extra
+    # was in place for 4.15.
+    local xarch="$1"
+    image="linux-image"
+    extras="linux-modules linux-modules-extra"
+    case "$xarch" in
+        # no big endian kernel or 4.15
+        amd64|ppc64el) image="linux-image-unsigned";;
+        arm64|i386|s390x) :;;
+        powerpc) image=""; extras="";;
+        armhf) extras="linux-modules";;
+    esac
+}
+
 kpart=${kver%-*}
 upart=${kver#*-}
 abi=${upart%%.*}
@@ -78,6 +119,7 @@ kmicro=${kpart#*.*.}
 
 case "$kmajor.$kminor" in
    3.2|3.13|3.19|4.4) :;;
+   4.15) error "WARN: 4.15 does not have a powerpc/ppc64-big-endian kernel.";;
    *) error "WARN: possibly unknown kernel version $kmajor.$kminor.";;
 esac
 
@@ -101,17 +143,26 @@ for arch in "$@"; do
             *) fail "unknown kernel:arch for $kver:$arch"
         esac
     fi
-    case $xarch in
-        amd64|i386|ppc64el|s390x) extra="-extra";;
-        *) extra="";
+    image=""
+    extras=""
+    ffunc="fmt_4_15"
+    case "$kmajor.$kminor" in
+        3.*) ffunc="fmt_old";;
+        4.4) [ "$abi" -ge 148 ] && ffunc="fmt_4_4_new" || ffunc=fmt_old;;
     esac
+    $ffunc "$xarch"
+    [ -z "$image" -a -z "$extras" ] && {
+            echo "WARN: no image/extras for $xarch and $kmajor.$kminor"
+            continue
+    }
     debs=""
-    for epkg in "" $extra; do
-        url="$burl${epkg}-${kmajor}.${kminor}.${kmicro}-${abi}-${flav}_${kver}_${xarch}.deb"
-        dl "$url" "$outdir/${url##*/}" || fail "failed dl $url"
-        ln -sf ${url##*/} "$outdir/kernel-${arch}${epkg}.deb" ||
-            fail "failed symlink for $outdir/kernel-$arch${epkg}.deb"
-        debs="${debs} ${outdir}/${url##*/}"
+    for epkg in $image $extras; do
+        debname="${epkg}-${kmajor}.${kminor}.${kmicro}-${abi}-${flav}_${kver}_${xarch}.deb"
+        url="$burl$debname"
+        dl "$url" "$outdir/$debname" || fail "failed dl $url"
+        ln -sf "$debname" "$outdir/kernel-${arch}-${epkg}.deb" ||
+            fail "failed symlink for $outdir/kernel-$arch-${epkg}.deb"
+        debs="${debs} ${outdir}/$debname"
     done
     tar="linux-image-${kver}-${flav}-${xarch}.tar.gz"
     if [ -f "$outdir/${tar}" ]; then
@@ -122,7 +173,7 @@ for arch in "$@"; do
         error "wrote $outdir/${tar}"
     fi
     ln -sf "${tar}" "$outdir/kernel-${arch}.tar.gz" ||
-        fail "failed symlink for $outdir/kernel-$arch${epkg}.deb"
+        fail "failed symlink for $outdir/kernel-$arch.tar.gz"
 done
 
 # vi: tabstop=4 expandtab
