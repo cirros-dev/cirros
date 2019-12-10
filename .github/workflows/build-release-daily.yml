@@ -1,0 +1,15 @@
+name: CI
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-18.04
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: configure system
+      run: bin/system-setup
+    - name: build release
+      run: sudo bin/build-release daily
