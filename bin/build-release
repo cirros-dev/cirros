@@ -85,6 +85,10 @@ build_arch() {
     else
         time "${cmd[@]}" 2>&1 | tee "$log"
     fi
+    # at this point we do not need buildroot tree anymore and GitHub CI has just 14GB space
+    if [ ! -z $GITHUB_WORKSPACE ]; then
+        rm -rf "$OUT/build/$arch/buildroot" "$OUT/build/$arch/ccache" "$OUT/build/$arch/skeleton"
+    fi
     ret=$?
     logevent "finish $arch [ret=$ret]"
     return $ret
