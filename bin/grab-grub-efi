@@ -16,6 +16,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
+GRUB_MKIMAGE=${GRUB_MKIMAGE:-}
 
 source "${0%/*}/common-functions.sh"
 
@@ -43,6 +44,15 @@ deb2tar() {
 
     local deb="$1" tar="$2" efiarch=$3 format=$4
 
+    if [ -z "$GRUB_MKIMAGE" ]; then
+        # grub-mkimage is grub2-mkimage on fedora/centos.
+        for n in grub-mkimage grub2-mkimage; do
+            command -v $n >/dev/null 2>&1 && GRUB_MKIMAGE=$n && break
+        done
+        [ -n "$GRUB_MKIMAGE" ] ||
+            fail "No grub-mkimage found. cannnot build efi for $efiarch/$format"
+    fi
+
     t=$(dirname "$deb")
     tdir=$(mktemp -d "$t/.XXXXXX") || return
 
@@ -53,7 +63,7 @@ deb2tar() {
 
     efibin=boot${efiarch}.efi
 
-    "${0%/*}/build-efi-images" grub-mkimage "${tdir}/deb/usr/lib/grub/$format" \
+    "${0%/*}/build-efi-images" $GRUB_MKIMAGE "${tdir}/deb/usr/lib/grub/$format" \
         "${tdir}/out/" $format $efiarch
 
     mv "${tdir}/out/grub${efiarch}.efi" "${tdir}/boot${efiarch}.efi"
