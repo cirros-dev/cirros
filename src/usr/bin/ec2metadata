@@ -3,6 +3,7 @@
 MD_URL="http://169.254.169.254/latest"
 OIFS="$IFS"
 TIMEOUT=10
+RETRIES=3
 CR="
 "
 
@@ -42,7 +43,7 @@ get_field_list() {
 }
 
 caturl() {
-	curl --fail --silent --max-time "${TIMEOUT}" "$1"
+	curl --fail --silent --max-time "${TIMEOUT}" --retry "${RETRIES}" "$1"
 }
 
 mdget() {
