@@ -35,6 +35,12 @@ GVER="${GVER:-2.02~beta2-36ubuntu3.22}" # Ubuntu 16.04
 ME=$(readlink -f "$0")
 MY_D=${ME%/*}
 PATH=${MY_D}:$PATH
+QUIET=${QUIET:-}
+
+MAKE_QUIET=
+if [ ! -z $QUIET ]; then
+    MAKE_QUIET="-s"
+fi
 
 set -e
 set -o pipefail
@@ -75,7 +81,7 @@ build_arch() {
     fi
     arch="$1"
     log="${OUT}/build-$arch.log"
-    cmd=( make ARCH=$arch "OUT_D=$OUT/build/$arch"
+    cmd=( make $MAKE_QUIET ARCH=$arch "OUT_D=$OUT/build/$arch"
           ${CCACHE_D:+"BR2_CCACHE_DIR=${CCACHE_D}/$arch"} )
 
     logevent "start $arch" -
@@ -139,7 +145,7 @@ logevent "end download"
 logevent "start unpack" -
 rm -Rf "buildroot-${BR_VER}"
 rm -f buildroot
-tar -xvf download/buildroot-${BR_VER}.tar.gz
+tar -xf download/buildroot-${BR_VER}.tar.gz
 ln -snf buildroot-${BR_VER} buildroot
 
 # we do not do this here, so that we're not dependent on the
@@ -153,7 +159,7 @@ echo "$VER" > "src/etc/cirros/version"
 logevent "end unpack"
 
 logevent "start br-source" -
-make ARCH=${ARCHES%% *} br-source
+make $MAKE_QUIET ARCH=${ARCHES%% *} br-source
 logevent "end br-source"
 
 logevent "start kernel and grub downloads" -

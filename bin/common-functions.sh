@@ -1,6 +1,7 @@
 #!/bin/bash
 
 DEBUG=0
+QUIET=${QUIET:-}
 
 error() { echo "$@" 1>&2; }
 
@@ -18,7 +19,11 @@ dl() {
     [ -f "$target" ] && return
     t=$(dirname "$target")
     tfile=$(mktemp "$t/.${0##*/}.XXXXXX") || return
-    wget "$url" -O "$tfile" &&
+    wget_quiet=
+    if [ ! -z $QUIET ]; then
+        wget_quiet="-q"
+    fi
+    wget $wget_quiet "$url" -O "$tfile" &&
         mv "$tfile" "$target" ||
         { t=$?; rm -f "$tfile"; return $t; }
 }
