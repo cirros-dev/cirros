@@ -20,7 +20,7 @@ DEPS=(
     mtools
     parallel
     python
-    qemu-kvm
+    qemu-utils
     quilt
     rsync
     texinfo
