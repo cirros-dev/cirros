@@ -1,0 +1,20 @@
+dist: bionic
+
+install: 
+  - bin/system-setup
+
+jobs:
+  fast_finish: true # fail once any job fail
+
+env:
+  - ARCHES=aarch64
+  - ARCHES=arm
+  - ARCHES=i386
+  - ARCHES=x86_64
+  - ARCHES=powerpc
+  - ARCHES=ppc64
+  - ARCHES=ppc64le
+
+script:
+  - sudo QUIET=1 bin/build-release daily
+
