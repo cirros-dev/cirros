@@ -30,8 +30,10 @@ shift
 pre=cirros-$VER
 BR_VER="${BR_VER:-2019.02.1}" # WARNING: this may be non-trivial to change
 ARCHES="${ARCHES:-i386 x86_64 arm powerpc aarch64 ppc64 ppc64le}"
-KVER="${KVER:-4.4.0-148.174}" # Ubuntu 16.04
-GVER="${GVER:-2.02~beta2-36ubuntu3.22}" # Ubuntu 16.04
+KVER="${KVER:-5.3.0-26.28~18.04.1}" # Ubuntu 18.04 hwe
+GVER="${GVER:-2.02-2ubuntu8.14}" # Ubuntu 18.04
+KVER_PPC="4.4.0-148.174" # Ubuntu 16.04 (for powerpc)
+GVER_PPC="2.02~beta2-36ubuntu3.22" # Ubuntu 16.04 (for powerpc)
 ME=$(readlink -f "$0")
 MY_D=${ME%/*}
 PATH=${MY_D}:$PATH
@@ -174,14 +176,22 @@ for arch in ${ARCHES}; do
     format=$(get_grub_format "$arch")
     mkdir -p "$OUT/stage/$arch"
 
+    kver=$KVER
+    gver=$GVER
+
+    if [ $arch == 'powerpc' -o $arch == 'ppc64' ];then
+        kver=$KVER_PPC
+        gver=$GVER_PPC
+    fi
+
     # grab kernel
     logevent "start kernel ($arch) download" -
-    grab-kernels "$KVER" $arch
+    grab-kernels "$kver" $arch
     logevent "end kernel ($arch) download"
 
     # grab grub
     logevent "start grub $arch-$format download" -
-    grab-grub-${format} "$GVER" $arch
+    grab-grub-${format} "$gver" $arch
     logevent "end grub $arch-$format download"
 done
 logevent "end kernel and grub downloads" "$kstart"
