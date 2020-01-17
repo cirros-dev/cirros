@@ -1,0 +1,41 @@
+#!/bin/sh
+MEM=${MEM:-512}
+GUESTARCH="${GUESTARCH:-$(echo $(basename $IMG)| cut -d'-' -f3)}"
+VER=$(echo $(basename $IMG)| cut -d'-' -f2)
+
+echo '{"instance-id": "9068aef2-213e-4e43-830f-accdbadde897"}' > meta-data
+{ echo '#!/bin/sh'; echo 'echo Hello from inside'; echo 'poweroff -f'; } > user-data
+
+
+cloud-localds -d qcow2 seed.img user-data meta-data
+
+qemu-img create -f qcow2 -b "$IMG" -F qcow2 disk1.img >/dev/null 2>&1
+
+EXTRA_OPTS=
+
+case $GUESTARCH in
+    arm)
+        MACHINE=virt
+        EXTRA_OPTS="-kernel $RELEASE_DIR/cirros-$VER-arm-kernel -initrd $RELEASE_DIR/cirros-$VER-arm-initramfs" ;;
+    aarch64)
+        MACHINE=virt
+        EXTRA_OPTS="-cpu cortex-a57 -kernel $RELEASE_DIR/cirros-$VER-aarch64-kernel -initrd $RELEASE_DIR/cirros-$VER-aarch64-initramfs" ;;
+    ppc64|ppc64le)
+        MACHINE=pseries
+        GUESTARCH=ppc64 ;;
+    powerpc)
+        # No idea how to run it
+        exit ;;
+    i386|x86_64)
+        MACHINE=pc ;;
+esac
+
+set -x  # show next command
+
+qemu-system-$GUESTARCH -m $MEM -machine $MACHINE \
+   -device virtio-net-pci,netdev=net00 \
+   -netdev type=user,id=net00,net=10.0.12.0/24,host=10.0.12.2 \
+   -drive if=virtio,file=disk1.img \
+   -drive if=virtio,file=seed.img \
+   $EXTRA_OPTS \
+   -nographic
