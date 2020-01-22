@@ -1,6 +1,10 @@
 dist: bionic
 
 language: bash # same as minimal
+cache:
+  directories:
+    - $HOME/build/$TRAVIS_REPO_SLUG/../ccache
+    - $HOME/build/$TRAVIS_REPO_SLUG/../download
 
 install: 
   - bin/system-setup

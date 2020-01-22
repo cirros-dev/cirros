@@ -14,7 +14,7 @@ DISK_IMG = $(OUT_D)/disk.img
 PART_IMG = $(OUT_D)/part.img
 TAR_IMG = $(OUT_D)/rootfs.tar
 BR_TAR_IMG = $(BR_OUT_D)/images/rootfs.tar
-BR2_CCACHE_DIR = $(OUT_D)/ccache
+BR2_CCACHE_DIR = $(TOP_D)/ccache/$(ARCH)
 
 BR_MAKE = cd $(BR_D) && mkdir -p "$(TMPDIR)" && \
    make O=$(BR_OUT_D) BR2_DL_DIR=$(DL_D) \
