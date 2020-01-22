@@ -12,6 +12,7 @@ virtio_input
 virtio_net
 virtio_pci
 virtio_scsi
+virtio-gpu
 
 ## PowerPC
 ibmveth            # arch=powerpc
