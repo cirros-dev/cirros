@@ -1,6 +1,10 @@
 dist: bionic
 
 language: bash # same as minimal
+cache:
+  directories:
+    - $HOME/build/$TRAVIS_REPO_SLUG/../ccache
+    - $HOME/build/$TRAVIS_REPO_SLUG/../download
 
 install: 
   - bin/system-setup
@@ -26,4 +30,4 @@ env:
 
 script:
   # we want to test does image boots after build
-  - sudo BOOTTEST=true QUIET=1 bin/build-release daily
+  - BOOTTEST=true QUIET=1 bin/build-release daily

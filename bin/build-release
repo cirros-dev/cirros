@@ -188,6 +188,8 @@ logevent "end kernel and grub downloads" "$kstart"
 # STAGE 2: BUILD
 jobs_flag=""
 parallel=true
+mkdir -p ../ccache
+ln -snf ../ccache ccache
 case "${CIRROS_PARALLEL:-none}" in
     none) parallel=false;;
     0|true) :;;
