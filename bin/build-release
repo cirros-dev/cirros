@@ -114,7 +114,6 @@ get_grub_format() {
 get_img_size() {
     local arch=$1
     case "$arch" in
-        powerpc|ppc*|aarch64) size=96M;;
         *) size="";;
     esac
     echo $size
