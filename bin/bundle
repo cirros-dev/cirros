@@ -21,7 +21,7 @@ source "${0%/*}/common-functions.sh"
 
 TEMP_D=""
 UMOUNT=""
-DEF_SIZE=${DEF_SIZE:-32M}
+DEF_SIZE=${DEF_SIZE:-100M}
 DEF_MODULES="acpiphp e1000 ne2k-pci 8139cp pcnet32 ip_tables"
 
 Usage() {
