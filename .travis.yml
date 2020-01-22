@@ -30,7 +30,7 @@ env:
 
 script:
   # we want to test does image boots after build
-  - BOOTTEST=true QUIET=1 bin/build-release daily
+  - "BOOTTEST=true QUIET=1 bin/build-release ${TRAVIS_TAG:-daily}"
 
 deploy:
   provider: releases
