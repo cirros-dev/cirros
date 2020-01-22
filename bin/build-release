@@ -36,6 +36,12 @@ ME=$(readlink -f "$0")
 MY_D=${ME%/*}
 PATH=${MY_D}:$PATH
 QUIET=${QUIET:-}
+BOOTTEST=${BOOTTEST:-false}
+
+case "$BOOTTEST" in
+    true|false) :;;
+    *) echo "Unknown value for BOOTTEST: ${BOOTTEST}"; exit 1;;
+esac
 
 MAKE_QUIET=
 if [ ! -z $QUIET ]; then
@@ -280,5 +286,13 @@ logevent "finish populate release" -
 msg "output in $OUT/release"
 msg "entire process took $SECONDS seconds"
 logevent "finished" "$tstart"
+
+if [ "true" = "${BOOTTEST}" ]; then
+    for arch in ${ARCHES}; do
+        IMG=$OUT/release/cirros-$VER-$arch-disk.img \
+        RELEASE_DIR=$OUT/release \
+        test-boot
+    done
+fi
 
 # vi: tabstop=4 expandtab

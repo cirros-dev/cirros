@@ -5,6 +5,13 @@ language: bash # same as minimal
 install: 
   - bin/system-setup
 
+addons:
+  apt:
+    packages:
+      - cloud-utils
+      - qemu-system
+      - openbios-ppc
+
 jobs:
   fast_finish: true # fail once any job fail
 
@@ -18,5 +25,5 @@ env:
   - ARCHES=ppc64le
 
 script:
-  - sudo QUIET=1 bin/build-release daily
-
+  # we want to test does image boots after build
+  - sudo BOOTTEST=true QUIET=1 bin/build-release daily
