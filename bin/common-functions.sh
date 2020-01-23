@@ -16,7 +16,10 @@ bad_Usage() { Usage 1>&2; fail "$@"; }
 
 dl() {
     local url="$1" target="$2" tfile="" t=""
-    [ -f "$target" ] && return
+    [ -f "$target" ] && {
+		error "using cached $target for $url"
+		return 0
+	}
     t=$(dirname "$target")
     tfile=$(mktemp "$t/.${0##*/}.XXXXXX") || return
     wget_quiet=
