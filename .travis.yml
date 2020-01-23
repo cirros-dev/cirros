@@ -34,9 +34,11 @@ script:
 
 deploy:
   provider: releases
+  skip_cleanup: true  # we want build artifacts
   api_key:
     secure: pDDpZLjpMTA6/qMBfBDchwgHlpZlTUY4aXSY/9cTL8RMaeoMLIHmL1RDJDO1s/LTnjoi8mGQ19Vrf2bMgr8Zt2Q1FETnwmWfxQpZxl7mQ8Pws3lETqCtWKcHr8yTcZJCB2M7vPjJHauPeGZYav7z34hVdroPN9jhkCPRba2egdIFNbqUoiqWn4Wo6bJ2OtD4wPpcfk1lbnCXbURBtCavP1ad1e84bNu3B/7DXlavEUVhqKoIWtL7QFruye8ZFfv7lHOVl09ZG237k+R0xYSwzACnvCvvsS/5Am0VQD7odS0qmckqUqd9m0GmVF2hZtNWYuazCUMaJbQ080S/E/DtbIEMDqdXd39AuOQC+AF39HXVT2StRfVRaZnTX60Lu6t5pPDiYT2c5ZRRjDM7Aw0Sa/zRmizcmvvf0XP+GBsUZX8b1dmDY3qDbRqDL8fVc+0BjYs85CmUoYBKNUUbnz40pwY1bE073X1NJnrqX7FFw+96hY/0cEzLjb8WOoMpaotwYUwDc+NaQJ+3UCh+JUK97rgxTCkPrRD2M+NAOvs1QWudC/TrxKCzV9kDxnTky/+Ds/ybA6Vx3b6+tNjziGA2hK39sMrh+c9bORFrTs4CuJ/RqXQRXZsGTSAzrpxMo8fphvufSvQBkDPkm7pqblFVX/TC882u+XsUmYU7Hi8V180=
   file: "$HOME/build/$TRAVIS_REPO_SLUG/../build-*/release/cirros-*"
+  file_glob: true  # and no exact filenames
   on:
     tags: true
     repo: cirros-dev/cirros
