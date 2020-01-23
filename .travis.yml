@@ -1,12 +1,12 @@
 dist: bionic
 
-language: bash # same as minimal
+language: bash  # same as minimal
 cache:
   directories:
     - $HOME/build/$TRAVIS_REPO_SLUG/../ccache
     - $HOME/build/$TRAVIS_REPO_SLUG/../download
 
-install: 
+install:
   - bin/system-setup
 
 addons:
@@ -17,7 +17,7 @@ addons:
       - openbios-ppc
 
 jobs:
-  fast_finish: true # fail once any job fail
+  fast_finish: true  # fail once any job fail
 
 env:
   - ARCHES=aarch64
