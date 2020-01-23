@@ -21,12 +21,12 @@ jobs:
 
 env:
   - ARCHES=aarch64
+  - ARCHES=x86_64
+  - ARCHES=ppc64le
   - ARCHES=arm
   - ARCHES=i386
-  - ARCHES=x86_64
   - ARCHES=powerpc
   - ARCHES=ppc64
-  - ARCHES=ppc64le
 
 script:
   # we want to test does image boots after build
