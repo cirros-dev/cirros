@@ -98,7 +98,7 @@ build_arch() {
         time "${cmd[@]}" 2>&1 | tee "$log"
     fi
     ret=$?
-    logevent "finish $arch [ret=$ret]"
+    logevent "end $arch [ret=$ret]"
     return $ret
 }
 
@@ -135,7 +135,8 @@ if ! $daily; then
         fail "$VER ($tagname): not a tag in $PWD."
 fi
 
-logevent "begin" -
+mainargs="[$VER] $*"
+logevent "start $mainargs" -
 tstart=${_RET}
 
 # Stage 1: DOWNLOAD
@@ -217,16 +218,16 @@ for arch in ${ARCHES}; do
         "$OUT/build/$arch/rootfs.tar" \
         ./download/kernel-$arch.tar.gz ./download/grub-${format}-$arch.tar.gz \
         "$OUT/stage/$arch";
-    logevent "finish bundling $arch"
+    logevent "end bundling $arch"
 done
 
 sudo chown -R $USER:$USER "$OUT/stage"
 
-logevent "generating lxd.tar.xz for ${ARCHES}" -
+logevent "start generating lxd.tar.xz for ${ARCHES}" -
 for arch in ${ARCHES}; do
     ./bin/generate-lxd-meta "$OUT/stage/$arch/lxd.tar.xz" "$arch" "$VER"
 done
-logevent "done generating lxd.tar.xz for ${ARCHES}"
+logevent "end generating lxd.tar.xz for ${ARCHES}"
 
 mkdir -p "$OUT/release"
 
@@ -283,17 +284,19 @@ sumfiles=$(cd "$OUT/release" && for f in *; do
     [ -f "$f" -a "$f" != MD5SUMS ] && echo "$f"; done)
 ( cd "$OUT/release" && md5sum $sumfiles > MD5SUMS )
 
-logevent "finish populate release" -
+logevent "end populating release" -
 msg "output in $OUT/release"
-msg "entire process took $SECONDS seconds"
-logevent "finished" "$tstart"
 
 if [ "true" = "${BOOTTEST}" ]; then
     for arch in ${ARCHES}; do
-        IMG=$OUT/release/cirros-$VER-$arch-disk.img \
-        RELEASE_DIR=$OUT/release \
-        test-boot
+        img="$OUT/release/cirros-$VER-$arch-disk.img"
+        logevent "start test-boot $arch ${img##*/}" -
+        IMG="$img" RELEASE_DIR=$OUT/release test-boot
+        logevent "end test-boot $arch ${img##*/}"
     done
 fi
+
+msg "entire process took $SECONDS seconds"
+logevent "end $mainargs" "$tstart"
 
 # vi: tabstop=4 expandtab
