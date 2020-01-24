@@ -291,7 +291,7 @@ if [ "true" = "${BOOTTEST}" ]; then
     for arch in ${ARCHES}; do
         img="$OUT/release/cirros-$VER-$arch-disk.img"
         logevent "start test-boot $arch ${img##*/}" -
-        IMG="$img" RELEASE_DIR=$OUT/release test-boot
+        POWEROFF=true IMG="$img" RELEASE_DIR=$OUT/release test-boot
         logevent "end test-boot $arch ${img##*/}"
     done
 fi
