@@ -6,10 +6,11 @@ ROOTFS_LABEL="cirros-rootfs"
 
 . /lib/cirros/shlib
 
-mkdir -p /proc /newroot /dev /tmp
+mkdir -p /proc /newroot /dev /tmp /sys
 
 mount -t devtmpfs /dev /dev
 mount -t proc /proc /proc
+mount -t sysfs /sys /sys
 
 echo "6 4 1 7" >/proc/sys/kernel/printk
 
@@ -62,12 +63,12 @@ if [ -z "$ROOT" ]; then
 		set +f
 		for x in /*; do
 			case "$x" in
-				/dev|/proc|/newroot) : ;;
+				/dev|/proc|/newroot|/sys) : ;;
 				*) items="$items $x";;
 			esac
 		done
 		set -f
-		mkdir -p "${NEWROOT_MP}/dev" "${NEWROOT_MP}/proc"
+		mkdir -p "${NEWROOT_MP}/dev" "${NEWROOT_MP}/proc" "${NEWROOT_MP}/sys"
 		cp -a $items "${NEWROOT_MP}/"
 		cp -a "/dev/console" "$NEWROOT_MP/dev/"
 		mount -o remount,ro "$NEWROOT_MP"
