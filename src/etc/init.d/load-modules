@@ -8,7 +8,38 @@ loadmods() {
 		line="${line%%#*}"
 		[ -n "$line" ] || continue
 		if [ ! -d /sys/module/$line ]; then
-				modprobe $line
+                        case "$line" in
+                            # in Ubuntu vfat uses cp437 and iso8859-1
+                            vfat|nls_cp437|nls_iso8859-1)
+                                grep vfat /proc/filesystems >/dev/null
+                                if [ 1 -eq $? ]; then
+                                    modprobe $line
+                                fi
+                                ;;
+                            isofs)
+                                grep iso9660 /proc/filesystems >/dev/null
+                                if [ 1 -eq $? ]; then
+                                    modprobe $line
+                                fi
+                                ;;
+                            # sr_mod depends on sg and cdrom
+                            cdrom|sr_mod|sg)
+                                if [ ! -d /sys/module/sr_mod ]; then
+                                    modprobe $line
+                                fi
+                                ;;
+                            qemu_fw_cfg)  # present in Linux 4.6+
+                                minimum_kernel=4.6
+                                current_kernel=$(uname -r)
+                                min=$(echo -e $minimum_kernel"\n"$current_kernel | sort -n | head -n1)
+                                if [ $min = $minimum_kernel ]; then
+                                    modprobe $line
+                                fi
+                                ;;
+                            *)
+                                modprobe $line
+                                ;;
+                        esac
 		fi
 	done
 }
