@@ -453,4 +453,34 @@ path_has() {
 		[ "${p#*${del}${tok}/${del}}" != "$p" ]
 }
 
+replace() {
+	# replace(src,from,to,max=-1)
+	# replace char 'from' in 'src' with 'to'.
+	# For a few replacements, this is much faster than
+	# using sed or tr as it does not invoke any subprocesses.
+	local src="$1" from="$2" to="$3" max="${4:--1}"
+	# if no replaces were to be done return src
+	[ $max -eq 0 ] && { _RET="$src"; return 0; }
+
+	local pre="" post="" rem="" ret="" count=0
+	rem="$src"
+	while [ -n "$rem" ] && [ $max -lt 0 -o $count -lt $max ]; do
+		if [ "$count" = "$max" ]; then
+			ret="$ret$rem"
+			break
+		fi
+		post=${rem#*${from}}
+		if [ "$post" = "$rem" ]; then
+			ret="$ret$rem"
+			rem=""
+		else
+			pre=${rem%${from}${post}}
+			ret="$ret$pre$to"
+			rem="$post"
+		fi
+		count=$(($count+1))
+	done
+	_RET="$ret$rem"
+}
+
 # vi: ts=4 noexpandtab syntax=sh

@@ -99,6 +99,29 @@ cirros_version_available() {
 	return
 }
 
+kver_to_num() {
+	# turn a kernel version (X.Y.Z or X.Y.Z-*) into a integer
+	local kver="$1" maj="" min="" mic="0"
+	kver=${kver%%-*}
+	maj=${kver%%.*}
+	min=${kver#${maj}.}
+	min=${min%%.*}
+	mic=${kver#${maj}.${min}.}
+	[ "$kver" = "$mic" ] && mic=0
+	_RET=$(($maj*1000*1000+$min*1000+$mic))
+}
+
+kver_cmp() {
+	# kver_cmp(a, operator, b)
+	# operator is one "-ge", "-gt", "-lt", "-le", "="
+	local op="$2" n1="" n2=""
+	kver_to_num "$1"
+	n1="$_RET"
+	kver_to_num "$3"
+	n2="$_RET"
+	[ $n1 $op $n2 ]
+}
+
 . ${CIRROS_SHLIB:=/lib/cirros/shlib} ||
 	{ error "failed to read ${CIRROS_SHLIB}" 1>&2; exit 1; }
 

@@ -1,47 +1,73 @@
 #!/bin/sh
 # vi: ts=4 noexpandtab
 # load modules
+. ${CIRROS_LIB:=/lib/cirros/shlib_cirros} ||
+	{ echo "failed to read ${CIRROS_LIB}" 1>&2; exit 1; }
+
+get_fslist() {
+	# set _RET to a list of currently supported filesystems
+	# stdin should be /proc/filesystems (proc(5))
+	local line="" fs="" tab='	'
+	_RET=""
+	while read line; do
+		line=${line#nodev}
+		line=${line#$tab}
+		_RET="${_RET} $line"
+	done
+}
 
 loadmods() {
-	local line
-	while read line; do
-		line="${line%%#*}"
-		[ -n "$line" ] || continue
-		if [ ! -d /sys/module/$line ]; then
-                        case "$line" in
-                            # in Ubuntu vfat uses cp437 and iso8859-1
-                            vfat|nls_cp437|nls_iso8859-1)
-                                grep vfat /proc/filesystems >/dev/null
-                                if [ 1 -eq $? ]; then
-                                    modprobe $line
-                                fi
-                                ;;
-                            isofs)
-                                grep iso9660 /proc/filesystems >/dev/null
-                                if [ 1 -eq $? ]; then
-                                    modprobe $line
-                                fi
-                                ;;
-                            # sr_mod depends on sg and cdrom
-                            cdrom|sr_mod|sg)
-                                if [ ! -d /sys/module/sr_mod ]; then
-                                    modprobe $line
-                                fi
-                                ;;
-                            qemu_fw_cfg)  # present in Linux 4.6+
-                                minimum_kernel=4.6
-                                current_kernel=$(uname -r)
-                                min=$(echo -e $minimum_kernel"\n"$current_kernel | sort -n | head -n1)
-                                if [ $min = $minimum_kernel ]; then
-                                    modprobe $line
-                                fi
-                                ;;
-                            *)
-                                modprobe $line
-                                ;;
-                        esac
+	local mod="" mod_ubar="" fslist="" kver="" fails="" skip=""
+	get_fslist </proc/filesystems || error "Failed to read filesystems."
+	fslist=" $_RET "
+	kver=$(uname -r)
+	local builtins="" mbuiltin="/lib/modules/${kver}/modules.builtin"
+	if [ -f "$mbuiltin" ]; then
+		builtins=$(sed -e 's,.*/,,' -e 's/[.]ko$//' -e 's/-/_/g' "$mbuiltin")
+		builtins=" $(echo $builtins) "
+	fi
+	while read mod; do
+		[ -n "$mod" ] || continue
+		skip=""
+		replace "$mod" "-" "_"
+		mod_ubar="$_RET"
+		[ -d "/sys/module/${mod_ubar}" ] && skip="already loaded."
+		if [ -z "$skip" ]; then
+			case "${builtins}" in
+				*\ ${mod_ubar}\ *) skip="builtin."
+			esac
 		fi
+		if [ -z "$skip" ]; then
+			case "$mod_ubar" in
+				isofs)
+					case "$fslist" in
+						*\ iso9660\ *) skip="iso9660 fs already supported.";;
+					esac
+					;;
+				# in Ubuntu vfat uses cp437 and iso8859-1
+				vfat)
+					case "$fslist" in
+						*\ vfat\ *) skip="vfat fs already supported.";;
+					esac
+					;;
+				# present in Linux 4.6+
+				qemu_fw_cfg)
+					kver_cmp "$kver" -lt 4.6 && skip="kernel $kver older than 4.6"
+					;;
+			esac
+		fi
+		if [ -n "$skip" ]; then
+			debug 2 "not loading '$mod': $skip"
+			continue
+		fi
+		modprobe $mod || fails="$fails $mod"
 	done
+
+	if [ -n "$fails" ]; then
+		error "failed loading these modules: $fails"
+		return 1
+	fi
+	return 0
 }
 
 parse_modules() {
@@ -55,6 +81,7 @@ parse_modules() {
 		arm*) march=",arm,$arch,";;
 	esac
 	while read line; do
+		[ -n "$line" ] || continue
 		modinfo=${line%%#*}
 		[ "$modinfo" = "$line" ] && comment="" ||
 			comment="${line#${modinfo}#}"
@@ -83,8 +110,13 @@ case "$1" in
 		if [ -f "$MODULES_FILE" ]; then
 			[ -d "/lib/modules/$(uname -r)" ] || exit 0
 			march=$(uname -m)
-			parse_modules "$MODULES_FILE" "$march" | loadmods
-			[ "$march" = "ppc64" ] && sleep 1
+			parse_out=$(parse_modules "$MODULES_FILE" "$march") ||
+				fail "Failed to parse modules"
+			echo "${parse_out}" | loadmods ||
+				fail "failed to load modules."
+			if [ "$march" = "ppc64" ]; then
+				sleep 1
+			fi
 		fi
 		;;
 	stop|restart|reload) : ;;

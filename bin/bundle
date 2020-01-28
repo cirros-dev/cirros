@@ -78,6 +78,8 @@ out_d_in=${4}
 
 PATH="$topdir/bin:$PATH"
 src_dir="${topdir}/src"
+export CIRROS_LIB="${src_dir}/lib/cirros/shlib_cirros"
+export CIRROS_SHLIB="${src_dir}/lib/cirros/shlib"
 src_symlinks="${topdir}/symlinks.list"
 makedevs_list="${topdir}/makedevs.list"
 fixup_fs="${topdir}/fixup-fs"
@@ -180,9 +182,18 @@ depmod -a --basedir "${kernel_d}" "${kver}" ||
     fail "failed to run depmod"
 
 mdep="${kernel_d}/lib/modules/${kver}/modules.dep"
+mbuiltin="${kernel_d}/lib/modules/${kver}/modules.builtin"
 for x in ${MODULES}; do
-    grep -q "/${x}.ko" "${mdep}" ||
-        { error "WARNING: no ${x} in kernel package!"; continue; }
+    loose_name=${x//-/.}
+    if ! grep -q "/${loose_name}.ko:" "${mdep}"; then
+        if [ -f "$mbuiltin" ] &&
+            builtin_line=$(grep "/${loose_name}.ko$" "$mbuiltin" ); then
+            debug 1 "module $x is builtin to $kver"
+        else
+            error "WARNING: no ${x} module in $kver kernel package!"
+        fi
+        continue;
+    fi
     awk -F: '$1 ~ mat {
         sub(":","",$1)
         printf("%s/%s\n",p,$1)
@@ -192,14 +203,21 @@ for x in ${MODULES}; do
             printf("%s/%s\n", p, deps[x]);
             x++
         }
-    }' mat="/${x}.ko$" p="lib/modules/${kver}" "${mdep}"
+    }' mat="/${loose_name}.ko$" p="lib/modules/${kver}" "${mdep}"
 done > "${kern_modules}"
 sort -u "${kern_modules}" > "${kern_files}"
+if [ -f "$mbuiltin" ]; then
+    echo ${mbuiltin#${kernel_d}/} >> "${kern_files}"
+fi
 vmlinuz=$( cd "${kernel_d}" && [ -f boot/vmlinu?-* ] &&
     echo boot/vmlinu?-* ) && echo "${vmlinuz}" >> "${kern_files}" &&
     ln -sf "$vmlinuz" "$kernel_d/vmlinuz" && echo "vmlinuz" >> "$kern_files" ||
     fail "no kernel (boot/vmlinuz-*) found in ${kpkg_in}"
 echo "boot/config-$kver" >> "$kern_files"
+
+mfound=$(sed -e 's,.*/,,' -e 's,[.]ko$,,' "${kern_modules}" | sort)
+mfound=$(echo $mfound)
+debug 1 "including these modules: $mfound"
 
 tar -C "${kernel_d}" -cpf - \
     --files-from "${kern_files}" > "${kernel_tar}" ||
