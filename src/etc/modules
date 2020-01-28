@@ -6,7 +6,7 @@ pcnet32            # arch=x86
 
 ## VirtIO
 9pnet_virtio
-qemu_fw_cfg
+qemu_fw_cfg        # arch=x86,aarch64
 virtio_blk
 virtio_input
 virtio_net
