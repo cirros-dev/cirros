@@ -61,4 +61,5 @@ qemu-system-$GUESTARCH -m $MEM -machine $MACHINE \
    -drive if=virtio,file=disk1.img \
    -drive if=virtio,file=seed.img \
    $EXTRA_OPTS \
-   -nographic
+   -nographic \
+   -vga none
