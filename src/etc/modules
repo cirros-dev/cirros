@@ -13,6 +13,7 @@ virtio_net
 virtio_pci
 virtio_scsi
 virtio-gpu
+virtio-rng
 
 ## PowerPC
 ibmveth            # arch=powerpc

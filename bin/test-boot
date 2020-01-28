@@ -56,6 +56,7 @@ set -x  # show next command
 
 qemu-system-$GUESTARCH -m $MEM -machine $MACHINE \
    -device virtio-net-pci,netdev=net00 \
+   -device virtio-rng-pci \
    -netdev type=user,id=net00,net=10.0.12.0/24,host=10.0.12.2 \
    -drive if=virtio,file=disk1.img \
    -drive if=virtio,file=seed.img \
