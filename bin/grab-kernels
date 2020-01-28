@@ -119,7 +119,7 @@ kmicro=${kpart#*.*.}
 
 case "$kmajor.$kminor" in
    3.2|3.13|3.19|4.4) :;;
-   4.15) error "WARN: 4.15 does not have a powerpc/ppc64-big-endian kernel.";;
+   4.15|5.3) error "WARN: $kmajor.$kminor does not have a powerpc/ppc64-big-endian kernel.";;
    *) error "WARN: possibly unknown kernel version $kmajor.$kminor.";;
 esac
 
