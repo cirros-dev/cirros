@@ -67,6 +67,9 @@ loadmods() {
 		error "failed loading these modules: $fails"
 		return 1
 	fi
+	local loaded=""
+	loaded=$(awk '{print $1}' /proc/modules | sort | tr '\n' ' ')
+	debug 0 "currently loaded modules: $loaded"
 	return 0
 }
 
@@ -79,10 +82,12 @@ parse_modules() {
 		amd64|x86_64) march=",x86_64,x86,";;
 		ppc64|powerpc) march=",powerpc,ppc64,";;
 		arm*) march=",arm,$arch,";;
+		*) march=",$arch,";;
 	esac
 	while read line; do
 		[ -n "$line" ] || continue
 		modinfo=${line%%#*}
+		[ -n "$modinfo" ] || continue
 		[ "$modinfo" = "$line" ] && comment="" ||
 			comment="${line#${modinfo}#}"
 		[ "${comment#*arch=}" = "$comment" ] &&
