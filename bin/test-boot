@@ -23,10 +23,20 @@ POWEROFF=${POWEROFF:-false}
 
 echo '{"instance-id": "9068aef2-213e-4e43-830f-accdbadde897"}' > meta-data
 
-if [ "true" == $POWEROFF ]; then
-    { echo '#!/bin/sh'; echo 'echo Hello from inside'; echo 'poweroff -f'; } > user-data
-else
+if [ "$POWEROFF" != "true" ]; then
     echo "" > user-data
+else
+    cat >user-data <<"EOF"
+#!/bin/sh
+rclocal="/etc/rc.local"
+cat >>$rclocal <<"END_RC_LOCAL"
+#!/bin/sh
+read up idle </proc/uptime
+echo "[$up] Hello and goodbye from inside $0"
+poweroff
+END_RC_LOCAL
+chmod 755 $rclocal
+EOF
 fi
 
 cloud-localds -d qcow2 seed.img user-data meta-data
