@@ -23,7 +23,7 @@ start() {
 
 	# Regenerate invalid or missing keys
 	local ktype file
-	for ktype in rsa dss ecdsa; do
+	for ktype in rsa ecdsa; do
 		file="/etc/dropbear/dropbear_${ktype}_host_key"
 		# -f = input file, -y = validate and print pubkey info
 		if ! dropbearkey -f "$file" -y &>/dev/null; then
@@ -31,7 +31,7 @@ start() {
 				echo "Removing invalid key: $file"
 				rm -f "$file"
 			fi
-			# -t = type (dss, rsa, ecdsa), -f = output file
+			# -t = type (rsa, ecdsa), -f = output file
 			dropbearkey -t "$ktype" -f "$file" >/dev/null 2>&1 ||
 		echo "WARN: generating key of type $ktype failed!"
 		fi
