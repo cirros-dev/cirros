@@ -15,6 +15,10 @@ virtio_scsi
 virtio-gpu
 virtio-rng
 
+## Input devices
+usbhid
+hid-generic
+
 ## PowerPC
 ibmveth            # arch=powerpc
 ibmvscsi           # arch=powerpc
