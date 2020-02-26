@@ -42,3 +42,6 @@ deploy:
   on:
     tags: true
     repo: cirros-dev/cirros
+
+notifications:
+    irc: "chat.freenode.net#cirros"
