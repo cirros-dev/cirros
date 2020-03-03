@@ -89,16 +89,18 @@ datefortag_bzr() {
 }
 
 datefortag() {
-    local spec="$1" fmt="${2:-+%Y%m%d}"
+    local spec="$1" fmt="${2:-+%Y%m%d}" commit=""
     local repo="${CIRROS_GIT:-${CIRROS_BZR:-.}}"
     if [ ! -d "$repo/.git" -a -d "$repo/.bzr" ]; then
         datefortag_bzr "$@"
         return
     fi
     spec=${spec//"~"/_} # git tags cannot contain ~
+    commit=$(git rev-parse "$spec^{commit}") ||
+        { error "Failed to get commit for $spec"; return 1; }
     ts=$( cd "$repo" &&
-        git show --no-patch "--pretty=format:%ct" "$spec") ||
-        { error "failed to 'git show $spec' in $repo"; return 1; }
+        git show --no-patch "--pretty=format:%ct" "$commit") ||
+        { error "failed to 'git show $commit' in $repo for $spec"; return 1; }
     out=$(date --utc --date="@$ts" "$fmt") ||
         { error "failed to convert seconds '$ts' to format $fmt"; return 1; }
     _RET="$out"
