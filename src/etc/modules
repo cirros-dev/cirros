@@ -49,3 +49,4 @@ ip_tables
 cdrom
 sr_mod
 sg
+ahci
