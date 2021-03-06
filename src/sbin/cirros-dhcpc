@@ -121,6 +121,14 @@ renew_bound() {
 
 		for i in $router; do
 			debug 1 "route add default gw $i dev $interface"
+			# Add a route to this IP
+			# This is usually not necessary if the IP is in the same
+			# subnet as the interface.
+			# But this may not always be the case (e.g. an interface
+			# with /32 IP such as what is given to instances on
+			# ovhcloud)
+			route add $i dev $interface
+			# Adding this IP as default gw
 			route add default gw $i dev $interface
 		done
 	fi
