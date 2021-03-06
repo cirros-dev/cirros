@@ -30,10 +30,12 @@ shift
 pre=cirros-$VER
 BR_VER="${BR_VER:-2019.02.1}" # WARNING: this may be non-trivial to change
 ARCHES="${ARCHES:-i386 x86_64 arm powerpc aarch64 ppc64 ppc64le}"
-KVER="${KVER:-5.3.0-26.28~18.04.1}" # Ubuntu 18.04 hwe
+KVER="${KVER:-5.4.0-56.62}" # Ubuntu 20.04
 GVER="${GVER:-2.02-2ubuntu8.14}" # Ubuntu 18.04
-KVER_PPC="4.4.0-148.174" # Ubuntu 16.04 (for powerpc)
+KVER_PPC="4.4.0-197.229"  # Ubuntu 16.04 (for powerpc)
 GVER_PPC="2.02~beta2-36ubuntu3.22" # Ubuntu 16.04 (for powerpc)
+KVER_I386="5.3.0-69.65"
+GVER_I386="2.02-2ubuntu8.14" # Ubuntu 18.04
 ME=$(readlink -f "$0")
 MY_D=${ME%/*}
 PATH=${MY_D}:$PATH
@@ -179,10 +181,16 @@ for arch in ${ARCHES}; do
     kver=$KVER
     gver=$GVER
 
-    if [ $arch == 'powerpc' -o $arch == 'ppc64' ];then
-        kver=$KVER_PPC
-        gver=$GVER_PPC
-    fi
+    case "$arch" in
+        powerpc|ppc64)
+            kver=$KVER_PPC
+            gver=$GVER_PPC
+            ;;
+        i386)
+            kver=$KVER_I386
+            gver=$GVER_I386
+            ;;
+    esac
 
     # grab kernel
     logevent "start kernel ($arch) download" -
