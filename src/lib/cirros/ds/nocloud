@@ -12,7 +12,7 @@ LABEL="cidata"
 
 Usage() {
 	cat <<EOF
-Usage: ${0##*/} mode output_d
+Usage: ${0##*/} mode output_dir
 
    Datasource for 'nocloud' config disk.
 EOF
@@ -130,7 +130,7 @@ while [ $# -ne 0 ]; do
 	shift;
 done
 
-[ $# -eq 2 ] || bad_Usage "must provide mode and output dir"
+[ $# -eq 2 ] || bad_Usage "must provide mode and output_dir"
 mode="$1"
 out_d="$2"
 
