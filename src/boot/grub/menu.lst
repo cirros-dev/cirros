@@ -7,6 +7,6 @@ title     Linux Kernel
 # it is changed on disk image creation.
 root      (hd0)
 # FS_LABEL
-kernel    /vmlinuz LABEL=cirros-rootfs ro console=tty1 console=ttyS0
+kernel    /vmlinuz LABEL=cirros-rootfs ro console=tty1 console=ttyS0 no_timer_check
 initrd    /initrd.img
 EOF
