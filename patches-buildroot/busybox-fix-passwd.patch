@@ -1,0 +1,74 @@
+--- /dev/null
++++ buildroot-2019.02.1/package/busybox/0006-passwd-initialize-pointers-correctly.patch
+@@ -0,0 +1,71 @@
++From ce51140664d82300d25b096b4a41f01fdfd766b3 Mon Sep 17 00:00:00 2001
++From: =?UTF-8?q?Einar=20J=C3=B3n?= <tolvupostur@gmail.com>
++Date: Tue, 8 Jan 2019 16:31:37 +0100
++Subject: [PATCH] passwd: initialize pointers correctly
++MIME-Version: 1.0
++Content-Type: text/plain; charset=UTF-8
++Content-Transfer-Encoding: 8bit
++
++Fix for running passwd as root (or sudo passwd $USER).
++Crashed on call to free(orig) during cleanup.
++
++Fix regression from commit 17058a06c4333fc0c492c168c8a971ebd0fd5a5a
++Root user never changes the orig pointer, so when cleaning up, passwd tried to
++free orig=(char*)""
++Example: sudo passwd $USER
++Changing password for xxx
++New password:
++Bad password: too short
++Retype password:
++Passwords don't match
++free(): invalid pointer
++Aborted
++
++function                                             old     new   delta
++passwd_main                                          958     961      +3
++
++Signed-off-by: Einar Jón <tolvupostur@gmail.com>
++Signed-off-by: Denys Vlasenko <vda.linux@googlemail.com>
++---
++ loginutils/passwd.c | 8 ++++----
++ 1 file changed, 4 insertions(+), 4 deletions(-)
++
++diff --git a/loginutils/passwd.c b/loginutils/passwd.c
++index 59f47fc7b..30e096460 100644
++--- a/loginutils/passwd.c
+++++ b/loginutils/passwd.c
++@@ -43,7 +43,7 @@
++ static char* new_password(const struct passwd *pw, uid_t myuid, const char *algo)
++ {
++ 	char salt[MAX_PW_SALT_LEN];
++-	char *orig = (char*)"";
+++	char *orig = NULL;
++ 	char *newp = NULL;
++ 	char *cp = NULL;
++ 	char *ret = NULL; /* failure so far */
++@@ -51,7 +51,7 @@ static char* new_password(const struct passwd *pw, uid_t myuid, const char *algo
++ 	if (myuid != 0 && pw->pw_passwd[0]) {
++ 		char *encrypted;
++ 
++-		orig = bb_ask_noecho_stdin("Old password: "); /* returns ptr to static */
+++		orig = bb_ask_noecho_stdin("Old password: "); /* returns malloced str */
++ 		if (!orig)
++ 			goto err_ret;
++ 		encrypted = pw_encrypt(orig, pw->pw_passwd, 1); /* returns malloced str */
++@@ -64,11 +64,11 @@ static char* new_password(const struct passwd *pw, uid_t myuid, const char *algo
++ 		if (ENABLE_FEATURE_CLEAN_UP)
++ 			free(encrypted);
++ 	}
++-	newp = bb_ask_noecho_stdin("New password: "); /* returns ptr to static */
+++	newp = bb_ask_noecho_stdin("New password: "); /* returns malloced str */
++ 	if (!newp)
++ 		goto err_ret;
++ 	if (ENABLE_FEATURE_PASSWD_WEAK_CHECK
++-	 && obscure(orig, newp, pw)
+++	 && obscure(orig, newp, pw) /* NB: passing NULL orig is ok */
++ 	 && myuid != 0
++ 	) {
++ 		goto err_ret; /* non-root is not allowed to have weak passwd */
++-- 
++2.17.1
++

@@ -1,2 +1,3 @@
 ifupdown-cirros.patch
 busybox-fix-ip-o-patch.patch
+busybox-fix-passwd.patch
