@@ -28,7 +28,7 @@ if [ "$1" = "daily" ]; then
 fi
 shift
 pre=cirros-$VER
-BR_VER="${BR_VER:-2019.02.1}" # WARNING: this may be non-trivial to change
+BR_VER="${BR_VER:-2021.02.8}" # WARNING: this may be non-trivial to change
 ARCHES="${ARCHES:-i386 x86_64 arm powerpc aarch64 ppc64 ppc64le}"
 KVER="${KVER:-5.3.0-26.28~18.04.1}" # Ubuntu 18.04 hwe
 GVER="${GVER:-2.02-2ubuntu8.14}" # Ubuntu 18.04
