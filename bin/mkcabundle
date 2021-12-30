@@ -5,7 +5,7 @@
 #
 
 #my $cvsroot = ':pserver:anonymous@cvs-mirror.mozilla.org:/cvsroot';
-#my $certdata = 'mozilla/security/nss/lib/ckfw/builtins/certdata.txt';
+my $certdata = 'mozilla/gecko-dev/security/nss/lib/ckfw/builtins/certdata.txt';
 
 #open(IN, "cvs -d $cvsroot co -p $certdata|")
     #|| die "could not check out certdata.txt";
