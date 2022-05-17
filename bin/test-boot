@@ -47,7 +47,7 @@ EXTRA_OPTS=
 
 case $GUESTARCH in
     arm)
-        MACHINE=virt
+        MACHINE=virt,highmem=off
         EXTRA_OPTS="-kernel $RELEASE_DIR/cirros-$VER-arm-kernel -initrd $RELEASE_DIR/cirros-$VER-arm-initramfs" ;;
     aarch64)
         MACHINE=virt
