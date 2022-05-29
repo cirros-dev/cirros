@@ -19,7 +19,7 @@ DEPS=(
     libncurses5-dev
     mtools
     parallel
-    python
+    python3
     qemu-utils
     quilt
     rsync
