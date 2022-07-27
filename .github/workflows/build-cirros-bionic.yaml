@@ -1,0 +1,189 @@
+name: CirrOS image builder
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-cirros-aarch64:
+    name: aarch64
+    runs-on: ubuntu-18.04
+    env:
+      ARCHES: aarch64
+      BOOTTEST: "true"
+      QUIET: 1
+    steps:
+      - name: Pull cirros source artifacts
+        uses: actions/checkout@v3
+
+      - name: Build cirros-aarch64
+        shell: bash
+        run: |
+          sudo apt-get install -y cloud-utils qemu-system openbios-ppc
+          ./bin/system-setup
+          ./bin/build-release daily
+          rm -rf ../build-*/build ../build-*/stage ../build-*/tmp
+          tar -cJf cirros-aarch64.tar.xz ../build-*
+
+      - name: Upload cirros-aarch64 build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: cirros-aarch64
+          path: cirros-aarch64.tar.xz
+  
+  build-cirros-arm:
+    name: arm
+    runs-on: ubuntu-18.04
+    env:
+      ARCHES: arm
+      BOOTTEST: "true"
+      QUIET: 1
+    steps:
+      - name: Pull cirros source artifacts
+        uses: actions/checkout@v3
+
+      - name: Build cirros-arm
+        shell: bash
+        run: |
+          sudo apt-get install -y cloud-utils qemu-system openbios-ppc
+          ./bin/system-setup
+          ./bin/build-release daily
+          rm -rf ../build-*/build ../build-*/stage ../build-*/tmp
+          tar -cJf cirros-arm.tar.xz ../build-*
+
+      - name: Upload cirros-arm build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: cirros-arm
+          path: cirros-arm.tar.xz
+
+  build-cirros-i386:
+    name: i386
+    runs-on: ubuntu-18.04
+    env:
+      ARCHES: i386
+      BOOTTEST: "true"
+      QUIET: 1
+    steps:
+      - name: Pull cirros source artifacts
+        uses: actions/checkout@v3
+
+      - name: Build cirros-i386
+        shell: bash
+        run: |
+          sudo apt-get install -y cloud-utils qemu-system openbios-ppc
+          ./bin/system-setup
+          ./bin/build-release daily
+          rm -rf ../build-*/build ../build-*/stage ../build-*/tmp
+          tar -cJf cirros-i386.tar.xz ../build-*
+
+      - name: Upload cirros-i386 build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: cirros-i386
+          path: cirros-i386.tar.xz
+
+  build-cirros-x64_64:
+    name: x86_64
+    runs-on: ubuntu-18.04
+    env:
+      ARCHES: x86_64
+      BOOTTEST: "true"
+      QUIET: 1
+    steps:
+      - name: Pull cirros source artifacts
+        uses: actions/checkout@v3
+
+      - name: Build cirros-x86_64
+        shell: bash
+        run: |
+          sudo apt-get install -y cloud-utils qemu-system openbios-ppc
+          ./bin/system-setup
+          ./bin/build-release daily
+          rm -rf ../build-*/build ../build-*/stage ../build-*/tmp
+          tar -cJf cirros-x86_64.tar.xz ../build-*
+
+      - name: Upload cirros-x86_64 build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: cirros-x86_64
+          path: cirros-x86_64.tar.xz
+
+  build-cirros-powerpc:
+    name: powerpc
+    runs-on: ubuntu-18.04
+    env:
+      ARCHES: powerpc
+      BOOTTEST: "true"
+      QUIET: 1
+    steps:
+      - name: Pull cirros source artifacts
+        uses: actions/checkout@v3
+
+      - name: Build cirros-powerpc
+        shell: bash
+        run: |
+          sudo apt-get install -y cloud-utils qemu-system openbios-ppc
+          ./bin/system-setup
+          ./bin/build-release daily
+          rm -rf ../build-*/build ../build-*/stage ../build-*/tmp
+          tar -cJf cirros-powerpc.tar.xz ../build-*
+
+      - name: Upload cirros-powerpc build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: cirros-powerpc
+          path: cirros-powerpc.tar.xz
+
+  build-cirros-ppc64:
+    name: ppc64
+    runs-on: ubuntu-18.04
+    env:
+      ARCHES: ppc64
+      BOOTTEST: "true"
+      QUIET: 1
+    steps:
+      - name: Pull cirros source artifacts
+        uses: actions/checkout@v3
+
+      - name: Build cirros-ppc64
+        shell: bash
+        run: |
+          sudo apt-get install -y cloud-utils qemu-system openbios-ppc
+          ./bin/system-setup
+          ./bin/build-release daily
+          rm -rf ../build-*/build ../build-*/stage ../build-*/tmp
+          tar -cJf cirros-ppc64.tar.xz ../build-*
+
+      - name: Upload cirros-ppc64 build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: cirros-ppc64
+          path: cirros-ppc64.tar.xz
+
+  build-cirros-ppc64le:
+    name: ppc64le
+    runs-on: ubuntu-18.04
+    env:
+      ARCHES: ppc64le
+      BOOTTEST: "true"
+      QUIET: 1
+    steps:
+      - name: Pull cirros source artifacts
+        uses: actions/checkout@v3
+
+      - name: Build cirros-ppc64le
+        shell: bash
+        run: |
+          sudo apt-get install -y cloud-utils qemu-system openbios-ppc
+          ./bin/system-setup
+          ./bin/build-release daily
+          rm -rf ../build-*/build ../build-*/stage ../build-*/tmp
+          tar -cJf cirros-ppc64le.tar.xz ../build-*
+
+      - name: Upload cirros-ppc64le build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: cirros-ppc64le
+          path: cirros-ppc64le.tar.xz
