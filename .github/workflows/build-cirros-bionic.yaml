@@ -17,6 +17,14 @@ jobs:
       - name: Pull cirros source artifacts
         uses: actions/checkout@v3
 
+      - name: Cache ccache and download
+        uses: actions/cache@v3
+        with:
+          path: |
+            ../ccache
+            ../download
+          key: cirros-aarch64-build-cache
+
       - name: Build cirros-aarch64
         shell: bash
         run: |
@@ -42,6 +50,14 @@ jobs:
     steps:
       - name: Pull cirros source artifacts
         uses: actions/checkout@v3
+
+      - name: Cache ccache and download
+        uses: actions/cache@v3
+        with:
+          path: |
+            ../ccache
+            ../download
+          key: cirros-arm-build-cache
 
       - name: Build cirros-arm
         shell: bash
@@ -69,6 +85,14 @@ jobs:
       - name: Pull cirros source artifacts
         uses: actions/checkout@v3
 
+      - name: Cache ccache and download
+        uses: actions/cache@v3
+        with:
+          path: |
+            ../ccache
+            ../download
+          key: cirros-i386-build-cache
+
       - name: Build cirros-i386
         shell: bash
         run: |
@@ -94,6 +118,14 @@ jobs:
     steps:
       - name: Pull cirros source artifacts
         uses: actions/checkout@v3
+
+      - name: Cache ccache and download
+        uses: actions/cache@v3
+        with:
+          path: |
+            ../ccache
+            ../download
+          key: cirros-x86_64-build-cache
 
       - name: Build cirros-x86_64
         shell: bash
@@ -121,6 +153,14 @@ jobs:
       - name: Pull cirros source artifacts
         uses: actions/checkout@v3
 
+      - name: Cache ccache and download
+        uses: actions/cache@v3
+        with:
+          path: |
+            ../ccache
+            ../download
+          key: cirros-powerpc-build-cache
+
       - name: Build cirros-powerpc
         shell: bash
         run: |
@@ -147,6 +187,14 @@ jobs:
       - name: Pull cirros source artifacts
         uses: actions/checkout@v3
 
+      - name: Cache ccache and download
+        uses: actions/cache@v3
+        with:
+          path: |
+            ../ccache
+            ../download
+          key: cirros-ppc64-build-cache
+
       - name: Build cirros-ppc64
         shell: bash
         run: |
@@ -172,6 +220,14 @@ jobs:
     steps:
       - name: Pull cirros source artifacts
         uses: actions/checkout@v3
+
+      - name: Cache ccache and download
+        uses: actions/cache@v3
+        with:
+          path: |
+            ../ccache
+            ../download
+          key: cirros-ppc64le-build-cache
 
       - name: Build cirros-ppc64le
         shell: bash
