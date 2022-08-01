@@ -52,13 +52,10 @@ case $GUESTARCH in
     aarch64)
         MACHINE=virt
         EXTRA_OPTS="-cpu cortex-a57 -kernel $RELEASE_DIR/cirros-$VER-aarch64-kernel -initrd $RELEASE_DIR/cirros-$VER-aarch64-initramfs" ;;
-    ppc64|ppc64le)
+    ppc64le)
         MACHINE=pseries-2.12
         GUESTARCH=ppc64 ;;
-    powerpc)
-        # No idea how to run it
-        exit ;;
-    i386|x86_64)
+    x86_64)
         MACHINE=pc ;;
 esac
 

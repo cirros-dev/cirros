@@ -9,17 +9,14 @@ CirrOS images have useful tools and function for debugging or developing cloud i
 
  * aarch64 (64-bit Armv8 often called arm64)
  * arm (32-bit Armv7)
- * i386 (32-bit x86)
- * ppc (32-bit PowerPC)
- * ppc64 (64-bit Power big endian)
  * ppc64le (64-bit Power little endian)
  * x86_64 (64-bit x86 often called amd64)
 
 Resulting images can be booted using QEMU. Several ways of booting are provided:
 
- * UEFI (aarch64, arm, i386, x86_64)
- * BIOS (i386, x86_64)
- * OpenFirmware (ppc, ppc64, ppc64le)
+ * UEFI (aarch64, arm, x86_64)
+ * BIOS (x86_64)
+ * OpenFirmware (ppc64le)
  * direct kernel + initrd (all architectures)
 
 # Build instructions
@@ -89,11 +86,11 @@ To use it, you would do something like:
 
  * download the buildroot sources
 ```bash
-   $ ARCH=i386
+   $ ARCH=x86_64
    $ make ARCH=$ARCH br-source
 ```      
 
- * Build buildroot for a given arch (ARCH should be set to 'i386', 'x86_64', 'arm' or 'aarch64')
+ * Build buildroot for a given arch (ARCH should be set to 'x86_64', 'arm', 'aarch64' or 'ppc64le')
 ```bash
    $ make ARCH=$ARCH OUT_D=$PWD/output/$ARCH
 ```      
@@ -107,7 +104,7 @@ This will do a full buildroot build, which will take a while. The output that Ci
    $ ./bin/grab-kernels "$kver" $ARCH
 ```      
 
- * Download EFI grub to use (aarch64, arm, i386, x86_64 only). The grub-efi input to bundle will be in tar.gz format. Version can be taken from https://launchpad.net/ubuntu/+source/grub2 page.
+ * Download EFI grub to use (aarch64, arm, x86_64 only). The grub-efi input to bundle will be in tar.gz format. Version can be taken from https://launchpad.net/ubuntu/+source/grub2 page.
 ```bash
    $ gver="2.06-2ubuntu7"
    $ ./bin/grab-grub-efi "$gver" $ARCH

@@ -22,7 +22,7 @@ source "${0%/*}/common-functions.sh"
 
 burl="https://launchpad.net/ubuntu/+archive/primary/+files/"
 outdir="./download"
-def_arches="ppc64le powerpc ppc64"
+def_arches="ppc64le"
 
 case "$1" in
     --outdir=*) outdir="${1#*=}"; shift;;
@@ -91,9 +91,6 @@ for arch in "$@"; do
     case "$arch" in
         ppc64le)
             debarch='ppc64el'
-            ;;
-        powerpc|ppc64)
-            debarch='powerpc'
             ;;
         *)
             debug 1 "no grub-ieee1275 for $arch"
