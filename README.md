@@ -67,7 +67,7 @@ To use it, you would do something like:
 
  * download buildroot and setup environment
 ```bash
-   $ br_ver="2021.02.8"
+   $ br_ver="2022.02.4"
    $ mkdir -p ../download
    $ ln -snf ../download download
    $ ( cd download && wget http://buildroot.uclibc.org/downloads/buildroot-${br_ver}.tar.gz )
