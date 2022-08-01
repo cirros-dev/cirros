@@ -29,11 +29,9 @@ fi
 shift
 pre=cirros-$VER
 BR_VER="${BR_VER:-2022.02.4}" # WARNING: this may be non-trivial to change
-ARCHES="${ARCHES:-i386 x86_64 arm powerpc aarch64 ppc64 ppc64le}"
+ARCHES="${ARCHES:-x86_64 arm aarch64 ppc64le}"
 KVER="${KVER:-5.15.0-33.34}" # Ubuntu 22.04
 GVER="${GVER:-2.06-2ubuntu7}" # Ubuntu 22.04
-KVER_PPC="4.4.0-148.174" # Ubuntu 16.04 (for powerpc)
-GVER_PPC="2.02~beta2-36ubuntu3.22" # Ubuntu 16.04 (for powerpc)
 ME=$(readlink -f "$0")
 MY_D=${ME%/*}
 PATH=${MY_D}:$PATH
@@ -118,7 +116,7 @@ build_arch() {
 get_grub_format() {
     local arch=$1
     case "$arch" in
-        powerpc|ppc*) format=ieee;;
+        ppc*) format=ieee;;
         *) format=efi;;
     esac
     echo $format
@@ -193,11 +191,6 @@ for arch in ${ARCHES}; do
 
     kver=$KVER
     gver=$GVER
-
-    if [ $arch == 'powerpc' -o $arch == 'ppc64' ];then
-        kver=$KVER_PPC
-        gver=$GVER_PPC
-    fi
 
     # grab kernel
     logevent "start kernel ($arch) download" -

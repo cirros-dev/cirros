@@ -22,7 +22,7 @@ source "${0%/*}/common-functions.sh"
 
 burl="https://launchpad.net/ubuntu/+archive/primary/+files/"
 outdir="./download"
-def_arches="x86_64 aarch64 i386 arm"
+def_arches="x86_64 aarch64 arm"
 
 case "$1" in
     --outdir=*) outdir="${1#*=}"; shift;;
@@ -95,12 +95,6 @@ for arch in "$@"; do
 		debarch='amd64'
                 pkgarch='amd64'
                 format='x86_64-efi'
-		;;
-        i386)
-		efiarch='ia32'
-		debarch='i386'
-                pkgarch='ia32'
-                format='i386-efi'
 		;;
         arm)
 		efiarch='arm'

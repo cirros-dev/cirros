@@ -12,8 +12,7 @@ jobs:
   cirros-build-matrix:
     strategy:
       matrix:
-        # i386, powerpc, and ppc64 will be dropped in CirrOS 0.6.x
-        arch: [aarch64, arm, i386, x86_64, powerpc, ppc64, ppc64le]
+        arch: [aarch64, arm, x86_64, ppc64le]
 
     runs-on: ubuntu-20.04
 
