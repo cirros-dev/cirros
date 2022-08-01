@@ -35,11 +35,10 @@ debs2tar() {
     mkdir "$tdir/ex"
     for deb in "$@"; do
         debug 2 "extracting $deb"
-        dpkg -x "$deb" "$tdir/ex" || {
-            error "failed dpkg -x $deb";
-            rm -Rf "$tdir";
-            return 1;
-        }
+        ar x "$deb" --output "$tdir/ex" || error "failed dpkg -x $deb"
+        ls -lR $tdir/ex
+        ( cd "$tdir/ex" && tar -xf data.tar* ) || fail "failed to extract data from $deb"
+        ( cd "$tdir/ex" && rm data.tar* control.tar*)
     done
     debug 2 "creating kernel.tar.gz"
     tar -C "$tdir/ex" -czf "$tdir/kernel.tar.gz" . &&

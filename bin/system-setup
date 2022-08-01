@@ -27,6 +27,7 @@ DEPS=(
     unzip
     wget
     xz-utils
+    zstd
 )
 
 apt_get() {
