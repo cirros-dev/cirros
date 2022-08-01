@@ -59,7 +59,8 @@ deb2tar() {
     debug 1 "creating $out in tempdir at $tdir"
 
     mkdir -p "$tdir/deb"
-    dpkg -x "$deb" "$tdir/deb" || fail "failed to unpack $deb"
+    ar x "$deb" --output "$tdir/deb" || fail "failed to unpack $deb"
+    ( cd "$tdir/deb" && tar -xf data.tar.* ) || fail "failed to extract data from $deb"
 
     gbin="grub"
     gmod="boot cat configfile echo ext2 halt loadenv minicmd normal part_gpt
