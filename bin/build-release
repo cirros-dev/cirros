@@ -40,6 +40,7 @@ PATH=${MY_D}:$PATH
 QUIET=${QUIET:-}
 BOOTTEST=${BOOTTEST:-false}
 CI_BUILD=${CI_BUILD:-false}
+CI_BUILD_OUT=${CI_BUILD_OUT:-}
 
 case "$BOOTTEST" in
     true|false) :;;
@@ -59,7 +60,11 @@ fi
 set -e
 set -o pipefail
 
-OUT="$PWD/../build-$VER"
+if [ "$CI_BUILD" = "true" ]; then
+    OUT="$PWD/$CI_BUILD_OUT"
+else
+    OUT="$PWD/../build-$VER"
+fi
 LOGFILE="$OUT/date.txt"
 export TMPDIR="$OUT/tmp"
 mkdir -p "$OUT" "$TMPDIR"
