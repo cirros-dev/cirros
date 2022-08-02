@@ -1,0 +1,54 @@
+name: CirrOS image builder
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  cirros-build-matrix:
+    strategy:
+      matrix:
+        # i386, powerpc, and ppc64 will be dropped in CirrOS 0.6.x
+        arch: [aarch64, arm, i386, x86_64, powerpc, ppc64, ppc64le]
+
+    runs-on: ubuntu-20.04
+
+    env:
+      ARCHES: ${{ matrix.arch }}
+      BOOTTEST: "true"
+      QUIET: 1
+
+    steps:
+      - name: Pull cirros source artifacts
+        uses: actions/checkout@v3
+
+      - name: Cache download
+        uses: actions/cache@v3
+        with:
+          key: downloads-${{ matrix.arch }}-${{ hashFiles('bin/build-release') }}
+          path: download/
+
+      - name: Cache ccache
+        uses: actions/cache@v3
+        with:
+          key: ccache-${{ matrix.arch }}-${{ hashFiles('bin/build-release') }}
+          path: ccache/
+
+      - name: Prepare job environment
+        run: bin/system-setup
+
+      - name: Install job dependencies
+        run: sudo apt-get install cloud-utils qemu-system openbios-ppc
+
+      - name: Build cirros image
+        run: bin/build-release daily
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: cirros-${{ matrix.arch }}
+          path: release/
