@@ -39,10 +39,16 @@ MY_D=${ME%/*}
 PATH=${MY_D}:$PATH
 QUIET=${QUIET:-}
 BOOTTEST=${BOOTTEST:-false}
+CI_BUILD=${CI_BUILD:-false}
 
 case "$BOOTTEST" in
     true|false) :;;
     *) echo "Unknown value for BOOTTEST: ${BOOTTEST}"; exit 1;;
+esac
+
+case "$CI_BUILD" in
+    true|false) :;;
+    *) echo "Unknown value for CI_BUILD: ${CI_BUILD}"; exit 1;;
 esac
 
 MAKE_QUIET=
@@ -143,9 +149,13 @@ tstart=${_RET}
 
 # Stage 1: DOWNLOAD
 logevent "start download" -
-rm -f download
-mkdir -p ../download
-ln -snf ../download download
+if [ "$CI_BUILD" = "true" ]; then
+    mkdir -p download
+else
+    rm -f download
+    mkdir -p ../download
+    ln -snf ../download download
+fi
 brtgz="buildroot-${BR_VER}.tar.gz"
 dl "http://buildroot.uclibc.org/downloads/$brtgz" "download/$brtgz"
 logevent "end download"
@@ -199,8 +209,12 @@ logevent "end kernel and grub downloads" "$kstart"
 # STAGE 2: BUILD
 jobs_flag=""
 parallel=true
-mkdir -p ../ccache
-ln -snf ../ccache ccache
+if [ "$CI_BUILD" = "true" ]; then
+    mkdir -p ccache
+else
+    mkdir -p ../ccache
+    ln -snf ../ccache ccache
+fi
 case "${CIRROS_PARALLEL:-none}" in
     none) parallel=false;;
     0|true) :;;
