@@ -177,7 +177,7 @@ echo "$VER" > "src/etc/cirros/version"
 logevent "end unpack"
 
 logevent "start br-source" -
-make $MAKE_QUIET ARCH=${ARCHES%% *} br-source
+make $MAKE_QUIET ARCH=${ARCHES%% *} "OUT_D=$OUT/build/$arch" br-source
 logevent "end br-source"
 
 logevent "start kernel and grub downloads" -
