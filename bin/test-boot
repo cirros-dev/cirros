@@ -16,10 +16,21 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+CI_BUILD=${CI_BUILD:-false}
+CI_BUILD_OUT=${CI_BUILD_OUT:-}
+
 MEM=${MEM:-512}
-GUESTARCH="${GUESTARCH:-$(echo $(basename $IMG)| cut -d'-' -f3)}"
-VER=$(echo $(basename $IMG)| cut -d'-' -f2)
 POWEROFF=${POWEROFF:-false}
+
+if [ "$CI_BUILD" = "true" ]; then
+    GUESTARCH="${GUESTARCH:-}"
+    IMG=$(find $CI_BUILD_OUT/release/ -name cirros-*-${GUESTARCH}-disk.img)
+    RELEASE_DIR=$CI_BUILD_OUT/release
+else
+    GUESTARCH="${GUESTARCH:-$(echo $(basename $IMG)| cut -d'-' -f3)}"
+fi
+
+VER=$(echo $(basename $IMG)| cut -d'-' -f2)
 
 echo '{"instance-id": "9068aef2-213e-4e43-830f-accdbadde897"}' > meta-data
 
