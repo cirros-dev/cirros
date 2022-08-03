@@ -152,13 +152,6 @@ tstart=${_RET}
 
 # Stage 1: DOWNLOAD
 logevent "start download" -
-if [ "$CI_BUILD" = "true" ]; then
-    mkdir -p download
-else
-    rm -f download
-    mkdir -p ../download
-    ln -snf ../download download
-fi
 brtgz="buildroot-${BR_VER}.tar.gz"
 dl "http://buildroot.uclibc.org/downloads/$brtgz" "download/$brtgz"
 logevent "end download"
@@ -207,12 +200,6 @@ logevent "end kernel and grub downloads" "$kstart"
 # STAGE 2: BUILD
 jobs_flag=""
 parallel=true
-if [ "$CI_BUILD" = "true" ]; then
-    mkdir -p ccache
-else
-    mkdir -p ../ccache
-    ln -snf ../ccache ccache
-fi
 case "${CIRROS_PARALLEL:-none}" in
     none) parallel=false;;
     0|true) :;;

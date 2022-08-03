@@ -1,7 +1,7 @@
 build*
 buildroot*
-ccache
-download
+ccache/*
+download/*
 grubd
 output
 src/etc/cirros/version
