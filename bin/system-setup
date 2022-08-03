@@ -9,12 +9,14 @@ DEPS=(
     bc
     bison
     build-essential
+    cpio
     grub-common
     git
     dosfstools
     flex
     gdisk
     gettext
+    kmod
     kpartx
     libncurses5-dev
     mtools
@@ -23,6 +25,7 @@ DEPS=(
     qemu-utils
     quilt
     rsync
+    sudo
     texinfo
     unzip
     wget

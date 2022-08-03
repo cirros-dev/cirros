@@ -14,7 +14,7 @@ fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
 
 Usage() {
 	cat <<EOF
-Usage: ${0##*/} mode output_d
+Usage: ${0##*/} mode output_dir
 
    Datasource for EC2 metadata service
    Requires network.
@@ -110,7 +110,7 @@ while [ $# -ne 0 ]; do
 	shift;
 done
 
-[ $# -eq 2 ] || bad_Usage "must provide mode and data dir"
+[ $# -eq 2 ] || bad_Usage "must provide mode and output_dir"
 mode="$1"
 out_d="$2"
 

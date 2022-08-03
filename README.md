@@ -24,7 +24,7 @@ Resulting images can be booted using QEMU. Several ways of booting are provided:
 
 # Build instructions
 
-The following works on Ubuntu 18.04 LTS, running on x86_64. Native building for other architectures is not recommended. Support for building under other distributions is limited and not tested.
+The following works on Ubuntu 18.04 LTS and 20.04 LTS, running on x86_64. Native building for other architectures is not recommended. Support for building under other distributions is limited and not tested.
 
 ## Clone sources
 
