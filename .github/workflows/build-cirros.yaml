@@ -18,7 +18,6 @@ jobs:
 
     env:
       ARCHES: ${{ matrix.arch }}
-      BOOTTEST: "true"
       QUIET: 1
       CI_BUILD: "true"
       CI_BUILD_OUT: "build-ci/"
@@ -45,8 +44,14 @@ jobs:
       - name: Install job dependencies
         run: sudo apt-get install cloud-utils qemu-system openbios-ppc
 
-      - name: Build cirros image
+      - name: Build CirrOS image
         run: bin/build-release daily
+
+      - name: Boot CirrOS image
+        run: bin/test-boot
+        env:
+          GUESTARCH: ${{ matrix.arch }}
+          POWEROFF: "true"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v3
