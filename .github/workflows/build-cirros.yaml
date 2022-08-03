@@ -44,6 +44,9 @@ jobs:
       - name: Install job dependencies
         run: sudo apt-get install cloud-utils qemu-system openbios-ppc
 
+      - name: disable invisible-mirror.net use
+        run: echo "127.0.0.1 invisible-mirror.net" | sudo tee -a /etc/hosts
+
       - name: Build CirrOS image
         run: bin/build-release daily
 
