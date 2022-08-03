@@ -21,6 +21,8 @@ jobs:
       ARCHES: ${{ matrix.arch }}
       BOOTTEST: "true"
       QUIET: 1
+      CI_BUILD: "true"
+      CI_BUILD_OUT: "build-ci/"
 
     steps:
       - name: Pull cirros source artifacts
@@ -51,4 +53,4 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: cirros-${{ matrix.arch }}
-          path: release/
+          path: build-ci/release/

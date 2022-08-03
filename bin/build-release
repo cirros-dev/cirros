@@ -39,10 +39,17 @@ MY_D=${ME%/*}
 PATH=${MY_D}:$PATH
 QUIET=${QUIET:-}
 BOOTTEST=${BOOTTEST:-false}
+CI_BUILD=${CI_BUILD:-false}
+CI_BUILD_OUT=${CI_BUILD_OUT:-}
 
 case "$BOOTTEST" in
     true|false) :;;
     *) echo "Unknown value for BOOTTEST: ${BOOTTEST}"; exit 1;;
+esac
+
+case "$CI_BUILD" in
+    true|false) :;;
+    *) echo "Unknown value for CI_BUILD: ${CI_BUILD}"; exit 1;;
 esac
 
 MAKE_QUIET=
@@ -53,7 +60,11 @@ fi
 set -e
 set -o pipefail
 
-OUT="$PWD/../build-$VER"
+if [ "$CI_BUILD" = "true" ]; then
+    OUT="$PWD/$CI_BUILD_OUT"
+else
+    OUT="$PWD/../build-$VER"
+fi
 LOGFILE="$OUT/date.txt"
 export TMPDIR="$OUT/tmp"
 mkdir -p "$OUT" "$TMPDIR"
@@ -143,9 +154,13 @@ tstart=${_RET}
 
 # Stage 1: DOWNLOAD
 logevent "start download" -
-rm -f download
-mkdir -p ../download
-ln -snf ../download download
+if [ "$CI_BUILD" = "true" ]; then
+    mkdir -p download
+else
+    rm -f download
+    mkdir -p ../download
+    ln -snf ../download download
+fi
 brtgz="buildroot-${BR_VER}.tar.gz"
 dl "http://buildroot.uclibc.org/downloads/$brtgz" "download/$brtgz"
 logevent "end download"
@@ -167,7 +182,7 @@ echo "$VER" > "src/etc/cirros/version"
 logevent "end unpack"
 
 logevent "start br-source" -
-make $MAKE_QUIET ARCH=${ARCHES%% *} br-source
+make $MAKE_QUIET ARCH=${ARCHES%% *} "OUT_D=$OUT/build/$arch" br-source
 logevent "end br-source"
 
 logevent "start kernel and grub downloads" -
@@ -199,8 +214,12 @@ logevent "end kernel and grub downloads" "$kstart"
 # STAGE 2: BUILD
 jobs_flag=""
 parallel=true
-mkdir -p ../ccache
-ln -snf ../ccache ccache
+if [ "$CI_BUILD" = "true" ]; then
+    mkdir -p ccache
+else
+    mkdir -p ../ccache
+    ln -snf ../ccache ccache
+fi
 case "${CIRROS_PARALLEL:-none}" in
     none) parallel=false;;
     0|true) :;;
