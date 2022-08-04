@@ -3,10 +3,10 @@ name: CirrOS image builder
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
     branches:
-      - master
+      - main
 
 jobs:
   cirros-build-matrix:
