@@ -169,7 +169,14 @@ ln -snf buildroot-${BR_VER} buildroot
 
 ( cd buildroot && QUILT_PATCHES="$PWD/../patches-buildroot" quilt push -a )
 
-echo "$VER" > "src/etc/cirros/version"
+cat << EOF > "src/etc/os-release"
+PRETTY_NAME="CirrOS $VER"
+NAME="CirrOS"
+VERSION_ID="$VER"
+ID=cirros
+HOME_URL="http://cirros-cloud.net"
+BUG_REPORT_URL="https://github.com/cirros-dev/cirros/issues"
+EOF
 logevent "end unpack"
 
 logevent "start br-source" -
@@ -247,7 +254,6 @@ if ! $daily; then
         cd "cirros-$VER" && git checkout "$tagname" &&
         cd .. &&
         rm -Rf "cirros-$VER/.git/" &&
-        echo "$VER" > "cirros-$VER/src/etc/cirros/version" &&
         tar cvzf - cirros-$VER ) > "$OUT/release/cirros-$VER-source.tar.gz"
 fi
 
