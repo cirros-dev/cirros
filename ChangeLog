@@ -1,3 +1,29 @@
+0.5.2
+ - added ahci module to the image
+
+0.5.1
+ - backported 'ip' fix to get OpenStack Tempest tests working
+
+0.5.0
+ - move to buildroot 2019.02.1
+ - use Ubuntu 18.04 HWE (5.3.0) kernels for aarch64, arm, i386, ppc64le, x86_64
+ - grub 2.02-2ubuntu8.14 for same archs as above
+ - powerpc and ppc64 targets uses older kernel/grub as they are not supported by Ubuntu 18.04
+ - CirrOS requires at least 128MB of memory
+ - updated SSL certificates
+ - some changes to module loading
+   - no more 'no kernel module found' messages
+   - printing list of loaded modules
+ - improved VirtIO support
+   - GPU support to have graphical console support
+   - RNG support to have more entropy
+   - 9pnet, input and graphics modules added to the image
+ - handle USB input devices - required for AArch64 architecture
+ - Dropbear changes:
+   - dropped generation of DSS keys - dropbear does not support them
+   - show ECDSA ssh key right after RSA one
+   - create directory for ssh keys so it is possible to remotely login into an instance
+
 0.4.0
  - move to buildroot 2015.05 adjusting makefile and build appropriately.
  - use Ubuntu 16.04 kernels (4.4.0)
