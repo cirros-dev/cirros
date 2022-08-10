@@ -202,7 +202,6 @@ if [ $grub_efi -ne 0 ]; then
     case $arch in
         x86_64)  efiarch=x64;;
         aarch64) efiarch=aa64;;
-        i386)    efiarch=ia32;;
         arm)     efiarch=arm;;
         *) fail "arch $arch without EFI grub"
     esac

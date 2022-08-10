@@ -345,9 +345,9 @@ umount "$mp" && UMOUNT="" ||
     fail "failed to unmount partimg"
 
 case $arch in
-    i386|x86_64) grub_options="--grub1 --grub-efi";;
+    x86_64) grub_options="--grub1 --grub-efi";;
     arm|aarch64) grub_options="--grub-efi";;
-    powerpc|ppc*) grub_options="--grub-ieee";;
+    ppc*) grub_options="--grub-ieee";;
     *) grub_options=;;
 esac
 

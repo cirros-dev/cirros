@@ -9,22 +9,19 @@ CirrOS images have useful tools and function for debugging or developing cloud i
 
  * aarch64 (64-bit Armv8 often called arm64)
  * arm (32-bit Armv7)
- * i386 (32-bit x86)
- * ppc (32-bit PowerPC)
- * ppc64 (64-bit Power big endian)
  * ppc64le (64-bit Power little endian)
  * x86_64 (64-bit x86 often called amd64)
 
 Resulting images can be booted using QEMU. Several ways of booting are provided:
 
- * UEFI (aarch64, arm, i386, x86_64)
- * BIOS (i386, x86_64)
- * OpenFirmware (ppc, ppc64, ppc64le)
+ * UEFI (aarch64, arm, x86_64)
+ * BIOS (x86_64)
+ * OpenFirmware (ppc64le)
  * direct kernel + initrd (all architectures)
 
 # Build instructions
 
-The following works on Ubuntu 18.04 LTS, running on x86_64. Native building for other architectures is not recommended. Support for building under other distributions is limited and not tested.
+The following works on Ubuntu 22.04 LTS, running on x86_64. Native building for other architectures is not recommended. Support for building under other distributions is limited and not tested.
 
 ## Clone sources
 
@@ -34,7 +31,7 @@ The following works on Ubuntu 18.04 LTS, running on x86_64. Native building for 
 
 ## Install required software
 
-To get build going we need some packages installed. If you use Ubuntu 18.04 LTS then all you need to do is:
+To get build going we need some packages installed. If you use Ubuntu 22.04 LTS then all you need to do is:
 
  * cd cirros
 
@@ -53,7 +50,8 @@ Once you fetched source code all you have to do something like:
  * cd cirros
  * bin/build-release daily
 
-If you want to build for only subset of supported architectures when use ARCHES variable like:
+If you want to build for only a subset of supported architectures, use
+the ARCHES variable like:
 
 * ARCHES=aarch64,x86_64,arm bin/build-release daily
 
@@ -66,7 +64,7 @@ To use it, you would do something like:
 
  * download buildroot and setup environment
 ```bash
-   $ br_ver="2019.02.1"
+   $ br_ver="2022.02.4"
    $ mkdir -p ../download
    $ ln -snf ../download download
    $ ( cd download && wget http://buildroot.uclibc.org/downloads/buildroot-${br_ver}.tar.gz )
@@ -88,11 +86,11 @@ To use it, you would do something like:
 
  * download the buildroot sources
 ```bash
-   $ ARCH=i386
+   $ ARCH=x86_64
    $ make ARCH=$ARCH br-source
 ```      
 
- * Build buildroot for a given arch (ARCH should be set to 'i386', 'x86_64', 'arm' or 'aarch64')
+ * Build buildroot for a given arch (ARCH should be set to 'x86_64', 'arm', 'aarch64' or 'ppc64le')
 ```bash
    $ make ARCH=$ARCH OUT_D=$PWD/output/$ARCH
 ```      
@@ -102,22 +100,21 @@ This will do a full buildroot build, which will take a while. The output that Ci
  * Download a kernel to use. The kernel input to bundle must be in deb format. The ubuntu '-virtual'  kernel is used as a starting point. Version can be taken from https://launchpad.net/ubuntu/+source/linux page.
 
 ```bash
-   $ kver="4.4.0-148.174"
+   $ kver="5.15.0-33.34"
    $ ./bin/grab-kernels "$kver" $ARCH
 ```      
 
- * Download EFI grub to use (aarch64, arm, i386, x86_64 only). The grub-efi input to bundle will be in tar.gz format. Version can be taken from https://launchpad.net/ubuntu/+source/grub2 page.
+ * Download EFI grub to use (aarch64, arm, x86_64 only). The grub-efi input to bundle will be in tar.gz format. Version can be taken from https://launchpad.net/ubuntu/+source/grub2 page.
 ```bash
-   $ gver="2.02~beta2-36ubuntu3.22"
+   $ gver="2.06-2ubuntu7"
    $ ./bin/grab-grub-efi "$gver" $ARCH
 ```      
 
  * build disk images using bin/bundle
 ```bash
    $ sudo ./bin/bundle -v --arch=$ARCH output/$ARCH/rootfs.tar \
-      download/kernel-$ARCH.deb download/grub-efi-$ARCH.tar.gz output/$ARCH/images
+      download/kernel-$ARCH.tar.gz download/grub-efi-$ARCH.tar.gz output/$ARCH/images
 ```      
-
 
 ## testing images
 

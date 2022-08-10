@@ -22,7 +22,7 @@ source "${0%/*}/common-functions.sh"
 
 burl="https://launchpad.net/ubuntu/+archive/primary/+files/"
 outdir="./download"
-def_arches="x86_64 aarch64 i386 arm"
+def_arches="x86_64 aarch64 arm"
 
 case "$1" in
     --outdir=*) outdir="${1#*=}"; shift;;
@@ -59,7 +59,8 @@ deb2tar() {
     debug 1 "creating $out in tempdir at $tdir"
 
     mkdir -p "$tdir/deb"
-    dpkg -x "$deb" "$tdir/deb" || fail "failed to unpack $deb"
+    ar x "$deb" --output "$tdir/deb" || fail "failed to unpack $deb"
+    ( cd "$tdir/deb" && tar -xf data.tar.* ) || fail "failed to extract data from $deb"
 
     efibin=boot${efiarch}.efi
 
@@ -84,29 +85,23 @@ for arch in "$@"; do
     efiarch=""
     case "$arch" in
         aarch64)
-		efiarch='aa64'
-		debarch='arm64'
-                pkgarch='arm64'
-                format='arm64-efi'
-		;;
+            efiarch='aa64'
+            debarch='arm64'
+            pkgarch='arm64'
+            format='arm64-efi'
+            ;;
         x86_64)
-		efiarch='x64'
-		debarch='amd64'
-                pkgarch='amd64'
-                format='x86_64-efi'
-		;;
-        i386)
-		efiarch='ia32'
-		debarch='i386'
-                pkgarch='ia32'
-                format='i386-efi'
-		;;
+            efiarch='x64'
+            debarch='amd64'
+            pkgarch='amd64'
+            format='x86_64-efi'
+            ;;
         arm)
-		efiarch='arm'
-		debarch='armhf'
-                pkgarch='arm'
-                format='arm-efi'
-		;;
+            efiarch='arm'
+            debarch='armhf'
+            pkgarch='arm'
+            format='arm-efi'
+            ;;
         *) debug 1 "no EFI grub for $arch";;
     esac
 
@@ -118,7 +113,7 @@ for arch in "$@"; do
     deb="grub-efi-${pkgarch}-bin_${gver}_${debarch}.deb"
     if [ ! -f "${outdir}/${deb}" ]; then
             dl $burl/$deb "$outdir/$deb" || fail "failed dl $burl/$deb"
-    fi	
+    fi
     tar="grub-efi-${gver}-${arch}.tar.gz"
     deb2tar "$outdir/$deb" "$outdir/$tar" $efiarch $format || 
         fail "failed deb2efi from $deb to $tar"

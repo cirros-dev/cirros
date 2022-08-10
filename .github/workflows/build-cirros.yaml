@@ -12,14 +12,12 @@ jobs:
   cirros-build-matrix:
     strategy:
       matrix:
-        # i386, powerpc, and ppc64 will be dropped in CirrOS 0.6.x
-        arch: [aarch64, arm, i386, x86_64, powerpc, ppc64, ppc64le]
+        arch: [aarch64, arm, x86_64, ppc64le]
 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     env:
       ARCHES: ${{ matrix.arch }}
-      BOOTTEST: "true"
       QUIET: 1
       CI_BUILD: "true"
       CI_BUILD_OUT: "build-ci/"
@@ -46,8 +44,17 @@ jobs:
       - name: Install job dependencies
         run: sudo apt-get install cloud-utils qemu-system openbios-ppc
 
-      - name: Build cirros image
+      - name: disable invisible-mirror.net use
+        run: echo "127.0.0.1 invisible-mirror.net" | sudo tee -a /etc/hosts
+
+      - name: Build CirrOS image
         run: bin/build-release daily
+
+      - name: Boot CirrOS image
+        run: bin/test-boot
+        env:
+          GUESTARCH: ${{ matrix.arch }}
+          POWEROFF: "true"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v3

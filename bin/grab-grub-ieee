@@ -22,7 +22,7 @@ source "${0%/*}/common-functions.sh"
 
 burl="https://launchpad.net/ubuntu/+archive/primary/+files/"
 outdir="./download"
-def_arches="ppc64le powerpc ppc64"
+def_arches="ppc64le"
 
 case "$1" in
     --outdir=*) outdir="${1#*=}"; shift;;
@@ -59,7 +59,8 @@ deb2tar() {
     debug 1 "creating $out in tempdir at $tdir"
 
     mkdir -p "$tdir/deb"
-    dpkg -x "$deb" "$tdir/deb" || fail "failed to unpack $deb"
+    ar x "$deb" --output "$tdir/deb" || fail "failed to unpack $deb"
+    ( cd "$tdir/deb" && tar -xf data.tar.* ) || fail "failed to extract data from $deb"
 
     gbin="grub"
     gmod="boot cat configfile echo ext2 halt loadenv minicmd normal part_gpt
@@ -90,9 +91,6 @@ for arch in "$@"; do
     case "$arch" in
         ppc64le)
             debarch='ppc64el'
-            ;;
-        powerpc|ppc64)
-            debarch='powerpc'
             ;;
         *)
             debug 1 "no grub-ieee1275 for $arch"

@@ -20,10 +20,6 @@ virtio-rng
 usbhid
 hid-generic
 
-## PowerPC
-ibmveth            # arch=powerpc
-ibmvscsi           # arch=powerpc
-
 ## Filesystem
 ## nls* are needed for VFAT
 isofs

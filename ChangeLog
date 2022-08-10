@@ -1,3 +1,27 @@
+0.6.0
+ - move to buildroot 2022.02.5
+ - use Ubuntu 22.04 (5.15) kernels for aarch64, arm, ppc64le, x86_64
+ - grub 2.06-2ubuntu7 for same archs as above
+ - dropped support for i386, powerpc, ppc64 architectures as they are not
+   supported by Ubuntu 22.04 so we do not have kernel
+ - arm image is ARMv7 now to follow armhf distributions
+ - CirrOS instance memory requirements:
+   - 128MB
+     - arm (virt with direct kernel boot)
+     - x86_64 (bios boot)
+   - 192MB
+     - aarch64 (virt with direct kernel boot)
+   - 256MB
+     - ppc64le
+     - x86_64 (uefi)
+   - 272MB
+     - aarch64 (virt with uefi)
+ - updated SSL certificates
+ - switched to dhcpcd for network setup
+   - setup all available interfaces automatically
+   - handle IPv6 variants properly (SLAAC vs DHCPv6)
+ - added e1000e module for PCI Express based Intel network cards
+
 0.5.2
  - added ahci module to the image
 
