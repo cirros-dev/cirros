@@ -30,7 +30,7 @@ nls_iso8859-1
 nls_utf8
 
 ## Networking
-#8021q
+8021q
 #gre
 #ipip
 ip_tables
