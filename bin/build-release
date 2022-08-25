@@ -167,7 +167,9 @@ ln -snf buildroot-${BR_VER} buildroot
 # to have revision controlled information in that file.
 #./bin/mkcabundle > src/etc/ssl/certs/ca-certificates.crt
 
-( cd buildroot && QUILT_PATCHES="$PWD/../patches-buildroot" quilt push -a )
+if [ -f patches-buildroot/series ]; then
+    ( cd buildroot && QUILT_PATCHES="$PWD/../patches-buildroot" quilt push -a )
+fi
 
 echo "$VER" > "src/etc/cirros/version"
 logevent "end unpack"
