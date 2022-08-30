@@ -65,9 +65,21 @@ ds_cat_item() {
 }
 
 cirros_version() {
-	[ -r /etc/cirros/version ] ||
-		{ _RET="unreleased"; return 0; }
-	{ read _RET < /etc/cirros/version; } >/dev/null 2>&1
+	local orelf="${1:-/etc/os-release}" v="" quote="\""
+	_RET="unreleased"
+	[ -r "$orelf" ] || return 0;
+	while read line ; do
+		case "$line" in
+			VERSION_ID=*)
+				v=${line#*=}
+				v=${v%${quote}}
+				v=${v#${quote}}
+				_RET="$v"
+				return 0
+				;;
+		esac
+	done < "$orelf"
+	return
 }
 
 cirros_version_available() {
