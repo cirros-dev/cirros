@@ -100,7 +100,7 @@ This will do a full buildroot build, which will take a while. The output that Ci
  * Download a kernel to use. The kernel input to bundle must be in deb format. The ubuntu '-virtual'  kernel is used as a starting point. Version can be taken from https://launchpad.net/ubuntu/+source/linux page.
 
 ```bash
-   $ kver="5.15.0-33.34"
+   $ kver="5.15.0-48.54"
    $ ./bin/grab-kernels "$kver" $ARCH
 ```      
 

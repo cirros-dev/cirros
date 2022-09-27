@@ -30,7 +30,7 @@ shift
 pre=cirros-$VER
 BR_VER="${BR_VER:-2022.02.4}" # WARNING: this may be non-trivial to change
 ARCHES="${ARCHES:-x86_64 arm aarch64 ppc64le}"
-KVER="${KVER:-5.15.0-33.34}" # Ubuntu 22.04
+KVER="${KVER:-5.15.0-48.54}" # Ubuntu 22.04
 GVER="${GVER:-2.06-2ubuntu7}" # Ubuntu 22.04
 ME=$(readlink -f "$0")
 MY_D=${ME%/*}
