@@ -55,6 +55,8 @@ mkdir /run/var.tmp
 
 hostname -F /etc/hostname
 
+filecap /usr/bin/traceroute NET_RAW
+
 f="/bin/lxc-is-container" && write_lxc_is_container > "$f" && chmod 755 "$f"
 
 if ! is_lxc; then
