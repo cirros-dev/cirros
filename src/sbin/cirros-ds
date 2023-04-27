@@ -62,11 +62,11 @@ cirros_ds() {
 		{ read cmdline < /proc/cmdline; } >/dev/null 2>&1
 		for tok in $cmdline; do
 			case "$tok" in
-				dslist=) cmdline_list=none;;
+				dslist=) cmdline_list=empty;;
 				dslist=*) cmdline_list=${tok#dslist=};;
 			esac
 		done
-		if [ -n "${cmdline_list}" -a "${cmdline_list}" != "none" ]; then
+		if [ -n "${cmdline_list}" -a "${cmdline_list}" != "empty" ]; then
 			IFS=","; set -- ${cmdline_list}; IFS="$oifs"
 			debug 2 "found datasource list on cmdline:" "$@"
 		else
