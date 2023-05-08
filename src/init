@@ -16,6 +16,8 @@ echo "6 4 1 7" >/proc/sys/kernel/printk
 
 parse_cmdline
 
+VERBOSITY=${KC_VERBOSE}
+
 for x in $KC_CONSOLES; do
 	[ "$x" = "$KC_CONSOLE" ] ||
 		echo "further output written to $KC_CONSOLE" > "$x";
@@ -49,7 +51,7 @@ else
 	debug 1 "did not find a device matching $rootspec"
 fi
 
-if [ "$KC_DEBUG" = "1" ]; then
+if [ "${KC_DEBUG_INITRAMFS}" = "1" ]; then
 	echo "dropping into initramfs debug shell"
 	/bin/sh
 fi
