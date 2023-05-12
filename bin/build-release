@@ -30,8 +30,9 @@ shift
 pre=cirros-$VER
 BR_VER="${BR_VER:-2022.02.4}" # WARNING: this may be non-trivial to change
 ARCHES="${ARCHES:-x86_64 arm aarch64 ppc64le}"
-KVER="${KVER:-5.15.0-48.54}" # Ubuntu 22.04
-GVER="${GVER:-2.06-2ubuntu7}" # Ubuntu 22.04
+KVER="${KVER:-5.15.0-71.78}" # Ubuntu 22.04
+GVER="${GVER:-2.06-2ubuntu7.1}" # Ubuntu 22.04 grub2
+GVER_UNSIGNED="${GVER_UNSIGNED:-2.06-2ubuntu14.1}" # Ubuntu 22.04 grub2-unsigned
 ME=$(readlink -f "$0")
 MY_D=${ME%/*}
 PATH=${MY_D}:$PATH
@@ -122,6 +123,15 @@ get_grub_format() {
     echo $format
 }
 
+get_grub_version() {
+    local arch=$1 ver=""
+    case "$arch" in
+        x86_64|aarch64) ver="${GVER_UNSIGNED}";;
+        *) ver="$GVER";;
+    esac
+    echo "$ver"
+}
+
 get_img_size() {
     local arch=$1
     case "$arch" in
@@ -192,7 +202,7 @@ for arch in ${ARCHES}; do
     mkdir -p "$OUT/stage/$arch"
 
     kver=$KVER
-    gver=$GVER
+    gver=$(get_grub_version "$arch")
 
     # grab kernel
     logevent "start kernel ($arch) download" -
