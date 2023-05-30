@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - 0.5.x
+    tags:
+      - "0.5.[0-9]+"
   pull_request:
     branches:
       - 0.5.x
@@ -46,8 +48,11 @@ jobs:
       - name: Install job dependencies
         run: sudo apt-get install cloud-utils qemu-system openbios-ppc
 
-      - name: Build cirros image
-        run: bin/build-release daily
+      - name: Build CirrOS image
+        env:
+          # use tag name for tag build, or 'daily' for anything else.
+          reason: "${{ github.ref_type == 'tag' && github.ref_name || 'daily' }}"
+        run: bin/build-release "$reason"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v3
