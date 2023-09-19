@@ -1,0 +1,47 @@
+From f73718ce5efe2cfda8bd3c8fc7cc72e30b2b10f1 Mon Sep 17 00:00:00 2001
+From: Konstantin Menyaev <KAMenyaev@sberdevices.ru>
+Date: Mon, 5 Sep 2022 04:09:13 +0300
+Subject: [PATCH] package/dhcpcd: fix pid path
+
+From the README:
+    dhcpcd-9 defaults the run directory to `/var/run/dhcpcd` instead of
+    `/var/run` and the prefix of dhcpcd has been removed from the files.
+
+Make it so.
+
+Signed-off-by: Konstantin Menyaev <KAMenyaev@sberdevices.ru>
+Signed-off-by: Yann E. MORIN <yann.morin.1998@free.fr>
+---
+ package/dhcpcd/S41dhcpcd      | 2 +-
+ package/dhcpcd/dhcpcd.service | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/package/dhcpcd/S41dhcpcd b/package/dhcpcd/S41dhcpcd
+index 3e5c22f715..55794f4075 100644
+--- a/package/dhcpcd/S41dhcpcd
++++ b/package/dhcpcd/S41dhcpcd
+@@ -5,7 +5,7 @@
+ 
+ DAEMON=/sbin/dhcpcd
+ CONFIG=/etc/dhcpcd.conf
+-PIDFILE=/var/run/dhcpcd.pid
++PIDFILE=/var/run/dhcpcd/pid
+ 
+ [ -f $CONFIG ] || exit 0
+ 
+diff --git a/package/dhcpcd/dhcpcd.service b/package/dhcpcd/dhcpcd.service
+index e648092c9b..4da49818a7 100644
+--- a/package/dhcpcd/dhcpcd.service
++++ b/package/dhcpcd/dhcpcd.service
+@@ -5,7 +5,7 @@ After=network.target
+ [Service]
+ Type=forking
+ EnvironmentFile=-/etc/default/dhcpcd
+-PIDFile=/run/dhcpcd.pid
++PIDFile=/run/dhcpcd/pid
+ ExecStart=/sbin/dhcpcd $DAEMON_ARGS
+ Restart=always
+ 
+-- 
+2.34.1
+
