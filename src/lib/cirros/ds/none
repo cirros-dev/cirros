@@ -20,6 +20,8 @@ EOF
 search_local() {
 	local out_d="$1"
 	local data_d="${out_d}/data"
+	[ -d "$out_d" ] || mkdir -p "$out_d" ||
+		{ error "failed to create output dir"; return 1; }
 	echo "i-dsnone" > "${data_d}/instance-id"
 	echo 0 > "$out_d/result"
 }
