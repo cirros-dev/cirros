@@ -16,6 +16,11 @@ virtio_scsi
 virtio-gpu
 virtio-rng
 
+## Vmware
+vmw_pvscsi
+vmxnet3
+mptspi
+
 ## Input devices
 usbhid
 hid-generic
