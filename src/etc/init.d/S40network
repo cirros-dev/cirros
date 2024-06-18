@@ -7,7 +7,7 @@ case "$1" in
   start)
 	printf "Starting network: "
 	/sbin/ifup lo
-	/sbin/dhcpcd
+	/sbin/dhcpcd --noipv4ll -w -t 180
 	[ $? = 0 ] && echo "OK" || echo "FAIL"
 	;;
   stop)
