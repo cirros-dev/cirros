@@ -15,6 +15,7 @@ virtio_pci
 virtio_scsi
 virtio-gpu
 virtio-rng
+virtiofs
 
 ## Input devices
 usbhid
