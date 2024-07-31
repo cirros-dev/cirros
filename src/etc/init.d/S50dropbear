@@ -15,9 +15,15 @@ start() {
 	umask 077
 	local dropbear_key_dir="/etc/dropbear"
 
-	# Handle symlinked directories
-	if [ -L "$dropbear_key_dir" ]; then
-		dropbear_key_dir=$(readlink -f "$dropbear_key_dir")
+	# If /etc/dropbear is not a directory, and
+	#   - the filesystem is RO (i.e. we can not rm the symlink),
+	#     create the directory pointed to by the symlink.
+	#   - the filesystem is RW (i.e. we can rm the symlink),
+	#     replace the symlink with an actual directory
+	if ! [ -d /etc/dropbear ]; then
+		if ! rm -f /etc/dropbear; then
+			dropbear_key_dir=$(readlink "$dropbear_key_dir")
+		fi
 	fi
 
 	# Ensure host keys are changed when instance ID changes
@@ -26,7 +32,7 @@ start() {
 
 	# Regenerate invalid or missing keys
 	local ktype file
-	for ktype in rsa ecdsa; do
+	for ktype in rsa ecdsa ed25519; do
 		file="${dropbear_key_dir}/dropbear_${ktype}_host_key"
 		# -f = input file, -y = validate and print pubkey info
 		if ! dropbearkey -f "$file" -y &>/dev/null; then
