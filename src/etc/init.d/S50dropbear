@@ -17,7 +17,7 @@ start() {
 
 	# Handle symlinked directories
 	if [ -L "$dropbear_key_dir" ]; then
-		dropbear_key_dir=$(readlink -f "$dropbear_key_dir")
+		dropbear_key_dir=$(readlink "$dropbear_key_dir")
 	fi
 
 	# Ensure host keys are changed when instance ID changes
