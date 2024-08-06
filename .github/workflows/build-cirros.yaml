@@ -25,16 +25,16 @@ jobs:
 
     steps:
       - name: Pull cirros source artifacts
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Cache download
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           key: downloads-${{ matrix.arch }}-${{ hashFiles('bin/build-release') }}
           path: download/
 
       - name: Cache ccache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           key: ccache-${{ matrix.arch }}-${{ hashFiles('bin/build-release') }}
           path: ccache/
@@ -61,7 +61,7 @@ jobs:
           POWEROFF: "true"
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: cirros-${{ matrix.arch }}
           path: build-ci/release/
