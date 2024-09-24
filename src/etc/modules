@@ -1,6 +1,8 @@
 # modules here are loaded one per line
 e1000
 e1000e
+igb
+igbvf
 ne2k-pci           # arch=x86
 8139cp             # arch=x86
 pcnet32            # arch=x86
