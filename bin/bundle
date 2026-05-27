@@ -55,7 +55,7 @@ getopt_out=$(getopt --name "${0##*/}" \
 topdir=$(cd "${0%/*}/.." && pwd)
 size=${DEF_SIZE}
 FS_LABEL="cirros-rootfs"
-fs_type="ext3"
+fs_type="ext4"
 arch=""
 
 while [ $# -ne 0 ]; do
