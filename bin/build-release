@@ -284,7 +284,8 @@ for arch in ${ARCHES}; do
         ln initramfs $p-initrd && ln initramfs $p-initramfs &&
         ln part.img $p-rootfs.img &&
         ln blank.img $p-blank.img &&
-        ln disk.img $p-disk.img &&
+        ln disk-minimal.qcow2 $p-minimal.qcow2 &&
+        ln disk-full.qcow2 $p-full.qcow2 &&
         ln filesys.tar.gz $p-lxc.tar.gz &&
         ln filesys.tar.xz $p-lxc.tar.xz &&
         ln lxd.tar.xz $p-lxd.tar.xz &&
@@ -302,7 +303,8 @@ for arch in ${ARCHES}; do
         ( cd "$OUT/stage/$arch" &&
             tar cvzf - $p-blank.img $p-vmlinuz $p-initrd
         ) > "$OUT/release/$p-uec.tar.gz"
-    cp "$OUT/stage/$arch/$p-disk.img" "$OUT/release/$p-disk.img"
+    cp "$OUT/stage/$arch/$p-minimal.qcow2" "$OUT/release/$p-minimal.qcow2"
+    cp "$OUT/stage/$arch/$p-full.qcow2" "$OUT/release/$p-full.qcow2"
 done
 
 mkdir -p "$OUT/release/buildroot_rootfs"
@@ -323,10 +325,12 @@ msg "output in $OUT/release"
 
 if [ "true" = "${BOOTTEST}" ]; then
     for arch in ${ARCHES}; do
-        img="$OUT/release/cirros-$VER-$arch-disk.img"
-        logevent "start test-boot $arch ${img##*/}" -
-        POWEROFF=true IMG="$img" RELEASE_DIR=$OUT/release test-boot
-        logevent "end test-boot $arch ${img##*/}"
+        for variant in minimal full; do
+            img="$OUT/release/cirros-$VER-$arch-$variant.qcow2"
+            logevent "start test-boot $arch ${img##*/}" -
+            POWEROFF=true IMG="$img" RELEASE_DIR=$OUT/release test-boot
+            logevent "end test-boot $arch ${img##*/}"
+        done
     done
 fi
 

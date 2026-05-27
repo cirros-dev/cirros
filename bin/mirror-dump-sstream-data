@@ -127,7 +127,7 @@ output_for_path() {
     local path=${1#./}
     local size="" md5="" sha256="" pubname=""
     case "$path" in
-        *-uec.tar.gz|*-disk.img|*-rootfs.img|*-lxc.tar.gz|*-lxc.tar.xz) :;;
+        *-uec.tar.gz|*-minimal.qcow2|*-full.qcow2|*-rootfs.img|*-lxc.tar.gz|*-lxc.tar.xz) :;;
         *-lxd.tar.xz) :;;
         *) return;;
     esac
