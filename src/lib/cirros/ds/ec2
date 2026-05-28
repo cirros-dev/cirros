@@ -38,7 +38,7 @@ search_local() {
 
 	trap cleanup EXIT
 
-	debug 1 "checking $MDURL/instance-id"
+	debug 1 "checking $MDURL/meta-data/instance-id"
 	i=0
 	MAX_TRIES=${MAX_TRIES:-20}
 	SLEEP_TIME=${SLEEP_TIME:-2}
