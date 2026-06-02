@@ -102,10 +102,18 @@ cirros_per() {
 	"$@"
 	ret=$?
 
-	read_uptime
-	echo "[${_RET}]" "$@" > "${state_d}/${marker}"
+	if [ "$ret" -ne 0 ]; then
+		error "${name} failed per ${freq}: $ret"
+		return "$ret"
+	fi
 
-	return "$ret"
+	sync
+
+	read_uptime
+	echo "[${_RET}]" "$@" > "${state_d}/${marker}" ||
+		{ error "failed to write marker ${state_d}/${marker}"; return 1; }
+
+	return 0
 }
 
 cirros_per "$@"
