@@ -24,12 +24,15 @@ POWEROFF=${POWEROFF:-false}
 
 if [ "$CI_BUILD" = "true" ]; then
     GUESTARCH="${GUESTARCH:-}"
-    IMG=$(find $CI_BUILD_OUT/release/ -name cirros-*-${GUESTARCH}-disk.img)
-    RELEASE_DIR=$CI_BUILD_OUT/release
+    RELEASE_DIR=${RELEASE_DIR:-$CI_BUILD_OUT/release}
+    if [ -z "${IMG:-}" ]; then
+        IMG=$(find "$RELEASE_DIR" -name "cirros-*-${GUESTARCH}-full.qcow2" | head -n1)
+    fi
 else
     GUESTARCH="${GUESTARCH:-$(echo $(basename $IMG)| cut -d'-' -f3)}"
 fi
 
+GUESTARCH="${GUESTARCH:-$(echo $(basename $IMG)| cut -d'-' -f3)}"
 VER=$(echo $(basename $IMG)| cut -d'-' -f2)
 
 echo '{"instance-id": "9068aef2-213e-4e43-830f-accdbadde897"}' > meta-data

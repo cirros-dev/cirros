@@ -55,7 +55,7 @@ getopt_out=$(getopt --name "${0##*/}" \
 topdir=$(cd "${0%/*}/.." && pwd)
 size=${DEF_SIZE}
 FS_LABEL="cirros-rootfs"
-fs_type="ext3"
+fs_type="ext4"
 arch=""
 
 while [ $# -ne 0 ]; do
@@ -99,10 +99,10 @@ mkdir -p "${out_d_in}" && out_d=$(readlink -f "${out_d_in}") &&
     fail "failed to get full path for input"
 
 out_partimg="${out_d}/part.img"
-out_diskimg="${out_d}/disk.img"
+out_minimal_diskimg="${out_d}/disk-minimal.qcow2"
+out_full_diskimg="${out_d}/disk-full.qcow2"
 out_kernel="${out_d}/kernel"
 out_initramfs="${out_d}/initramfs"
-out_diskimg="${out_d}/disk.img"
 out_blankimg="${out_d}/blank.img"
 out_filesys_lxc_gz="${out_d}/filesys.tar.gz"
 out_filesys_lxc_xz="${out_d}/filesys.tar.xz"
@@ -322,32 +322,37 @@ tar -C "$stage_d" -cpf - \
 ( cd "$stage_d" && tar -cpf - * ) > "$filesys_tar" ||
     fail "failed to create filesys_tar"
 
-debug 1 "populating image"
+debug 1 "populating minimal partition image"
 mount -o loop "${out_partimg}" "${mp}" && UMOUNT=${mp} ||
     fail "failed to mount ${out_partimg} loopback"
 
-tar -C "$mp" -xpf - vmlinuz initrd.img boot/ < "$kernel_tar" ||
+tar -C "$mp" -xpf - < "$kernel_tar" ||
     fail "failed to extract kernel_tar"
 cp "$initramfs" "$mp/boot/initrd.img-${kver}"
 
 umount "${mp}" && UMOUNT="" ||
     fail "failed to unmount ${out_partimg}"
 
+full_partimg="$TEMP_D/part.img.full"
+cp "$out_blankimg" "$full_partimg" ||
+    fail "failed to copy full partition image"
+
+debug 1 "populating full partition image"
+mount -o loop "${full_partimg}" "${mp}" && UMOUNT=${mp} ||
+    fail "failed to mount ${full_partimg} loopback"
+
+tar -C "$mp" -xpf - < "$filesys_tar" ||
+    fail "failed to extract filesys_tar"
+cp "$initramfs" "$mp/boot/initrd.img-${kver}"
+
+umount "${mp}" && UMOUNT="" ||
+    fail "failed to unmount ${full_partimg}"
+
 cp "${kernel_d}/${vmlinuz}" "${out_kernel}" ||
     fail "failed to copy kernel to ${out_kernel}"
 
 { [ -z "${out_initramfs}" ] || cp "${initramfs}" "${out_initramfs}"; }  ||
     fail "failed to copy initramfs to ${out_initramfs}"
-
-debug 1 "fixing grub entry in partimg"
-tmp_part="$TEMP_D/part.img.disk"
-cp "$out_partimg" "$tmp_part" &&
-    mount -o loop "$tmp_part" "$mp" && UMOUNT="$mp" ||
-    fail "failed to mount $tmp_part"
-sed -i 's/(hd0)/(hd0,0)/' "$mp/boot/grub/menu.lst" ||
-    fail "failed to edit /boot/grub/menu.lst in image"
-umount "$mp" && UMOUNT="" ||
-    fail "failed to unmount partimg"
 
 case $arch in
     x86_64) grub_options="--grub1 --grub-efi";;
@@ -356,13 +361,30 @@ case $arch in
     *) grub_options=;;
 esac
 
-debug 1 "creating disk image"
-out=$(PATH=$xgrubd:$PATH part2disk $grub_options "$tmp_part" \
-    "$grub_in" "$arch" "$out_diskimg.raw" 2>&1) ||
-    fail "failed to create disk image: $out"
-qemu-img convert -O qcow2 -c "$out_diskimg.raw" "$out_diskimg" ||
-    fail "failed to convert disk image"
-rm -f "$out_diskimg.raw" "$tmp_part"
+write_disk_image() {
+    local partimg="$1" out_diskimg="$2" tmp_part=""
+
+    debug 1 "fixing grub entry in ${partimg}"
+    tmp_part="$TEMP_D/${out_diskimg##*/}.part"
+    cp "$partimg" "$tmp_part" &&
+        mount -o loop "$tmp_part" "$mp" && UMOUNT="$mp" ||
+        fail "failed to mount $tmp_part"
+    sed -i 's/(hd0)/(hd0,0)/' "$mp/boot/grub/menu.lst" ||
+        fail "failed to edit /boot/grub/menu.lst in image"
+    umount "$mp" && UMOUNT="" ||
+        fail "failed to unmount partimg"
+
+    debug 1 "creating disk image ${out_diskimg}"
+    out=$(PATH=$xgrubd:$PATH part2disk $grub_options "$tmp_part" \
+        "$grub_in" "$arch" "$out_diskimg.raw" 2>&1) ||
+        fail "failed to create disk image: $out"
+    qemu-img convert -O qcow2 -c "$out_diskimg.raw" "$out_diskimg" ||
+        fail "failed to convert disk image"
+    rm -f "$out_diskimg.raw" "$tmp_part"
+}
+
+write_disk_image "$out_partimg" "$out_minimal_diskimg"
+write_disk_image "$full_partimg" "$out_full_diskimg"
 
 if [ -n "${SUDO_USER}" ]; then
     u=${SUDO_USER}
@@ -372,7 +394,8 @@ if [ -n "${SUDO_USER}" ]; then
 fi
 
 echo "wrote ${out_partimg}"
-echo "wrote ${out_diskimg}"
+echo "wrote ${out_minimal_diskimg}"
+echo "wrote ${out_full_diskimg}"
 echo "wrote ${out_kernel}"
 echo "wrote ${out_initramfs}"
 echo "wrote ${out_blankimg}"

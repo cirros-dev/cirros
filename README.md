@@ -56,6 +56,9 @@ the ARCHES variable like:
 * ARCHES=aarch64,x86_64,arm bin/build-release daily
 
 Resulting images will be present in ../build-dYYMMDD/release directory.
+Each architecture gets a bootable `*-minimal.qcow2` image with the traditional
+minimal root filesystem and a `*-full.qcow2` image with the root filesystem
+pre-populated at build time.
 
 
 ## Long, detailed version
@@ -128,7 +131,7 @@ for riscv64,use below version
 We provide simple script to test resulting image. You run it this way:
 
 ```bash
-   $ RELEASE_DIR=$PWD/../build-*/release IMG=$PWD/../build-*/release/cirros-*-x86_64-disk.img bin/test-boot
+   $ RELEASE_DIR=$PWD/../build-*/release IMG=$PWD/../build-*/release/cirros-*-x86_64-full.qcow2 bin/test-boot
 ```      
 
 Note: "RELEASE_DIR" variable is required only for aarch64 and arm images.

@@ -111,10 +111,13 @@ cirros_apply() {
 		local keyfile="$_RET"
 		ds_get_item public-keys ||
 			error "failed to get public-keys"
-		mkdir -p "${TARGET_ROOT}/home/cirros" "${TARGET_ROOT}/root"
-		HOME=$TARGET_ROOT/home/cirros su -c "ssh-add-key --replace -" cirros < "$keyfile"
+		mkdir -p "${TARGET_ROOT}/home/cirros" "${TARGET_ROOT}/root" ||
+			{ error "failed to create ssh target homes"; return 1; }
+		HOME=$TARGET_ROOT/home/cirros su -c "ssh-add-key --replace -" cirros < "$keyfile" ||
+			{ error "failed to add public keys for cirros user"; return 1; }
 		HOME=$TARGET_ROOT/root ssh-add-key --replace \
-			--prefix "$SSH_ROOT_PREFIX" - < "$keyfile"
+			--prefix "$SSH_ROOT_PREFIX" - < "$keyfile" ||
+			{ error "failed to add public keys for root user"; return 1; }
 	fi 
 
 	local name=""

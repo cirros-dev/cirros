@@ -21,6 +21,9 @@
 
 source "${0%/*}/common-functions.sh"
 
+TMP=""
+LOOP_DEV=""
+
 DEF_SECTOR_SIZE=512
 base_d=$(dirname $(readlink -f "${0}"))
 PATH="${PATH}:${base_d}"
@@ -78,12 +81,28 @@ human2bytes() {
 }
 
 cleanup() {
-    umount "$TMP/efi"
-    umount "$TMP/rootfs"
-    kpartx -d "$dimg"
+    local ret=${1:-$?} mp=""
+
+    if [ -n "$TMP" ]; then
+        for mp in "$TMP/efi" "$TMP/rootfs"; do
+            if mountpoint -q "$mp"; then
+                umount "$mp" || true
+            fi
+        done
+    fi
+
+    if [ -n "$LOOP_DEV" ]; then
+        kpartx -d "$LOOP_DEV" >/dev/null 2>&1 || true
+        losetup -d "$LOOP_DEV" >/dev/null 2>&1 || true
+    elif [ -n "${dimg:-}" ]; then
+        kpartx -d "$dimg" >/dev/null 2>&1 || true
+    fi
+
+    [ -z "$TMP" -o ! -d "$TMP" ] || rm -Rf "$TMP"
+    return "$ret"
 }
 
-trap cleanup EXIT
+trap 'cleanup $?' EXIT
 
 short_opts="b:c:Ghs:v"
 long_opts="grub-ieee,grub-efi,grub1,grub,help,size:,verbose"
@@ -171,6 +190,7 @@ dd if=/dev/zero of="${dimg}" bs=$ssize count=$tot_size_sectors \
 debug 2 "create partitions"
 sgdisk -n 15:2048:+8M -t 15:${ptype} -N 1 $dimg
 loop_nr=`kpartx -av $dimg | head -n1 | cut -d" " -f3 | cut -d"p" -f2`
+LOOP_DEV="/dev/loop${loop_nr}"
 
 debug 2 "parted $dimg print"
 parted $dimg print
@@ -272,6 +292,7 @@ EOF
     umount "$TMP/rootfs"
 fi
 
-kpartx -d "$dimg"
+cleanup
 error "wrote to ${dimg}"
+trap - EXIT
 # vi: ts=4 noexpandtab
