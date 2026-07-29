@@ -84,11 +84,11 @@ search_local() {
 		echo "i-nocloud-default" > "${data_d}/instance-id"
 	fi
 	if [ -d "${data_d}/public-keys" ]; then
-		# turn public-keys list into 
+		# turn public-keys list into a single file
 		mv "${data_d}/public-keys" "${out_d}/public-keys-d";
 		set +f
 		for f in "${out_d}/public-keys-d/"*; do
-			[ -f "${f}" -a "${f##*/}" != "0" ] && cat "$f"
+			[ -f "${f}" ] && cat "$f"
 		done  > "${data_d}/public-keys"
 		set -f
 	fi
