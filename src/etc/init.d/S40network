@@ -6,8 +6,10 @@
 case "$1" in
   start)
 	printf "Starting network: "
-	/sbin/ifup lo
-	/sbin/dhcpcd --noipv4ll -w -t 180
+	/sbin/ifup -a
+	if ip route get 1 2>&1 | grep -iq "unreachable"; then
+		/sbin/dhcpcd --noipv4ll -w -t 180
+	fi
 	[ $? = 0 ] && echo "OK" || echo "FAIL"
 	;;
   stop)
